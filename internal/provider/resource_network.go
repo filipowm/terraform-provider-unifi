@@ -253,19 +253,12 @@ func resourceNetwork() *schema.Resource {
 				Optional:    true,
 				Default:     true,
 			},
-			"intra_network_access_enabled": {
-				Description: "Specifies whether this network should be allowed to access other local networks or not.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     true,
-				Deprecated:  "This will attribute will be removed in a future release, because it is no longer supported Use `network_isolation_enabled` instead.",
-			},
-			"network_isolation_enabled": {
-				Description: "Isolates this network from all other virtual networks using firewall rules. Devices on this network are able to communicate with each other. Use this instead of `intra_network_access_enabled`.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     true,
-			},
+			//"intra_network_access_enabled": {
+			//	Description: "Specifies whether this network should be allowed to access other local networks or not.",
+			//	Type:        schema.TypeBool,
+			//	Optional:    true,
+			//	Default:     true,
+			//},
 			"ipv6_ra_preferred_lifetime": {
 				Description: "Lifetime in which the address can be used. Address becomes deprecated afterwards. Must be lower than or equal to `ipv6_ra_valid_lifetime`",
 				Type:        schema.TypeInt,
@@ -473,8 +466,8 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		IPV6RaPriority:          d.Get("ipv6_ra_priority").(string),
 		IPV6RaValidLifetime:     d.Get("ipv6_ra_valid_lifetime").(int),
 
-		InternetAccessEnabled:   d.Get("internet_access_enabled").(bool),
-		NetworkIsolationEnabled: d.Get("network_isolation_enabled").(bool),
+		InternetAccessEnabled: d.Get("internet_access_enabled").(bool),
+		//IntraNetworkAccessEnabled: d.Get("intra_network_access_enabled").(bool),
 
 		WANIP:           d.Get("wan_ip").(string),
 		WANType:         d.Get("wan_type").(string),
@@ -593,7 +586,7 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("domain_name", resp.DomainName)
 	d.Set("igmp_snooping", resp.IGMPSnooping)
 	d.Set("internet_access_enabled", resp.InternetAccessEnabled)
-	d.Set("network_isolation_enabled", resp.NetworkIsolationEnabled)
+	//d.Set("intra_network_access_enabled", resp.IntraNetworkAccessEnabled)
 	d.Set("ipv6_interface_type", resp.IPV6InterfaceType)
 	d.Set("ipv6_pd_interface", resp.IPV6PDInterface)
 	d.Set("ipv6_pd_prefixid", resp.IPV6PDPrefixid)
