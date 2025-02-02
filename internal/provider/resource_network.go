@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	wanUsernameRegexp   = regexp.MustCompile("[^\"' ]+")
+	wanUsernameRegexp   = regexp.MustCompile("[^\"' ]+|^$")
 	validateWANUsername = validation.StringMatch(wanUsernameRegexp, "invalid WAN username")
 
 	wanTypeRegexp   = regexp.MustCompile("disabled|dhcp|static|pppoe")
@@ -202,6 +202,12 @@ func resourceNetwork() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 			},
+			"enabled": {
+				Description: "Specifies whether this network is enabled or not.",
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+			},
 			"igmp_snooping": {
 				Description: "Specifies whether IGMP snooping is enabled or not.",
 				Type:        schema.TypeBool,
@@ -332,12 +338,14 @@ func resourceNetwork() *schema.Resource {
 				Description:  "Specifies the IPV4 WAN username.",
 				Type:         schema.TypeString,
 				Optional:     true,
+				Default:      "whatever",
 				ValidateFunc: validateWANUsername,
 			},
 			"x_wan_password": {
 				Description:  "Specifies the IPV4 WAN password.",
 				Type:         schema.TypeString,
 				Optional:     true,
+				Default:      "whatever",
 				ValidateFunc: validateWANPassword,
 			},
 			"wan_type_v6": {
@@ -431,6 +439,7 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		DomainName:        d.Get("domain_name").(string),
 		IGMPSnooping:      d.Get("igmp_snooping").(bool),
 		MdnsEnabled:       d.Get("multicast_dns").(bool),
+		Enabled:           d.Get("enabled").(bool),
 
 		DHCPDDNSEnabled: len(dhcpDNS) > 0,
 		// this is kinda hacky but ¯\_(ツ)_/¯
@@ -440,8 +449,6 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		DHCPDDNS4: append(dhcpDNS, "", "", "", "")[3],
 
 		VLANEnabled: vlan != 0 && vlan != 1,
-
-		Enabled: true,
 
 		// Same hackish code as for DHCPv4 ¯\_(ツ)_/¯
 		DHCPDV6DNS1: append(dhcpV6DNS, "")[0],
@@ -584,6 +591,7 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("dhcpd_boot_filename", resp.DHCPDBootFilename)
 	d.Set("dhcpd_boot_server", resp.DHCPDBootServer)
 	d.Set("domain_name", resp.DomainName)
+	d.Set("enabled", resp.Enabled)
 	d.Set("igmp_snooping", resp.IGMPSnooping)
 	d.Set("internet_access_enabled", resp.InternetAccessEnabled)
 	//d.Set("intra_network_access_enabled", resp.IntraNetworkAccessEnabled)
@@ -717,19 +725,19 @@ func getNetworkIDByName(ctx context.Context, client unifiClient, networkName, si
 	}
 
 	idMatchingName := ""
-	allNames := []string{}
+	var allNames []string
 	for _, network := range networks {
 		allNames = append(allNames, network.Name)
 		if network.Name != networkName {
 			continue
 		}
 		if idMatchingName != "" {
-			return "", fmt.Errorf("Found multiple networks with name '%s'", networkName)
+			return "", fmt.Errorf("found multiple networks with name '%s'", networkName)
 		}
 		idMatchingName = network.ID
 	}
 	if idMatchingName == "" {
-		return "", fmt.Errorf("Found no networks with name '%s', found: %s", networkName, strings.Join(allNames, ", "))
+		return "", fmt.Errorf("found no networks with name '%s', found: %s", networkName, strings.Join(allNames, ", "))
 	}
 	return idMatchingName, nil
 }
