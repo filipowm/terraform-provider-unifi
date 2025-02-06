@@ -3,3 +3,5 @@
 .vscode
 dist
 terraform-provider-unifi
+
+vendor/
