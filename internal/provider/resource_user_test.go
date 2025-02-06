@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"github.com/apparentlymart/go-cidr/cidr"
+	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
-	"github.com/paultyng/go-unifi/unifi"
 )
 
 func userImportStep(name string) resource.TestStep {

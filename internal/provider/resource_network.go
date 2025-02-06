@@ -6,10 +6,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/paultyng/go-unifi/unifi"
 )
 
 var (
@@ -338,14 +338,12 @@ func resourceNetwork() *schema.Resource {
 				Description:  "Specifies the IPV4 WAN username.",
 				Type:         schema.TypeString,
 				Optional:     true,
-				Default:      "whatever",
 				ValidateFunc: validateWANUsername,
 			},
 			"x_wan_password": {
 				Description:  "Specifies the IPV4 WAN password.",
 				Type:         schema.TypeString,
 				Optional:     true,
-				Default:      "whatever",
 				ValidateFunc: validateWANPassword,
 			},
 			"wan_type_v6": {
