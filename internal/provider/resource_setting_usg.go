@@ -52,24 +52,6 @@ func resourceSettingUsg() *schema.Resource {
 				Optional:    true,
 				Computed:    true,
 			},
-			"firewall_guest_default_log": {
-				Description: "Whether the guest firewall log is enabled.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Computed:    true,
-			},
-			"firewall_lan_default_log": {
-				Description: "Whether the LAN firewall log is enabled.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Computed:    true,
-			},
-			"firewall_wan_default_log": {
-				Description: "Whether the WAN firewall log is enabled.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Computed:    true,
-			},
 			"dhcp_relay_servers": {
 				Description: "The DHCP relay servers.",
 				Type:        schema.TypeList,
@@ -100,10 +82,6 @@ func resourceSettingUsgUpdateResourceData(d *schema.ResourceData, meta interface
 
 		setting.MdnsEnabled = mdns.(bool)
 	}
-
-	setting.FirewallGuestDefaultLog = d.Get("firewall_guest_default_log").(bool)
-	setting.FirewallLanDefaultLog = d.Get("firewall_lan_default_log").(bool)
-	setting.FirewallWANDefaultLog = d.Get("firewall_wan_default_log").(bool)
 
 	dhcpRelay, err := listToStringSlice(d.Get("dhcp_relay_servers").([]interface{}))
 	if err != nil {
@@ -148,9 +126,6 @@ func resourceSettingUsgUpsert(ctx context.Context, d *schema.ResourceData, meta 
 func resourceSettingUsgSetResourceData(resp *unifi.SettingUsg, d *schema.ResourceData, meta interface{}, site string) diag.Diagnostics {
 	d.Set("site", site)
 	d.Set("multicast_dns_enabled", resp.MdnsEnabled)
-	d.Set("firewall_guest_default_log", resp.FirewallGuestDefaultLog)
-	d.Set("firewall_lan_default_log", resp.FirewallLanDefaultLog)
-	d.Set("firewall_wan_default_log", resp.FirewallWANDefaultLog)
 
 	dhcpRelay := []string{}
 	for _, s := range []string{

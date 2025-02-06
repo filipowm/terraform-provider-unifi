@@ -259,12 +259,12 @@ func resourceNetwork() *schema.Resource {
 				Optional:    true,
 				Default:     true,
 			},
-			//"intra_network_access_enabled": {
-			//	Description: "Specifies whether this network should be allowed to access other local networks or not.",
-			//	Type:        schema.TypeBool,
-			//	Optional:    true,
-			//	Default:     true,
-			//},
+			"network_isolation_enabled": {
+				Description: "Specifies whether this network should be isolated from other networks or not.",
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+			},
 			"ipv6_ra_preferred_lifetime": {
 				Description: "Lifetime in which the address can be used. Address becomes deprecated afterwards. Must be lower than or equal to `ipv6_ra_valid_lifetime`",
 				Type:        schema.TypeInt,
@@ -471,8 +471,8 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		IPV6RaPriority:          d.Get("ipv6_ra_priority").(string),
 		IPV6RaValidLifetime:     d.Get("ipv6_ra_valid_lifetime").(int),
 
-		InternetAccessEnabled: d.Get("internet_access_enabled").(bool),
-		//IntraNetworkAccessEnabled: d.Get("intra_network_access_enabled").(bool),
+		InternetAccessEnabled:   d.Get("internet_access_enabled").(bool),
+		NetworkIsolationEnabled: d.Get("network_isolation_enabled").(bool),
 
 		WANIP:           d.Get("wan_ip").(string),
 		WANType:         d.Get("wan_type").(string),
@@ -592,7 +592,7 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("enabled", resp.Enabled)
 	d.Set("igmp_snooping", resp.IGMPSnooping)
 	d.Set("internet_access_enabled", resp.InternetAccessEnabled)
-	//d.Set("intra_network_access_enabled", resp.IntraNetworkAccessEnabled)
+	d.Set("network_isolation_enabled", resp.NetworkIsolationEnabled)
 	d.Set("ipv6_interface_type", resp.IPV6InterfaceType)
 	d.Set("ipv6_pd_interface", resp.IPV6PDInterface)
 	d.Set("ipv6_pd_prefixid", resp.IPV6PDPrefixid)

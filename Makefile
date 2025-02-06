@@ -12,4 +12,4 @@ build:
 
 .PHONY: testacc
 testacc:
-	TF_LOG=debug TF_ACC=1 go test $(TEST) -test.parallel 2 -v -count $(TEST_COUNT) -timeout $(TEST_TIMEOUT) $(TESTARGS)
+	TF_LOG_PROVIDER=debug TF_ACC=1 go test $(TEST) -test.parallel 2 -v -count $(TEST_COUNT) -timeout $(TEST_TIMEOUT) $(TESTARGS)

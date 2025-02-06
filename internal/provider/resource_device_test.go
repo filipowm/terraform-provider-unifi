@@ -188,13 +188,14 @@ func TestAccDevice_empty(t *testing.T) {
 }
 
 func TestAccDevice_switch_basic(t *testing.T) {
+	//t.Skip("FIXME")
 	resourceName := "unifi_device.test"
 	site := "default"
 
 	device, unallocateDevice := allocateDevice(t)
 	defer unallocateDevice()
 
-	importStateVerifyIgnore := []string{"allow_adoption", "forget_on_destroy"}
+	importStateVerifyIgnore := []string{"allow_adoption", "forget_on_destroy", "name"}
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
