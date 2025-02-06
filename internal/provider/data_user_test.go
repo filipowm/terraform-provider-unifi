@@ -6,8 +6,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"testing"
 
+	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/paultyng/go-unifi/unifi"
 )
 
 func TestAccDataUser_default(t *testing.T) {
