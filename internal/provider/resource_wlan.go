@@ -41,9 +41,10 @@ func resourceWLAN() *schema.Resource {
 				ForceNew:    true,
 			},
 			"name": {
-				Description: "The SSID of the network.",
-				Type:        schema.TypeString,
-				Required:    true,
+				Description:  "The SSID of the network. SSID length must be between 1 and 32 characters.",
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: validation.StringLenBetween(1, 32),
 			},
 			"user_group_id": {
 				Description: "ID of the user group to use for this network.",
