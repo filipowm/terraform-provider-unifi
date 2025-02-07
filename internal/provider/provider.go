@@ -2,73 +2,83 @@ package provider
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/filipowm/go-unifi/unifi"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func init() {
-	schema.DescriptionKind = schema.StringMarkdown
+// Ensure the implementation satisfies the expected interfaces
+var (
+	_ provider.Provider = &frameworkProvider{}
+)
 
-	schema.SchemaDescriptionBuilder = func(s *schema.Schema) string {
-		desc := s.Description
-		if s.Default != nil {
-			desc += fmt.Sprintf(" Defaults to `%v`.", s.Default)
-		}
-		if s.Deprecated != "" {
-			desc += " " + s.Deprecated
-		}
-		return strings.TrimSpace(desc)
-	}
+// frameworkProvider is the provider implementation for Plugin Framework.
+type frameworkProvider struct {
+	// version is set to the provider version on release, "dev" when the
+	// provider is built and ran locally, and "test" when running acceptance
+	// testing.
+	version string
 }
 
-func New(version string) func() *schema.Provider {
-	return func() *schema.Provider {
-		p := &schema.Provider{
-			Schema: map[string]*schema.Schema{
+// frameworkProviderModel maps provider schema data to a Go type.
+type frameworkProviderModel struct {
+	Username      types.String `tfsdk:"username"`
+	Password      types.String `tfsdk:"password"`
+	APIUrl        types.String `tfsdk:"api_url"`
+	Site          types.String `tfsdk:"site"`
+	AllowInsecure types.Bool   `tfsdk:"allow_insecure"`
+}
+
+// New returns a new provider implementation with both SDK v2 and Plugin Framework support.
+func New(version string) func() *sdkschema.Provider {
+	return func() *sdkschema.Provider {
+		p := &sdkschema.Provider{
+			Schema: map[string]*sdkschema.Schema{
 				"username": {
 					Description: "Local user name for the Unifi controller API. Can be specified with the `UNIFI_USERNAME` " +
 						"environment variable.",
-					Type:        schema.TypeString,
+					Type:        sdkschema.TypeString,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("UNIFI_USERNAME", ""),
+					DefaultFunc: sdkschema.EnvDefaultFunc("UNIFI_USERNAME", ""),
 				},
 				"password": {
 					Description: "Password for the user accessing the API. Can be specified with the `UNIFI_PASSWORD` " +
 						"environment variable.",
-					Type:        schema.TypeString,
+					Type:        sdkschema.TypeString,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("UNIFI_PASSWORD", ""),
+					DefaultFunc: sdkschema.EnvDefaultFunc("UNIFI_PASSWORD", ""),
 				},
 				"api_url": {
 					Description: "URL of the controller API. Can be specified with the `UNIFI_API` environment variable. " +
 						"You should **NOT** supply the path (`/api`), the SDK will discover the appropriate paths. This is " +
 						"to support UDM Pro style API paths as well as more standard controller paths.",
-
-					Type:        schema.TypeString,
+					Type:        sdkschema.TypeString,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("UNIFI_API", ""),
+					DefaultFunc: sdkschema.EnvDefaultFunc("UNIFI_API", ""),
 				},
 				"site": {
 					Description: "The site in the Unifi controller this provider will manage. Can be specified with " +
 						"the `UNIFI_SITE` environment variable. Default: `default`",
-					Type:        schema.TypeString,
+					Type:        sdkschema.TypeString,
 					Required:    true,
-					DefaultFunc: schema.EnvDefaultFunc("UNIFI_SITE", "default"),
+					DefaultFunc: sdkschema.EnvDefaultFunc("UNIFI_SITE", "default"),
 				},
 				"allow_insecure": {
 					Description: "Skip verification of TLS certificates of API requests. You may need to set this to `true` " +
 						"if you are using your local API without setting up a signed certificate. Can be specified with the " +
 						"`UNIFI_INSECURE` environment variable.",
-					Type:        schema.TypeBool,
+					Type:        sdkschema.TypeBool,
 					Optional:    true,
-					DefaultFunc: schema.EnvDefaultFunc("UNIFI_INSECURE", false),
+					DefaultFunc: sdkschema.EnvDefaultFunc("UNIFI_INSECURE", false),
 				},
 			},
-			DataSourcesMap: map[string]*schema.Resource{
+			DataSourcesMap: map[string]*sdkschema.Resource{
 				"unifi_ap_group":       dataAPGroup(),
 				"unifi_network":        dataNetwork(),
 				"unifi_port_profile":   dataPortProfile(),
@@ -77,7 +87,7 @@ func New(version string) func() *schema.Provider {
 				"unifi_user":           dataUser(),
 				"unifi_account":        dataAccount(),
 			},
-			ResourcesMap: map[string]*schema.Resource{
+			ResourcesMap: map[string]*sdkschema.Resource{
 				// TODO: "unifi_ap_group"
 				"unifi_device":         resourceDevice(),
 				"unifi_dynamic_dns":    resourceDynamicDNS(),
@@ -100,12 +110,126 @@ func New(version string) func() *schema.Provider {
 			},
 		}
 
-		p.ConfigureContextFunc = configure(version, p)
+		p.ConfigureContextFunc = configure()
 		return p
 	}
 }
 
-func configure(version string, p *schema.Provider) schema.ConfigureContextFunc {
+// NewFrameworkProvider returns a new provider implementation using the Plugin Framework.
+func NewFrameworkProvider(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &frameworkProvider{
+			version: version,
+		}
+	}
+}
+
+// Metadata returns the provider type name.
+func (p *frameworkProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "unifi"
+	resp.Version = p.version
+}
+
+// Schema defines the provider-level schema for configuration data.
+func (p *frameworkProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Description: "The UniFi provider provides resources to interact with a UniFi controller.",
+		Attributes: map[string]schema.Attribute{
+			"username": schema.StringAttribute{
+				Description: "Local user name for the Unifi controller API. Can be specified with the `UNIFI_USERNAME` environment variable.",
+				Required:    true,
+			},
+			"password": schema.StringAttribute{
+				Description: "Password for the user accessing the API. Can be specified with the `UNIFI_PASSWORD` environment variable.",
+				Required:    true,
+				Sensitive:   true,
+			},
+			"api_url": schema.StringAttribute{
+				Description: "URL of the controller API. Can be specified with the `UNIFI_API` environment variable.",
+				Required:    true,
+			},
+			"site": schema.StringAttribute{
+				Description: "The site in the Unifi controller this provider will manage. Can be specified with the `UNIFI_SITE` environment variable.",
+				Required:    true,
+			},
+			"allow_insecure": schema.BoolAttribute{
+				Description: "Skip verification of TLS certificates of API requests. Can be specified with the `UNIFI_INSECURE` environment variable.",
+				Optional:    true,
+			},
+		},
+	}
+}
+
+// Configure prepares a UniFi API client for data sources and resources.
+func (p *frameworkProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var config frameworkProviderModel
+	diags := req.Config.Get(ctx, &config)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if config.Username.IsUnknown() {
+		resp.Diagnostics.AddWarning(
+			"Unable to create client",
+			"Cannot use unknown value as username",
+		)
+		return
+	}
+
+	if config.Password.IsUnknown() {
+		resp.Diagnostics.AddWarning(
+			"Unable to create client",
+			"Cannot use unknown value as password",
+		)
+		return
+	}
+
+	if config.APIUrl.IsUnknown() {
+		resp.Diagnostics.AddWarning(
+			"Unable to create client",
+			"Cannot use unknown value as api_url",
+		)
+		return
+	}
+
+	if config.Site.IsUnknown() {
+		resp.Diagnostics.AddWarning(
+			"Unable to create client",
+			"Cannot use unknown value as site",
+		)
+		return
+	}
+
+	c := &client{
+		c: &lazyClient{
+			user:     config.Username.ValueString(),
+			pass:     config.Password.ValueString(),
+			baseURL:  config.APIUrl.ValueString(),
+			insecure: config.AllowInsecure.ValueBool(),
+		},
+		site: config.Site.ValueString(),
+	}
+
+	resp.DataSourceData = c
+	resp.ResourceData = c
+}
+
+// DataSources defines the data sources implemented in the provider.
+func (p *frameworkProvider) DataSources(_ context.Context) []func() datasource.DataSource {
+	return []func() datasource.DataSource{
+		// Add your framework data sources here
+	}
+}
+
+// Resources defines the resources implemented in the provider.
+func (p *frameworkProvider) Resources(_ context.Context) []func() resource.Resource {
+	return []func() resource.Resource{
+		// Add your framework resources here
+	}
+}
+
+func configure() schema.ConfigureContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		user := d.Get("username").(string)
 		pass := d.Get("password").(string)
