@@ -1,9 +1,14 @@
 package main // import "github.com/paultyng/terraform-provider-unifi"
 
 import (
+	"context"
 	"flag"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
+	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
+	"github.com/hashicorp/terraform-plugin-mux/tf6muxserver"
 
 	"github.com/paultyng/terraform-provider-unifi/internal/provider"
 )
@@ -26,12 +31,44 @@ func main() {
 	flag.BoolVar(&debugMode, "debug", false, "set to true to run the provider with support for debuggers like delve")
 	flag.Parse()
 
-	opts := &plugin.ServeOpts{ProviderFunc: provider.New(version)}
+	ctx := context.Background()
 
-	if debugMode {
-		opts.Debug = true
-		opts.ProviderAddr = "registry.terraform.io/paultyng/unifi"
+	sdkv2Provider := provider.New(version)()
+	upgradedSdkProvider, err := tf5to6server.UpgradeServer(
+		context.Background(),
+		sdkv2Provider.GRPCProvider,
+	)
+	if err != nil {
+		panic(err)
 	}
 
-	plugin.Serve(opts)
+	frameworkProvider := provider.NewFrameworkProvider(version)()
+	providers := []func() tfprotov6.ProviderServer{
+		func() tfprotov6.ProviderServer {
+			return upgradedSdkProvider
+		},
+		providerserver.NewProtocol6(frameworkProvider),
+	}
+
+	muxServer, err := tf6muxserver.NewMuxServer(ctx, providers...)
+	if err != nil {
+		panic(err)
+	}
+
+	var serveOpts []tf6server.ServeOpt
+	if debugMode {
+		serveOpts = append(serveOpts,
+			tf6server.WithManagedDebug(),
+			tf6server.WithGoDebug(),
+		)
+	}
+
+	err = tf6server.Serve(
+		"registry.terraform.io/paultyng/unifi",
+		muxServer.ProviderServer,
+		serveOpts...,
+	)
+	if err != nil {
+		panic(err)
+	}
 }
