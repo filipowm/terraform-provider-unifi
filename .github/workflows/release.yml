@@ -7,6 +7,7 @@ on:
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
+    concurrency: release
     permissions:
       contents: write
     steps:
@@ -28,7 +29,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
-          args: release --parallelism 2 --rm-dist
+          args: release --parallelism 2 --clean
         env:
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
