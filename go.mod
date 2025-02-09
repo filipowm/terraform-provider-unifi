@@ -9,7 +9,7 @@ go 1.23.4
 require (
 	github.com/apparentlymart/go-cidr v1.1.0
 	github.com/deckarep/golang-set/v2 v2.7.0
-	github.com/filipowm/go-unifi v0.0.1
+	github.com/filipowm/go-unifi v0.0.2
 	github.com/golangci/golangci-lint v1.63.4
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hashicorp/terraform-plugin-docs v0.20.1
