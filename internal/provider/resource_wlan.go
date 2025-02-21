@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/filipowm/go-unifi/unifi"
@@ -449,7 +450,7 @@ func resourceWLANRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	}
 
 	resp, err := c.c.GetWLAN(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -493,7 +494,7 @@ func resourceWLANDelete(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	err := c.c.DeleteWLAN(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		return nil
 	}
 	return diag.FromErr(err)

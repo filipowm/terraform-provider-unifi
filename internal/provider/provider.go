@@ -2,11 +2,17 @@ package provider
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"log"
+	"net"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -105,6 +111,28 @@ func New(version string) func() *schema.Provider {
 	}
 }
 
+func createHTTPTransport(insecure bool, subsystem string) http.RoundTripper {
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: insecure,
+		},
+	}
+
+	t := logging.NewSubsystemLoggingHTTPTransport(subsystem, transport)
+	return t
+}
+
 func configure(version string, p *schema.Provider) schema.ConfigureContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		user := d.Get("username").(string)
@@ -113,13 +141,25 @@ func configure(version string, p *schema.Provider) schema.ConfigureContextFunc {
 		site := d.Get("site").(string)
 		insecure := d.Get("allow_insecure").(bool)
 
-		c := &client{
-			c: &lazyClient{
-				user:     user,
-				pass:     pass,
-				baseURL:  baseURL,
-				insecure: insecure,
+		unifiClient, err := unifi.NewClient(&unifi.ClientConfig{
+			URL:      baseURL,
+			User:     user,
+			Password: pass,
+			HttpRoundTripperProvider: func() http.RoundTripper {
+				return createHTTPTransport(insecure, "unifi")
 			},
+		})
+
+		if err != nil {
+			return nil, diag.FromErr(err)
+		}
+		err = checkMinimumControllerVersion(unifiClient.Version())
+		log.Printf("[TRACE] Unifi controller version: %q", unifiClient.Version())
+		if err != nil {
+			return nil, diag.FromErr(err)
+		}
+		c := &client{
+			c:    unifiClient,
 			site: site,
 		}
 
@@ -127,111 +167,7 @@ func configure(version string, p *schema.Provider) schema.ConfigureContextFunc {
 	}
 }
 
-type unifiClient interface {
-	Version() string
-
-	ListUserGroup(ctx context.Context, site string) ([]unifi.UserGroup, error)
-	DeleteUserGroup(ctx context.Context, site, id string) error
-	CreateUserGroup(ctx context.Context, site string, d *unifi.UserGroup) (*unifi.UserGroup, error)
-	GetUserGroup(ctx context.Context, site, id string) (*unifi.UserGroup, error)
-	UpdateUserGroup(ctx context.Context, site string, d *unifi.UserGroup) (*unifi.UserGroup, error)
-
-	ListFirewallGroup(ctx context.Context, site string) ([]unifi.FirewallGroup, error)
-	DeleteFirewallGroup(ctx context.Context, site, id string) error
-	CreateFirewallGroup(ctx context.Context, site string, d *unifi.FirewallGroup) (*unifi.FirewallGroup, error)
-	GetFirewallGroup(ctx context.Context, site, id string) (*unifi.FirewallGroup, error)
-	UpdateFirewallGroup(ctx context.Context, site string, d *unifi.FirewallGroup) (*unifi.FirewallGroup, error)
-
-	ListFirewallRule(ctx context.Context, site string) ([]unifi.FirewallRule, error)
-	DeleteFirewallRule(ctx context.Context, site, id string) error
-	CreateFirewallRule(ctx context.Context, site string, d *unifi.FirewallRule) (*unifi.FirewallRule, error)
-	GetFirewallRule(ctx context.Context, site, id string) (*unifi.FirewallRule, error)
-	UpdateFirewallRule(ctx context.Context, site string, d *unifi.FirewallRule) (*unifi.FirewallRule, error)
-
-	ListWLANGroup(ctx context.Context, site string) ([]unifi.WLANGroup, error)
-
-	ListAPGroup(ctx context.Context, site string) ([]unifi.APGroup, error)
-
-	DeleteNetwork(ctx context.Context, site, id, name string) error
-	CreateNetwork(ctx context.Context, site string, d *unifi.Network) (*unifi.Network, error)
-	GetNetwork(ctx context.Context, site, id string) (*unifi.Network, error)
-	ListNetwork(ctx context.Context, site string) ([]unifi.Network, error)
-	UpdateNetwork(ctx context.Context, site string, d *unifi.Network) (*unifi.Network, error)
-
-	DeleteWLAN(ctx context.Context, site, id string) error
-	CreateWLAN(ctx context.Context, site string, d *unifi.WLAN) (*unifi.WLAN, error)
-	GetWLAN(ctx context.Context, site, id string) (*unifi.WLAN, error)
-	UpdateWLAN(ctx context.Context, site string, d *unifi.WLAN) (*unifi.WLAN, error)
-
-	GetDevice(ctx context.Context, site, id string) (*unifi.Device, error)
-	GetDeviceByMAC(ctx context.Context, site, mac string) (*unifi.Device, error)
-	CreateDevice(ctx context.Context, site string, d *unifi.Device) (*unifi.Device, error)
-	UpdateDevice(ctx context.Context, site string, d *unifi.Device) (*unifi.Device, error)
-	DeleteDevice(ctx context.Context, site, id string) error
-	ListDevice(ctx context.Context, site string) ([]unifi.Device, error)
-	AdoptDevice(ctx context.Context, site, mac string) error
-	ForgetDevice(ctx context.Context, site, mac string) error
-
-	GetUser(ctx context.Context, site, id string) (*unifi.User, error)
-	GetUserByMAC(ctx context.Context, site, mac string) (*unifi.User, error)
-	CreateUser(ctx context.Context, site string, d *unifi.User) (*unifi.User, error)
-	BlockUserByMAC(ctx context.Context, site, mac string) error
-	UnblockUserByMAC(ctx context.Context, site, mac string) error
-	OverrideUserFingerprint(ctx context.Context, site, mac string, devIdOveride int) error
-	UpdateUser(ctx context.Context, site string, d *unifi.User) (*unifi.User, error)
-	DeleteUserByMAC(ctx context.Context, site, mac string) error
-
-	GetPortForward(ctx context.Context, site, id string) (*unifi.PortForward, error)
-	DeletePortForward(ctx context.Context, site, id string) error
-	CreatePortForward(ctx context.Context, site string, d *unifi.PortForward) (*unifi.PortForward, error)
-	UpdatePortForward(ctx context.Context, site string, d *unifi.PortForward) (*unifi.PortForward, error)
-
-	ListRADIUSProfile(ctx context.Context, site string) ([]unifi.RADIUSProfile, error)
-	GetRADIUSProfile(ctx context.Context, site, id string) (*unifi.RADIUSProfile, error)
-	DeleteRADIUSProfile(ctx context.Context, site, id string) error
-	CreateRADIUSProfile(ctx context.Context, site string, d *unifi.RADIUSProfile) (*unifi.RADIUSProfile, error)
-	UpdateRADIUSProfile(ctx context.Context, site string, d *unifi.RADIUSProfile) (*unifi.RADIUSProfile, error)
-
-	ListAccounts(ctx context.Context, site string) ([]unifi.Account, error)
-	GetAccount(ctx context.Context, site, id string) (*unifi.Account, error)
-	DeleteAccount(ctx context.Context, site, id string) error
-	CreateAccount(ctx context.Context, site string, d *unifi.Account) (*unifi.Account, error)
-	UpdateAccount(ctx context.Context, site string, d *unifi.Account) (*unifi.Account, error)
-
-	GetSite(ctx context.Context, id string) (*unifi.Site, error)
-	ListSites(ctx context.Context) ([]unifi.Site, error)
-	CreateSite(ctx context.Context, Description string) ([]unifi.Site, error)
-	UpdateSite(ctx context.Context, Name, Description string) ([]unifi.Site, error)
-	DeleteSite(ctx context.Context, ID string) ([]unifi.Site, error)
-
-	ListPortProfile(ctx context.Context, site string) ([]unifi.PortProfile, error)
-	GetPortProfile(ctx context.Context, site, id string) (*unifi.PortProfile, error)
-	DeletePortProfile(ctx context.Context, site, id string) error
-	CreatePortProfile(ctx context.Context, site string, d *unifi.PortProfile) (*unifi.PortProfile, error)
-	UpdatePortProfile(ctx context.Context, site string, d *unifi.PortProfile) (*unifi.PortProfile, error)
-
-	ListRouting(ctx context.Context, site string) ([]unifi.Routing, error)
-	GetRouting(ctx context.Context, site, id string) (*unifi.Routing, error)
-	DeleteRouting(ctx context.Context, site, id string) error
-	CreateRouting(ctx context.Context, site string, d *unifi.Routing) (*unifi.Routing, error)
-	UpdateRouting(ctx context.Context, site string, d *unifi.Routing) (*unifi.Routing, error)
-
-	ListDynamicDNS(ctx context.Context, site string) ([]unifi.DynamicDNS, error)
-	GetDynamicDNS(ctx context.Context, site, id string) (*unifi.DynamicDNS, error)
-	DeleteDynamicDNS(ctx context.Context, site, id string) error
-	CreateDynamicDNS(ctx context.Context, site string, d *unifi.DynamicDNS) (*unifi.DynamicDNS, error)
-	UpdateDynamicDNS(ctx context.Context, site string, d *unifi.DynamicDNS) (*unifi.DynamicDNS, error)
-
-	GetSettingMgmt(ctx context.Context, id string) (*unifi.SettingMgmt, error)
-	GetSettingUsg(ctx context.Context, id string) (*unifi.SettingUsg, error)
-	UpdateSettingMgmt(ctx context.Context, site string, d *unifi.SettingMgmt) (*unifi.SettingMgmt, error)
-	UpdateSettingUsg(ctx context.Context, site string, d *unifi.SettingUsg) (*unifi.SettingUsg, error)
-
-	GetSettingRadius(ctx context.Context, id string) (*unifi.SettingRadius, error)
-	UpdateSettingRadius(ctx context.Context, site string, d *unifi.SettingRadius) (*unifi.SettingRadius, error)
-}
-
 type client struct {
-	c    unifiClient
+	c    unifi.Client
 	site string
 }

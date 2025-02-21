@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/filipowm/go-unifi/unifi"
@@ -161,7 +162,7 @@ func resourceStaticRouteRead(ctx context.Context, d *schema.ResourceData, meta i
 	}
 
 	resp, err := c.c.GetRouting(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -206,7 +207,7 @@ func resourceStaticRouteDelete(ctx context.Context, d *schema.ResourceData, meta
 		site = c.site
 	}
 	err := c.c.DeleteRouting(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		return nil
 	}
 	return diag.FromErr(err)

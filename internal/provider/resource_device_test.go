@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"sync"
@@ -168,7 +169,7 @@ func isNephosSwitch(device unifi.Device) bool {
 func preCheckDeviceExists(t *testing.T, site, mac string) {
 	_, err := testClient.GetDeviceByMAC(context.Background(), site, mac)
 
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		t.Fatal("Test device not found")
 	}
 }
@@ -367,7 +368,7 @@ func testAccCheckDeviceDestroy(s *terraform.State) error {
 		if device != nil {
 			return fmt.Errorf("Device still exists with ID %v", rs.Primary.ID)
 		}
-		if _, ok := err.(*unifi.NotFoundError); !ok {
+		if !errors.Is(err, unifi.ErrNotFound) {
 			return err
 		}
 	}
@@ -393,7 +394,7 @@ func testAccCheckDeviceExists(n string) resource.TestCheckFunc {
 		if device == nil {
 			return fmt.Errorf("Device not found with ID %v", id)
 		}
-		if _, ok := err.(*unifi.NotFoundError); !ok {
+		if !errors.Is(err, unifi.ErrNotFound) {
 			return err
 		}
 

@@ -238,7 +238,7 @@ func resourceUserRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	}
 
 	resp, err := c.c.GetUser(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -248,7 +248,7 @@ func resourceUserRead(ctx context.Context, d *schema.ResourceData, meta interfac
 
 	// for some reason the IP address is only on this endpoint, so issue another request
 	macResp, err := c.c.GetUserByMAC(ctx, site, resp.MAC)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -332,7 +332,7 @@ func resourceUserDelete(ctx context.Context, d *schema.ResourceData, meta interf
 
 	// lookup MAC instead of trusting state
 	u, err := c.c.GetUser(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		return nil
 	}
 	if err != nil {

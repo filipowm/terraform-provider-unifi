@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -135,7 +136,7 @@ func resourceDynamicDNSRead(ctx context.Context, d *schema.ResourceData, meta in
 	}
 
 	resp, err := c.c.GetDynamicDNS(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -180,7 +181,7 @@ func resourceDynamicDNSDelete(ctx context.Context, d *schema.ResourceData, meta 
 		site = c.site
 	}
 	err := c.c.DeleteDynamicDNS(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		return nil
 	}
 	return diag.FromErr(err)

@@ -65,7 +65,7 @@ func dataAccountRead(ctx context.Context, d *schema.ResourceData, meta interface
 		site = c.site
 	}
 
-	accounts, err := c.c.ListAccounts(ctx, site)
+	accounts, err := c.c.ListAccount(ctx, site)
 	if err != nil {
 		return diag.FromErr(err)
 	}

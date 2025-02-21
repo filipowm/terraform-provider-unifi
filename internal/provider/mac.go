@@ -1,12 +1,13 @@
 package provider
 
 import (
-	mapset "github.com/deckarep/golang-set/v2"
 	"net"
 	"regexp"
 	"strings"
 	"sync"
 	"testing"
+
+	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
