@@ -87,6 +87,7 @@ require (
 	github.com/cloudflare/circl v1.6.0 // indirect
 	github.com/compose-spec/compose-go/v2 v2.4.8 // indirect
 	github.com/containerd/console v1.0.4 // indirect
+	github.com/containerd/containerd v1.7.24 // indirect
 	github.com/containerd/containerd/api v1.8.0 // indirect
 	github.com/containerd/containerd/v2 v2.0.2 // indirect
 	github.com/containerd/continuity v0.4.5 // indirect
@@ -106,7 +107,7 @@ require (
 	github.com/docker/buildx v0.21.0 // indirect
 	github.com/docker/cli v28.0.0+incompatible // indirect
 	github.com/docker/cli-docs-tool v0.9.0 // indirect
-	github.com/docker/compose/v2 v2.33.0 // indirect
+	github.com/docker/compose/v2 v2.32.4 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker v28.0.0+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.8.2 // indirect
