@@ -110,6 +110,8 @@ func runAcceptanceTests(m *testing.M) int {
 		HttpRoundTripperProvider: func() http.RoundTripper {
 			return createHTTPTransport(true, "unifi")
 		},
+		ValidationMode: unifi.DisableValidation,
+		UseLocking:     true,
 	})
 	if err != nil {
 		panic(err)
