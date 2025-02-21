@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/filipowm/go-unifi/unifi"
@@ -184,7 +185,7 @@ func resourceSettingMgmtRead(ctx context.Context, d *schema.ResourceData, meta i
 	}
 
 	resp, err := c.c.GetSettingMgmt(ctx, site)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}

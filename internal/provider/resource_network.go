@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -633,7 +634,7 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 	}
 
 	resp, err := c.c.GetNetwork(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -670,15 +671,14 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*client)
 
-	name := d.Get("name").(string)
 	site := d.Get("site").(string)
 	if site == "" {
 		site = c.site
 	}
 	id := d.Id()
 
-	err := c.c.DeleteNetwork(ctx, site, id, name)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	err := c.c.DeleteNetwork(ctx, site, id)
+	if errors.Is(err, unifi.ErrNotFound) {
 		return nil
 	}
 	return diag.FromErr(err)
@@ -716,7 +716,7 @@ func importNetwork(ctx context.Context, d *schema.ResourceData, meta interface{}
 	return []*schema.ResourceData{d}, nil
 }
 
-func getNetworkIDByName(ctx context.Context, client unifiClient, networkName, site string) (string, error) {
+func getNetworkIDByName(ctx context.Context, client unifi.Client, networkName, site string) (string, error) {
 	networks, err := client.ListNetwork(ctx, site)
 	if err != nil {
 		return "", err

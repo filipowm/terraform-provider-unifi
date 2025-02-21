@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -154,7 +155,7 @@ func resourceSettingUsgRead(ctx context.Context, d *schema.ResourceData, meta in
 	}
 
 	resp, err := c.c.GetSettingUsg(ctx, site)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}

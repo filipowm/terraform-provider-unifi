@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -130,7 +131,7 @@ func resourceAccountDelete(ctx context.Context, d *schema.ResourceData, meta int
 
 	id := d.Id()
 	err := c.c.DeleteAccount(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		return nil
 	}
 	return diag.FromErr(err)
@@ -147,7 +148,7 @@ func resourceAccountRead(ctx context.Context, d *schema.ResourceData, meta inter
 	}
 
 	resp, err := c.c.GetAccount(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}

@@ -117,7 +117,7 @@ func resourceFirewallGroupRead(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	resp, err := c.c.GetFirewallGroup(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -163,7 +163,7 @@ func resourceFirewallGroupDelete(ctx context.Context, d *schema.ResourceData, me
 	}
 
 	err := c.c.DeleteFirewallGroup(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		return nil
 	}
 	return diag.FromErr(err)

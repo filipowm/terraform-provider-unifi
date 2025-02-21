@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -264,7 +265,7 @@ func resourceDeviceDelete(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	_, err = waitForDeviceState(ctx, d, meta, unifi.DeviceStatePending, []unifi.DeviceState{unifi.DeviceStateConnected, unifi.DeviceStateDeleting}, 1*time.Minute)
-	if _, ok := err.(*unifi.NotFoundError); !ok {
+	if !errors.Is(err, unifi.ErrNotFound) {
 		return diag.FromErr(err)
 	}
 
@@ -282,7 +283,7 @@ func resourceDeviceRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	resp, err := c.c.GetDevice(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -410,7 +411,7 @@ func waitForDeviceState(ctx context.Context, d *schema.ResourceData, meta interf
 		Refresh: func() (interface{}, string, error) {
 			device, err := c.c.GetDeviceByMAC(ctx, site, mac)
 
-			if _, ok := err.(*unifi.NotFoundError); ok {
+			if errors.Is(err, unifi.ErrNotFound) {
 				err = nil
 			}
 
