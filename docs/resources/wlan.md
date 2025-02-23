@@ -55,7 +55,7 @@ resource "unifi_wlan" "wifi" {
 
 ### Required
 
-- `name` (String) The SSID of the network.
+- `name` (String) The SSID of the network. SSID length must be between 1 and 32 characters.
 - `security` (String) The type of WiFi security for this network. Valid values are: `wpapsk`, `wpaeap`, and `open`.
 - `user_group_id` (String) ID of the user group to use for this network.
 

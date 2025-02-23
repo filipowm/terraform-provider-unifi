@@ -45,36 +45,33 @@ func (p *unifiProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"username": schema.StringAttribute{
-				Description: "Local user name for the Unifi controller API. Can be specified with the `UNIFI_USERNAME` environment variable.",
-				Optional:    true,
+				MarkdownDescription: up.ProviderUsernameDescription,
+				Optional:            true,
 			},
 			"password": schema.StringAttribute{
-				Description: "Password for the user accessing the API. Can be specified with the `UNIFI_PASSWORD` environment variable.",
-				Optional:    true,
-				Sensitive:   true,
+				MarkdownDescription: up.ProviderPasswordDescription,
+				Optional:            true,
+				Sensitive:           true,
 			},
 			"api_key": schema.StringAttribute{
-				Description: "API Key for the user accessing the API. Can be specified with the `UNIFI_API_KEY` environment variable. Controller version 9.0.108 or later is required.",
-				Optional:    true,
-				Sensitive:   true,
+				MarkdownDescription: up.ProviderAPIKeyDescription,
+				Optional:            true,
+				Sensitive:           true,
 			},
 			"api_url": schema.StringAttribute{
-				Description: "URL of the Unifi controller API. Can be specified with the `UNIFI_API_URL` environment variable.",
-				Required:    true,
+				MarkdownDescription: up.ProviderAPIURLDescription,
 				Validators: []validator.String{
-					stringvalidator.LengthAtLeast(1),
-				},
-			},
-			"site": schema.StringAttribute{
-				Description: "The site to use for the Unifi controller API. Can be specified with the `UNIFI_SITE` environment variable.",
-				Validators: []validator.String{
-					stringvalidator.LengthBetween(1, 64),
+					stringvalidator.LengthAtLeast(1), // workaround for `required: true`, because it fails on doc generation due to incorrectly detected difference between v1 and v2
 				},
 				Optional: true,
 			},
+			"site": schema.StringAttribute{
+				MarkdownDescription: up.ProviderSiteDescription,
+				Optional:            true,
+			},
 			"allow_insecure": schema.BoolAttribute{
-				Description: "Allow insecure connections to the Unifi controller API. Can be specified with the `UNIFI_ALLOW_INSECURE` environment variable.",
-				Optional:    true,
+				MarkdownDescription: up.ProviderAllowInsecureDescription,
+				Optional:            true,
 			},
 		},
 	}
@@ -99,8 +96,8 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 			path.Root("api_url"),
 			"Unknown UniFi Controller API URL",
 			"The provider cannot create the UniFi Controller API client as there is an unknown configuration value "+
-				"for the API endpoint. Either target apply the source of the value first, set the value statically in "+
-				"the configuration, or use the UNIFI_API_URL environment variable.",
+					"for the API endpoint. Either target apply the source of the value first, set the value statically in "+
+					"the configuration, or use the UNIFI_API_URL environment variable.",
 		)
 	}
 
@@ -146,6 +143,9 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	}
 	if resp.Diagnostics.HasError() {
 		return
+	}
+	if site == "" {
+		site = "default" // set default site if not provided
 	}
 	c, err := up.NewClient(&up.ClientConfig{
 		Username: username,

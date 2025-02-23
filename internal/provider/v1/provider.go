@@ -36,46 +36,39 @@ func New(version string) func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
 				"username": {
-					Description: "Local user name for the Unifi controller API. Can be specified with the `UNIFI_USERNAME` " +
-						"environment variable.",
+					Description: provider.ProviderUsernameDescription,
 					Type:        schema.TypeString,
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("UNIFI_USERNAME", ""),
 				},
 				"password": {
-					Description: "Password for the user accessing the API. Can be specified with the `UNIFI_PASSWORD` " +
-						"environment variable.",
+					Description: provider.ProviderPasswordDescription,
 					Type:        schema.TypeString,
 					Optional:    true,
+					Sensitive:   true,
 					DefaultFunc: schema.EnvDefaultFunc("UNIFI_PASSWORD", ""),
 				},
 				"api_key": {
-					Description: "API Key for the user accessing the API. Can be specified with the `UNIFI_API_KEY` " +
-						"environment variable. Controller version 9.0.108 or later is required.",
+					Description: provider.ProviderAPIKeyDescription,
 					Type:        schema.TypeString,
 					Optional:    true,
+					Sensitive:   true,
 					DefaultFunc: schema.EnvDefaultFunc("UNIFI_API_KEY", ""),
 				},
 				"api_url": {
-					Description: "URL of the controller API. Can be specified with the `UNIFI_API` environment variable. " +
-						"You should **NOT** supply the path (`/api`), the SDK will discover the appropriate paths. This is " +
-						"to support UDM Pro style API paths as well as more standard controller paths.",
-
+					Description: provider.ProviderAPIURLDescription,
 					Type:        schema.TypeString,
 					Required:    true,
 					DefaultFunc: schema.EnvDefaultFunc("UNIFI_API", ""),
 				},
 				"site": {
-					Description: "The site in the Unifi controller this provider will manage. Can be specified with " +
-						"the `UNIFI_SITE` environment variable. Default: `default`",
+					Description: provider.ProviderSiteDescription,
 					Type:        schema.TypeString,
-					Required:    true,
+					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("UNIFI_SITE", "default"),
 				},
 				"allow_insecure": {
-					Description: "Skip verification of TLS certificates of API requests. You may need to set this to `true` " +
-						"if you are using your local API without setting up a signed certificate. Can be specified with the " +
-						"`UNIFI_INSECURE` environment variable.",
+					Description: provider.ProviderAllowInsecureDescription,
 					Type:        schema.TypeBool,
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("UNIFI_INSECURE", false),
