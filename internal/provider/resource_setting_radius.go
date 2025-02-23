@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -140,7 +141,7 @@ func resourceSettingRadiusRead(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	resp, err := c.c.GetSettingRadius(ctx, site)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}

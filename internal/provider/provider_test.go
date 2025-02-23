@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"net/http"
 	"os"
 	"sync"
 	"testing"
@@ -25,7 +26,7 @@ var providerFactories = map[string]func() (*schema.Provider, error){
 	},
 }
 
-var testClient *unifi.Client
+var testClient unifi.Client
 
 func TestMain(m *testing.M) {
 	if os.Getenv("TF_ACC") == "" {
@@ -102,10 +103,17 @@ func runAcceptanceTests(m *testing.M) int {
 		panic(err)
 	}
 
-	testClient = &unifi.Client{}
-	setHTTPClient(testClient, true, "unifi")
-	testClient.SetBaseURL(endpoint)
-	if err = testClient.Login(ctx, user, password); err != nil {
+	testClient, err = unifi.NewClient(&unifi.ClientConfig{
+		URL:      endpoint,
+		User:     user,
+		Password: password,
+		HttpRoundTripperProvider: func() http.RoundTripper {
+			return createHTTPTransport(true, "unifi")
+		},
+		ValidationMode: unifi.DisableValidation,
+		Logger:         unifi.NewDefaultLogger(unifi.WarnLevel),
+	})
+	if err != nil {
 		panic(err)
 	}
 

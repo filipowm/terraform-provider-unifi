@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"errors"
-
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -135,8 +134,7 @@ func resourceUserCreate(ctx context.Context, d *schema.ResourceData, meta interf
 
 	resp, err := c.c.CreateUser(ctx, site, req)
 	if err != nil {
-		var apiErr *unifi.APIError
-		if !errors.As(err, &apiErr) || (apiErr.Message != "api.err.MacUsed" || !allowExisting) {
+		if !IsServerErrorContains(err, "api.err.MacUsed") || !allowExisting {
 			return diag.FromErr(err)
 		}
 
@@ -238,7 +236,7 @@ func resourceUserRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	}
 
 	resp, err := c.c.GetUser(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -248,7 +246,7 @@ func resourceUserRead(ctx context.Context, d *schema.ResourceData, meta interfac
 
 	// for some reason the IP address is only on this endpoint, so issue another request
 	macResp, err := c.c.GetUserByMAC(ctx, site, resp.MAC)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -332,7 +330,7 @@ func resourceUserDelete(ctx context.Context, d *schema.ResourceData, meta interf
 
 	// lookup MAC instead of trusting state
 	u, err := c.c.GetUser(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		return nil
 	}
 	if err != nil {

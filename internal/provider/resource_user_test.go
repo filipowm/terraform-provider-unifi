@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"net"
@@ -300,7 +301,7 @@ func testCheckUserDestroy(s *terraform.State) error {
 			return fmt.Errorf("User still exists: %s", rs.Primary.ID)
 		}
 
-		if _, ok := err.(*unifi.NotFoundError); ok {
+		if errors.Is(err, unifi.ErrNotFound) {
 			continue
 		}
 

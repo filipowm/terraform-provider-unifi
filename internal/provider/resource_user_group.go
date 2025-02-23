@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -107,7 +108,7 @@ func resourceUserGroupRead(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	resp, err := c.c.GetUserGroup(context.TODO(), site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -152,7 +153,7 @@ func resourceUserGroupDelete(ctx context.Context, d *schema.ResourceData, meta i
 		site = c.site
 	}
 	err := c.c.DeleteUserGroup(context.TODO(), site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		return nil
 	}
 	return diag.FromErr(err)

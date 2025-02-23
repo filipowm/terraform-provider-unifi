@@ -224,8 +224,7 @@ func resourceFirewallRuleCreate(ctx context.Context, d *schema.ResourceData, met
 
 	resp, err := c.c.CreateFirewallRule(ctx, site, req)
 	if err != nil {
-		var apiErr *unifi.APIError
-		if errors.As(err, &apiErr) && apiErr.Message == "api.err.FirewallGroupTypeExists" {
+		if IsServerErrorContains(err, "api.err.FirewallGroupTypeExists") {
 			return diag.Errorf("firewall rule groups must be of different group types (ie. a port group and address group): %s", err)
 		}
 
@@ -329,7 +328,7 @@ func resourceFirewallRuleRead(ctx context.Context, d *schema.ResourceData, meta 
 	}
 
 	resp, err := c.c.GetFirewallRule(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -374,7 +373,7 @@ func resourceFirewallRuleDelete(ctx context.Context, d *schema.ResourceData, met
 		site = c.site
 	}
 	err := c.c.DeleteFirewallRule(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		return nil
 	}
 	return diag.FromErr(err)

@@ -71,11 +71,9 @@ func resourceFirewallGroupCreate(ctx context.Context, d *schema.ResourceData, me
 
 	resp, err := c.c.CreateFirewallGroup(ctx, site, req)
 	if err != nil {
-		var apiErr *unifi.APIError
-		if errors.As(err, &apiErr) && apiErr.Message == "api.err.FirewallGroupExisted" {
+		if IsServerErrorContains(err, "api.err.FirewallGroupExisted") {
 			return diag.Errorf("firewall groups must have unique names: %s", err)
 		}
-
 		return diag.FromErr(err)
 	}
 
@@ -117,7 +115,7 @@ func resourceFirewallGroupRead(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	resp, err := c.c.GetFirewallGroup(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -163,7 +161,7 @@ func resourceFirewallGroupDelete(ctx context.Context, d *schema.ResourceData, me
 	}
 
 	err := c.c.DeleteFirewallGroup(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		return nil
 	}
 	return diag.FromErr(err)

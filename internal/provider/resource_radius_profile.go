@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -310,7 +311,7 @@ func resourceRadiusProfileRead(ctx context.Context, d *schema.ResourceData, meta
 		site = c.site
 	}
 	resp, err := c.c.GetRADIUSProfile(ctx, site, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
@@ -391,7 +392,7 @@ func importRadiusProfile(ctx context.Context, d *schema.ResourceData, meta inter
 	return []*schema.ResourceData{d}, nil
 }
 
-func getRadiusProfileIDByName(ctx context.Context, client unifiClient, profileName, site string) (string, error) {
+func getRadiusProfileIDByName(ctx context.Context, client unifi.Client, profileName, site string) (string, error) {
 	radiusProfiles, err := client.ListRADIUSProfile(ctx, site)
 	if err != nil {
 		return "", err

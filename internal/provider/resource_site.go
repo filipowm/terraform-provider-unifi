@@ -48,8 +48,7 @@ func resourceSiteImport(ctx context.Context, d *schema.ResourceData, meta interf
 	id := d.Id()
 	_, err := c.c.GetSite(ctx, id)
 	if err != nil {
-		var nf *unifi.NotFoundError
-		if !errors.As(err, &nf) {
+		if !errors.Is(err, unifi.ErrNotFound) {
 			return nil, err
 		}
 	} else {
@@ -101,7 +100,7 @@ func resourceSiteRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	id := d.Id()
 
 	site, err := c.c.GetSite(ctx, id)
-	if _, ok := err.(*unifi.NotFoundError); ok {
+	if errors.Is(err, unifi.ErrNotFound) {
 		d.SetId("")
 		return nil
 	}
