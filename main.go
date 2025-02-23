@@ -1,15 +1,19 @@
 package main // import "github.com/filipowm/terraform-provider-unifi"
 
 import (
+	"context"
 	"flag"
-
-	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-
-	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	v1 "github.com/filipowm/terraform-provider-unifi/internal/provider/v1"
+	v2 "github.com/filipowm/terraform-provider-unifi/internal/provider/v2"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
+	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
+	"github.com/hashicorp/terraform-plugin-mux/tf6muxserver"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"log"
 )
-
-// Generate docs for website
-//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
 
 var (
 	// these will be set by the goreleaser configuration
@@ -21,17 +25,50 @@ var (
 )
 
 func main() {
+	ctx := context.Background()
 	var debugMode bool
 
 	flag.BoolVar(&debugMode, "debug", false, "set to true to run the provider with support for debuggers like delve")
 	flag.Parse()
 
-	opts := &plugin.ServeOpts{ProviderFunc: provider.New(version)}
-
-	if debugMode {
-		opts.Debug = true
-		opts.ProviderAddr = "registry.terraform.io/filipowm/unifi"
+	p := v1.New(version)
+	upgradedSdkServer, err := tf5to6server.UpgradeServer(
+		ctx,
+		func() tfprotov5.ProviderServer {
+			return schema.NewGRPCProviderServer(p())
+		},
+	)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	plugin.Serve(opts)
+	providers := []func() tfprotov6.ProviderServer{
+		providerserver.NewProtocol6(v2.New(version)()),
+		func() tfprotov6.ProviderServer {
+			return upgradedSdkServer
+		},
+	}
+
+	muxServer, err := tf6muxserver.NewMuxServer(ctx, providers...)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var serveOpts []tf6server.ServeOpt
+	if debugMode {
+		serveOpts = append(serveOpts, tf6server.WithManagedDebug())
+	}
+
+	// Remove any date and time prefix in log package function output to
+	// prevent duplicate timestamp and incorrect log level setting
+	log.SetFlags(log.Flags() &^ (log.Ldate | log.Ltime))
+
+	err = tf6server.Serve(
+		"registry.terraform.io/filipowm/unifi",
+		muxServer.ProviderServer,
+		serveOpts...,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

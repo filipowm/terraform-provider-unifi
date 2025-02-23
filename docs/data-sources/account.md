@@ -8,7 +8,7 @@ description: |-
 
 # unifi_account (Data Source)
 
-`unifi_account` data source can be used to retrieve RADIUS user accounts
+unifi_account data source can be used to retrieve RADIUS user accounts
 
 
 
@@ -30,5 +30,3 @@ description: |-
 - `password` (String, Sensitive) The password of the account.
 - `tunnel_medium_type` (Number) See RFC2868 section 3.2
 - `tunnel_type` (Number) See RFC2868 section 3.1
-
-
