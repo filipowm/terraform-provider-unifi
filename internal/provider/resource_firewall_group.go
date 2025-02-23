@@ -71,7 +71,7 @@ func resourceFirewallGroupCreate(ctx context.Context, d *schema.ResourceData, me
 
 	resp, err := c.c.CreateFirewallGroup(ctx, site, req)
 	if err != nil {
-		if IsServerError(err, "api.err.FirewallGroupExisted") {
+		if IsServerErrorContains(err, "api.err.FirewallGroupExisted") {
 			return diag.Errorf("firewall groups must have unique names: %s", err)
 		}
 		return diag.FromErr(err)

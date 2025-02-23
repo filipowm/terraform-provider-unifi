@@ -134,7 +134,7 @@ func resourceUserCreate(ctx context.Context, d *schema.ResourceData, meta interf
 
 	resp, err := c.c.CreateUser(ctx, site, req)
 	if err != nil {
-		if !IsServerError(err, "api.err.MacUsed") || !allowExisting {
+		if !IsServerErrorContains(err, "api.err.MacUsed") || !allowExisting {
 			return diag.FromErr(err)
 		}
 

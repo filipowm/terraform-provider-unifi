@@ -141,7 +141,6 @@ func configure(version string, p *schema.Provider) schema.ConfigureContextFunc {
 		baseURL := d.Get("api_url").(string)
 		site := d.Get("site").(string)
 		insecure := d.Get("allow_insecure").(bool)
-
 		unifiClient, err := unifi.NewClient(&unifi.ClientConfig{
 			URL:      baseURL,
 			User:     user,
@@ -150,6 +149,7 @@ func configure(version string, p *schema.Provider) schema.ConfigureContextFunc {
 				return createHTTPTransport(insecure, "unifi")
 			},
 			ValidationMode: unifi.DisableValidation,
+			Logger:         unifi.NewDefaultLogger(unifi.WarnLevel),
 		})
 
 		if err != nil {
@@ -169,13 +169,23 @@ func configure(version string, p *schema.Provider) schema.ConfigureContextFunc {
 	}
 }
 
-func IsServerError(err error, messageContains string) bool {
+func IsServerErrorContains(err error, messageContains string) bool {
 	if err == nil {
 		return false
 	}
 	var se *unifi.ServerError
-	if errors.As(err, &se) && strings.Contains(se.Message, messageContains) {
-		return true
+	if errors.As(err, &se) {
+		if strings.Contains(se.Message, messageContains) {
+			return true
+		}
+		// check details
+		if se.Details != nil {
+			for _, m := range se.Details {
+				if strings.Contains(m.Message, messageContains) {
+					return true
+				}
+			}
+		}
 	}
 	return false
 }

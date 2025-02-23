@@ -111,7 +111,7 @@ func runAcceptanceTests(m *testing.M) int {
 			return createHTTPTransport(true, "unifi")
 		},
 		ValidationMode: unifi.DisableValidation,
-		UseLocking:     true,
+		Logger:         unifi.NewDefaultLogger(unifi.WarnLevel),
 	})
 	if err != nil {
 		panic(err)
