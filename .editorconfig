@@ -1,0 +1,70 @@
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 4
+indent_style = space
+insert_final_newline = false
+max_line_length = 200
+tab_width = 4
+# this affects things like 'throws' in method declaration in the new line etc
+ij_continuation_indent_size = 8
+ij_formatter_off_tag = @formatter:off
+ij_formatter_on_tag = @formatter:on
+ij_formatter_tags_enabled = false
+ij_smart_tabs = false
+ij_wrap_on_typing = false
+ij_any_block_comment_add_space = true
+
+[*.go]
+indent_style = tab
+
+[*.conf]
+ij_continuation_indent_size = 2
+
+[*.properties]
+ij_properties_align_group_field_declarations = false
+ij_properties_keep_blank_lines = false
+ij_properties_key_value_delimiter = equals
+ij_properties_spaces_around_key_value_delimiter = false
+
+[.editorconfig]
+max_line_length = 300
+ij_editorconfig_align_group_field_declarations = false
+ij_editorconfig_space_after_colon = false
+ij_editorconfig_space_after_comma = true
+ij_editorconfig_space_before_colon = false
+ij_editorconfig_space_before_comma = false
+ij_editorconfig_spaces_around_assignment_operators = true
+
+[BUCK]
+indent_size = 4
+tab_width = 4
+ij_buck_keep_indents_on_empty_lines = false
+
+[{*.bash,*.sh,*.zsh}]
+ij_shell_binary_ops_start_line = false
+ij_shell_keep_column_alignment_padding = false
+ij_shell_minify_program = false
+ij_shell_redirect_followed_by_space = false
+ij_shell_switch_cases_indented = false
+
+[{*.har,*.json}]
+ij_json_keep_blank_lines_in_code = 0
+ij_json_keep_indents_on_empty_lines = false
+ij_json_keep_line_breaks = true
+ij_json_space_after_colon = true
+ij_json_space_after_comma = true
+ij_json_space_before_colon = true
+ij_json_space_before_comma = false
+ij_json_spaces_within_braces = false
+ij_json_spaces_within_brackets = false
+ij_json_wrap_long_lines = false
+
+[{*.yaml,*.yml}]
+indent_size = 2
+tab_width = 2
+ij_yaml_keep_indents_on_empty_lines = false
+ij_yaml_keep_line_breaks = true
+ij_yaml_space_before_colon = false
+ij_yaml_spaces_within_braces = true
+ij_yaml_spaces_within_brackets = true

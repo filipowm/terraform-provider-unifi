@@ -5,3 +5,6 @@ dist
 terraform-provider-unifi
 
 vendor/
+
+.idea
+*.iml

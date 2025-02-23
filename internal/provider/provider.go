@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-version"
 	"log"
 	"net"
 	"net/http"
@@ -40,15 +41,22 @@ func New(version string) func() *schema.Provider {
 					Description: "Local user name for the Unifi controller API. Can be specified with the `UNIFI_USERNAME` " +
 						"environment variable.",
 					Type:        schema.TypeString,
-					Required:    true,
+					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("UNIFI_USERNAME", ""),
 				},
 				"password": {
 					Description: "Password for the user accessing the API. Can be specified with the `UNIFI_PASSWORD` " +
 						"environment variable.",
 					Type:        schema.TypeString,
-					Required:    true,
+					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("UNIFI_PASSWORD", ""),
+				},
+				"api_key": {
+					Description: "API Key for the user accessing the API. Can be specified with the `UNIFI_API_KEY` " +
+						"environment variable. Controller version 9.0.108 or later is required.",
+					Type:        schema.TypeString,
+					Optional:    true,
+					DefaultFunc: schema.EnvDefaultFunc("UNIFI_API_KEY", ""),
 				},
 				"api_url": {
 					Description: "URL of the controller API. Can be specified with the `UNIFI_API` environment variable. " +
@@ -134,10 +142,16 @@ func createHTTPTransport(insecure bool, subsystem string) http.RoundTripper {
 	return t
 }
 
-func configure(version string, p *schema.Provider) schema.ConfigureContextFunc {
+func configure(v string, p *schema.Provider) schema.ConfigureContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		user := d.Get("username").(string)
 		pass := d.Get("password").(string)
+		apiKey := d.Get("api_key").(string)
+		if apiKey != "" && (user != "" || pass != "") {
+			return nil, diag.FromErr(errors.New("only one of `username`/`password` or `api_key` can be set"))
+		} else if apiKey == "" && (user == "" || pass == "") {
+			return nil, diag.FromErr(errors.New("either `username` and `password` or `api_key` must be set"))
+		}
 		baseURL := d.Get("api_url").(string)
 		site := d.Get("site").(string)
 		insecure := d.Get("allow_insecure").(bool)
@@ -145,6 +159,7 @@ func configure(version string, p *schema.Provider) schema.ConfigureContextFunc {
 			URL:      baseURL,
 			User:     user,
 			Password: pass,
+			APIKey:   apiKey,
 			HttpRoundTripperProvider: func() http.RoundTripper {
 				return createHTTPTransport(insecure, "unifi")
 			},
@@ -161,8 +176,12 @@ func configure(version string, p *schema.Provider) schema.ConfigureContextFunc {
 			return nil, diag.FromErr(err)
 		}
 		c := &client{
-			c:    unifiClient,
-			site: site,
+			c:       unifiClient,
+			site:    site,
+			version: version.Must(version.NewVersion(unifiClient.Version())),
+		}
+		if apiKey != "" && !c.SupportsApiKeyAuthentication() {
+			return nil, diag.FromErr(fmt.Errorf("API key authentication is not supported on this controller version: %s, you must be on %s or higher", c.version, controllerVersionApiKeyAuth))
 		}
 
 		return c, nil
@@ -191,6 +210,7 @@ func IsServerErrorContains(err error, messageContains string) bool {
 }
 
 type client struct {
-	c    unifi.Client
-	site string
+	c       unifi.Client
+	site    string
+	version *version.Version
 }
