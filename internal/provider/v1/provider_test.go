@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 }
 
 func runAcceptanceTests(m *testing.M) int {
-	dc, err := compose.NewDockerCompose("../../docker-compose.yaml")
+	dc, err := compose.NewDockerCompose("../../../docker-compose.yaml")
 	if err != nil {
 		panic(err)
 	}
