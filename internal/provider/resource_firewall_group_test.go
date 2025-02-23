@@ -66,7 +66,7 @@ func TestAccFirewallGroup_same_name(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccFirewallGroupConfig_same_name,
-				ExpectError: regexp.MustCompile("firewall groups must have unique names"),
+				ExpectError: regexp.MustCompile("FirewallGroupExisted"),
 			},
 		},
 	})

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -166,6 +167,17 @@ func configure(version string, p *schema.Provider) schema.ConfigureContextFunc {
 
 		return c, nil
 	}
+}
+
+func IsServerError(err error, messageContains string) bool {
+	if err == nil {
+		return false
+	}
+	var se *unifi.ServerError
+	if errors.As(err, &se) && strings.Contains(se.Message, messageContains) {
+		return true
+	}
+	return false
 }
 
 type client struct {
