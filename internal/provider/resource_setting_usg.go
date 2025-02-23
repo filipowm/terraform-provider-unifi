@@ -77,8 +77,8 @@ func resourceSettingUsgUpdateResourceData(d *schema.ResourceData, meta interface
 
 	//nolint // GetOkExists is deprecated, but using here:
 	if mdns, hasMdns := d.GetOkExists("multicast_dns_enabled"); hasMdns {
-		if v := c.ControllerVersion(); v.GreaterThanOrEqual(controllerV7) {
-			return fmt.Errorf("multicast_dns_enabled is not supported on controller version %v", c.ControllerVersion())
+		if c.IsControllerV7() {
+			return fmt.Errorf("multicast_dns_enabled is not supported on controller version %v", c.version)
 		}
 
 		setting.MdnsEnabled = mdns.(bool)

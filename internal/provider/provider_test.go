@@ -30,7 +30,7 @@ var testClient unifi.Client
 
 func TestMain(m *testing.M) {
 	if os.Getenv("TF_ACC") == "" {
-		// short circuit non acceptance test runs
+		// short circuit non-acceptance test runs
 		os.Exit(m.Run())
 	}
 

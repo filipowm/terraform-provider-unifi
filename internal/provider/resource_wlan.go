@@ -263,9 +263,9 @@ func resourceWLANGetResourceData(d *schema.ResourceData, meta interface{}) (*uni
 			return nil, fmt.Errorf("wpa3_support and wpa3_transition are only valid for security type wpapsk")
 		}
 	}
-	if v := c.ControllerVersion(); v.LessThanOrEqual(controllerVersionWPA3) {
+	if !c.SupportsWPA3() {
 		if wpa3 || wpa3Transition {
-			return nil, fmt.Errorf("WPA 3 support is not available on controller version %q, you must be on %q or higher", v, controllerVersionWPA3)
+			return nil, fmt.Errorf("WPA 3 support is not available on controller version %q, you must be on %q or higher", c.version, controllerVersionWPA3)
 		}
 	}
 
