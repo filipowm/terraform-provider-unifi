@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourceFirewallGroup() *schema.Resource {
+func ResourceFirewallGroup() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_firewall_group` manages groups of addresses or ports for use in firewall rules (`unifi_firewall_rule`).",
 
@@ -21,7 +21,7 @@ func resourceFirewallGroup() *schema.Resource {
 		UpdateContext: resourceFirewallGroupUpdate,
 		DeleteContext: resourceFirewallGroupDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

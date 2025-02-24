@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourceStaticRoute() *schema.Resource {
+func ResourceStaticRoute() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_static_route` manages a static route.",
 
@@ -22,7 +22,7 @@ func resourceStaticRoute() *schema.Resource {
 		UpdateContext: resourceStaticRouteUpdate,
 		DeleteContext: resourceStaticRouteDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -49,7 +49,7 @@ func resourceStaticRoute() *schema.Resource {
 				Type:             schema.TypeString,
 				Required:         true,
 				ValidateFunc:     utils.CidrValidate,
-				DiffSuppressFunc: cidrDiffSuppress,
+				DiffSuppressFunc: utils.CidrDiffSuppress,
 			},
 			"type": {
 				Description:  "The type of static route. Can be `interface-route`, `nexthop-route`, or `blackhole`.",

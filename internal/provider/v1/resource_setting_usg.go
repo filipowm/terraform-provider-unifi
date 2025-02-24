@@ -24,7 +24,7 @@ func resourceSettingUsgLocker(f func(context.Context, *schema.ResourceData, inte
 	}
 }
 
-func resourceSettingUsg() *schema.Resource {
+func ResourceSettingUsg() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_setting_usg` manages settings for a Unifi Security Gateway.",
 
@@ -33,7 +33,7 @@ func resourceSettingUsg() *schema.Resource {
 		UpdateContext: resourceSettingUsgLocker(resourceSettingUsgUpsert),
 		DeleteContext: schema.NoopContext,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

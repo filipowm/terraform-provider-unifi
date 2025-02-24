@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func resourceSite() *schema.Resource {
+func ResourceSite() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_site` manages Unifi sites",
 

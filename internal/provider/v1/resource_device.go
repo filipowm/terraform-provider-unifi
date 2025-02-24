@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"strconv"
 	"strings"
 	"time"
@@ -16,7 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourceDevice() *schema.Resource {
+func ResourceDevice() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_device` manages a device of the network.\n\n" +
 			"Devices are adopted by the controller, so it is not possible for this resource to be created through " +
@@ -50,8 +51,8 @@ func resourceDevice() *schema.Resource {
 				Optional:         true,
 				Computed:         true,
 				ForceNew:         true,
-				DiffSuppressFunc: macDiffSuppressFunc,
-				ValidateFunc:     validation.StringMatch(macAddressRegexp, "Mac address is invalid"),
+				DiffSuppressFunc: utils.MacDiffSuppressFunc,
+				ValidateFunc:     validation.StringMatch(utils.MacAddressRegexp, "Mac address is invalid"),
 			},
 			"name": {
 				Description: "The name of the device.",
@@ -152,9 +153,9 @@ func resourceDeviceImport(ctx context.Context, d *schema.ResourceData, meta inte
 		id = importParts[1]
 	}
 
-	if macAddressRegexp.MatchString(id) {
+	if utils.MacAddressRegexp.MatchString(id) {
 		// look up id by mac
-		mac := cleanMAC(id)
+		mac := utils.CleanMAC(id)
 		device, err := c.GetDeviceByMAC(ctx, site, mac)
 
 		if err != nil {
@@ -187,7 +188,7 @@ func resourceDeviceCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.Errorf("no MAC address specified, please import the device using terraform import")
 	}
 
-	mac = cleanMAC(mac)
+	mac = utils.CleanMAC(mac)
 	device, err := c.GetDeviceByMAC(ctx, site, mac)
 
 	if device == nil {

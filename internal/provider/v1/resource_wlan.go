@@ -18,7 +18,7 @@ var (
 	wlanValidMinimumDataRate5g = []int{6000, 9000, 12000, 18000, 24000, 36000, 48000, 54000}
 )
 
-func resourceWLAN() *schema.Resource {
+func ResourceWLAN() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_wlan` manages a WiFi network / SSID.",
 
@@ -27,7 +27,7 @@ func resourceWLAN() *schema.Resource {
 		UpdateContext: resourceWLANUpdate,
 		DeleteContext: resourceWLANDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -110,8 +110,8 @@ func resourceWLAN() *schema.Resource {
 				Optional:    true,
 				Elem: &schema.Schema{
 					Type:             schema.TypeString,
-					ValidateFunc:     validation.StringMatch(macAddressRegexp, "Mac address is invalid"),
-					DiffSuppressFunc: macDiffSuppressFunc,
+					ValidateFunc:     validation.StringMatch(utils.MacAddressRegexp, "Mac address is invalid"),
+					DiffSuppressFunc: utils.MacDiffSuppressFunc,
 				},
 			},
 			"mac_filter_policy": {
@@ -128,7 +128,7 @@ func resourceWLAN() *schema.Resource {
 				Optional: true,
 			},
 			"schedule": {
-				Description: "Start and stop schedules for the WLAN",
+				Description: "start and stop schedules for the WLAN",
 				Type:        schema.TypeList,
 				Optional:    true,
 				Elem: &schema.Resource{
@@ -140,13 +140,13 @@ func resourceWLAN() *schema.Resource {
 							ValidateFunc: validation.StringInSlice([]string{"sun", "mon", "tue", "wed", "thu", "fri", "sat", "sun"}, false),
 						},
 						"start_hour": {
-							Description:  "Start hour for the block (0-23).",
+							Description:  "start hour for the block (0-23).",
 							Type:         schema.TypeInt,
 							Required:     true,
 							ValidateFunc: validation.IntBetween(0, 23),
 						},
 						"start_minute": {
-							Description:  "Start minute for the block (0-59).",
+							Description:  "start minute for the block (0-59).",
 							Type:         schema.TypeInt,
 							Optional:     true,
 							Default:      0,

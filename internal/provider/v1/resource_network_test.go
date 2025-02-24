@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"net"
 	"regexp"
 	"strconv"
@@ -15,12 +16,12 @@ import (
 
 func TestAccNetwork_basic(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet1, vlan1 := getTestVLAN(t)
-	subnet2, vlan2 := getTestVLAN(t)
+	subnet1, vlan1 := pt.GetTestVLAN(t)
+	subnet2, vlan2 := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -31,7 +32,7 @@ func TestAccNetwork_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_network.test", "igmp_snooping", "true"),
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 			{
 				Config: testAccNetworkConfig(name, subnet2, vlan2, false, nil),
 				Check: resource.ComposeTestCheckFunc(
@@ -39,12 +40,12 @@ func TestAccNetwork_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_network.test", "igmp_snooping", "false"),
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 			// re-test import here with default site, but full ID string
 			{
 				ResourceName:      "unifi_network.test",
 				ImportState:       true,
-				ImportStateIdFunc: siteAndIDImportStateIDFunc("unifi_network.test"),
+				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_network.test"),
 				ImportStateVerify: true,
 			},
 		},
@@ -53,11 +54,11 @@ func TestAccNetwork_basic(t *testing.T) {
 
 func TestAccNetwork_weird_cidr(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -66,18 +67,18 @@ func TestAccNetwork_weird_cidr(t *testing.T) {
 				// TODO: ...
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 		},
 	})
 }
 
 func TestAccNetwork_dhcp_dns(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -86,7 +87,7 @@ func TestAccNetwork_dhcp_dns(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_dns.0", "192.168.1.101"),
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 			{
 				Config: testAccNetworkConfig(name, subnet, vlan, true, []string{"192.168.1.101", "192.168.1.102"}),
 				Check: resource.ComposeTestCheckFunc(
@@ -94,7 +95,7 @@ func TestAccNetwork_dhcp_dns(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_dns.1", "192.168.1.102"),
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 			{
 				Config: testAccNetworkConfig(name, subnet, vlan, true, nil),
 				Check: resource.ComposeTestCheckFunc(
@@ -113,11 +114,11 @@ func TestAccNetwork_dhcp_dns(t *testing.T) {
 
 func TestAccNetwork_dhcp_boot(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -126,7 +127,7 @@ func TestAccNetwork_dhcp_boot(t *testing.T) {
 				// TODO: ...
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 		},
 	})
 }
@@ -135,13 +136,13 @@ func TestAccNetwork_v6(t *testing.T) {
 	t.Skip("FIXME")
 
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet1, vlan1 := getTestVLAN(t)
-	subnet2, vlan2 := getTestVLAN(t)
-	subnet3, vlan3 := getTestVLAN(t)
+	subnet1, vlan1 := pt.GetTestVLAN(t)
+	subnet2, vlan2 := pt.GetTestVLAN(t)
+	subnet3, vlan3 := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -152,7 +153,7 @@ func TestAccNetwork_v6(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_network.test", "ipv6_static_subnet", "fd6a:37be:e362::1/64"),
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 			{
 				Config: testAccNetworkConfigV6(name, subnet2, vlan2, "static", "fd6a:37be:e363::1/64"),
 				Check: resource.ComposeTestCheckFunc(
@@ -160,7 +161,7 @@ func TestAccNetwork_v6(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_network.test", "ipv6_static_subnet", "fd6a:37be:e363::1/64"),
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 			{
 				Config: testAccNetworkConfigDhcpV6(
 					name,
@@ -196,8 +197,8 @@ func TestAccNetwork_wan(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -214,7 +215,7 @@ func TestAccNetwork_wan(t *testing.T) {
 					resource.TestCheckOutput("wan_dns2", "4.4.4.4"),
 				),
 			},
-			importStep("unifi_network.wan_test"),
+			pt.ImportStep("unifi_network.wan_test"),
 			// remove qos
 			{
 				Config: testWanNetworkConfig(name, "WAN", "pppoe", "192.168.1.1", 0, "username", "password", "8.8.8.8", "4.4.4.4"),
@@ -230,7 +231,7 @@ func TestAccNetwork_wan(t *testing.T) {
 					resource.TestCheckOutput("wan_dns2", "4.4.4.4"),
 				),
 			},
-			importStep("unifi_network.wan_test"),
+			pt.ImportStep("unifi_network.wan_test"),
 			{
 				Config: testWanNetworkConfig(name, "WAN", "pppoe", "192.168.1.1", 1, "username", "password", "8.8.8.8", "4.4.4.4"),
 				Check: resource.ComposeTestCheckFunc(
@@ -245,7 +246,7 @@ func TestAccNetwork_wan(t *testing.T) {
 					resource.TestCheckOutput("wan_dns2", "4.4.4.4"),
 				),
 			},
-			importStep("unifi_network.wan_test"),
+			pt.ImportStep("unifi_network.wan_test"),
 			{
 				Config:      testWanV6NetworkConfig(name, "dhcpv6", 47),
 				ExpectError: regexp.MustCompile(regexp.QuoteMeta("expected wan_dhcp_v6_pd_size to be in the range (48 - 64)")),
@@ -267,12 +268,12 @@ func TestAccNetwork_wan(t *testing.T) {
 
 func TestAccNetwork_differentSite(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet1, vlan1 := getTestVLAN(t)
-	subnet2, vlan2 := getTestVLAN(t)
+	subnet1, vlan1 := pt.GetTestVLAN(t)
+	subnet2, vlan2 := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -284,7 +285,7 @@ func TestAccNetwork_differentSite(t *testing.T) {
 			{
 				ResourceName:      "unifi_network.test",
 				ImportState:       true,
-				ImportStateIdFunc: siteAndIDImportStateIDFunc("unifi_network.test"),
+				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_network.test"),
 				ImportStateVerify: true,
 			},
 			{
@@ -296,7 +297,7 @@ func TestAccNetwork_differentSite(t *testing.T) {
 			{
 				ResourceName:      "unifi_network.test",
 				ImportState:       true,
-				ImportStateIdFunc: siteAndIDImportStateIDFunc("unifi_network.test"),
+				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_network.test"),
 				ImportStateVerify: true,
 			},
 		},
@@ -305,13 +306,13 @@ func TestAccNetwork_differentSite(t *testing.T) {
 
 func TestAccNetwork_importByName(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet1, vlan1 := getTestVLAN(t)
-	subnet2, vlan2 := getTestVLAN(t)
-	subnet3, vlan3 := getTestVLAN(t)
+	subnet1, vlan1 := pt.GetTestVLAN(t)
+	subnet2, vlan2 := pt.GetTestVLAN(t)
+	subnet3, vlan3 := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			// Apply and import network by name.
 			{
@@ -352,13 +353,13 @@ func TestAccNetwork_importByName(t *testing.T) {
 
 func TestAccNetwork_dhcpRelay(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -367,27 +368,27 @@ func TestAccNetwork_dhcpRelay(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_relay_enabled", "true"),
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 			{
 				Config: testAccNetworkConfigDHCPRelay(name, subnet, vlan, false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_relay_enabled", "false"),
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 		},
 	})
 }
 
 func TestAccNetwork_vlanOnly(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	_, vlan := getTestVLAN(t)
+	_, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -399,7 +400,7 @@ func TestAccNetwork_vlanOnly(t *testing.T) {
 			{
 				ResourceName:      "unifi_network.test",
 				ImportState:       true,
-				ImportStateIdFunc: siteAndIDImportStateIDFunc("unifi_network.test"),
+				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_network.test"),
 				ImportStateVerify: true,
 			},
 		},
@@ -408,14 +409,14 @@ func TestAccNetwork_vlanOnly(t *testing.T) {
 
 func TestAccNetwork_mdns(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
-			preCheckMinVersion(t, provider.ControllerV7)
+			pt.PreCheck(t)
+			pt.PreCheckMinVersion(t, provider.ControllerV7)
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -424,14 +425,14 @@ func TestAccNetwork_mdns(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_network.test", "multicast_dns", "true"),
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 			{
 				Config: testAccNetworkConfigMDNS(name, subnet, vlan, false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_network.test", "multicast_dns", "false"),
 				),
 			},
-			importStep("unifi_network.test"),
+			pt.ImportStep("unifi_network.test"),
 		},
 	})
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -14,7 +15,7 @@ import (
 // TODO: probably need to update this to be more like setting_usg,
 // using locking, and upsert, more computed, etc.
 
-func resourceSettingMgmt() *schema.Resource {
+func ResourceSettingMgmt() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_setting_mgmt` manages settings for a unifi site.",
 
@@ -23,7 +24,7 @@ func resourceSettingMgmt() *schema.Resource {
 		UpdateContext: resourceSettingMgmtUpdate,
 		DeleteContext: resourceSettingMgmtDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

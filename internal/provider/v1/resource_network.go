@@ -44,7 +44,7 @@ var (
 	validateIpV6RAPriority = validation.StringMatch(ipV6RAPriorityRegexp, "invalid IPv6 RA priority")
 )
 
-func resourceNetwork() *schema.Resource {
+func ResourceNetwork() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_network` manages WAN/LAN/VLAN networks.",
 
@@ -91,7 +91,7 @@ func resourceNetwork() *schema.Resource {
 				Description:      "The subnet of the network. Must be a valid CIDR address.",
 				Type:             schema.TypeString,
 				Optional:         true,
-				DiffSuppressFunc: cidrDiffSuppress,
+				DiffSuppressFunc: utils.CidrDiffSuppress,
 				ValidateFunc:     utils.CidrValidate,
 			},
 			"network_group": {
@@ -189,7 +189,7 @@ func resourceNetwork() *schema.Resource {
 				Default:     86400,
 			},
 			"dhcp_v6_start": {
-				Description:  "Start address of the DHCPv6 range. Used in static DHCPv6 configuration.",
+				Description:  "start address of the DHCPv6 range. Used in static DHCPv6 configuration.",
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.IsIPv6Address,
@@ -240,7 +240,7 @@ func resourceNetwork() *schema.Resource {
 				Optional:    true,
 			},
 			"ipv6_pd_start": {
-				Description:  "Start address of the DHCPv6 range. Used if `ipv6_interface_type` is set to `pd`.",
+				Description:  "start address of the DHCPv6 range. Used if `ipv6_interface_type` is set to `pd`.",
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.IsIPv6Address,

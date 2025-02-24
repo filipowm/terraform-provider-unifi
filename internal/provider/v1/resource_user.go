@@ -5,12 +5,13 @@ import (
 	"errors"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourceUser() *schema.Resource {
+func ResourceUser() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_user` manages a user (or \"client\" in the UI) of the network, these are identified " +
 			"by unique MAC addresses.\n\n" +
@@ -22,7 +23,7 @@ func resourceUser() *schema.Resource {
 		UpdateContext: resourceUserUpdate,
 		DeleteContext: resourceUserDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -43,8 +44,8 @@ func resourceUser() *schema.Resource {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
-				DiffSuppressFunc: macDiffSuppressFunc,
-				ValidateFunc:     validation.StringMatch(macAddressRegexp, "Mac address is invalid"),
+				DiffSuppressFunc: utils.MacDiffSuppressFunc,
+				ValidateFunc:     validation.StringMatch(utils.MacAddressRegexp, "Mac address is invalid"),
 			},
 			"name": {
 				Description: "The name of the user.",

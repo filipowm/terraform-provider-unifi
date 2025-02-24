@@ -1,34 +1,48 @@
-package v1
+package testing
 
 import (
+	"github.com/apparentlymart/go-cidr/cidr"
 	mapset "github.com/deckarep/golang-set/v2"
+	"math"
 	"net"
-	"regexp"
-	"strings"
 	"sync"
 	"testing"
-
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-var macAddressRegexp = regexp.MustCompile("^([0-9a-fA-F][0-9a-fA-F][-:]){5}([0-9a-fA-F][0-9a-fA-F])$")
-
-func cleanMAC(mac string) string {
-	return strings.TrimSpace(strings.ReplaceAll(strings.ToLower(mac), "-", ":"))
-}
-
-func macDiffSuppressFunc(k, old, new string, d *schema.ResourceData) bool {
-	old = cleanMAC(old)
-	new = cleanMAC(new)
-	return old == new
-}
+const (
+	vlanMin = 2
+	vlanMax = 4095
+)
 
 var (
 	macInit sync.Once
 	macPool = mapset.NewSet[*net.HardwareAddr]()
+	network = &net.IPNet{
+		IP:   net.IPv4(10, 0, 0, 0).To4(),
+		Mask: net.IPv4Mask(255, 0, 0, 0),
+	}
+
+	vlanLock sync.Mutex
+	vlanNext = vlanMin
 )
 
-func allocateTestMac(t *testing.T) (string, func()) {
+func GetTestVLAN(t *testing.T) (*net.IPNet, int) {
+	vlanLock.Lock()
+	defer vlanLock.Unlock()
+
+	vlan := vlanNext
+	vlanNext++
+
+	subnet, err := cidr.Subnet(network, int(math.Ceil(math.Log2(vlanMax))), vlan)
+	if err != nil {
+		t.Error(err)
+	}
+
+	return subnet, vlan
+}
+
+func AllocateTestMac(t *testing.T) (string, func()) {
+	MarkAccTest(t)
 	macInit.Do(func() {
 		// for test MAC addresses, see https://tools.ietf.org/html/rfc7042#section-2.1.
 		for i := 0; i < 512; i++ {

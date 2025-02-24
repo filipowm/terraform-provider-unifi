@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"testing"
 
@@ -13,8 +14,8 @@ func TestAccPortForward_basic(t *testing.T) {
 	name2 := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -24,7 +25,7 @@ func TestAccPortForward_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_port_forward.test", "dst_port", "22"),
 				),
 			},
-			importStep("unifi_port_forward.test"),
+			pt.ImportStep("unifi_port_forward.test"),
 			{
 				Config: testAccPortForwardConfig("22", false, "10.1.1.2", "8022", name),
 				Check: resource.ComposeTestCheckFunc(
@@ -32,14 +33,14 @@ func TestAccPortForward_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_port_forward.test", "fwd_ip", "10.1.1.2"),
 				),
 			},
-			importStep("unifi_port_forward.test"),
+			pt.ImportStep("unifi_port_forward.test"),
 			{
 				Config: testAccPortForwardConfig("22", false, "10.1.1.1", "22", name2),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_port_forward.test", "name", name2),
 				),
 			},
-			importStep("unifi_port_forward.test"),
+			pt.ImportStep("unifi_port_forward.test"),
 		},
 	})
 }
@@ -47,8 +48,8 @@ func TestAccPortForward_basic(t *testing.T) {
 func TestAccPortForward_src_ip(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -58,7 +59,7 @@ func TestAccPortForward_src_ip(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_port_forward.test", "dst_port", "22"),
 				),
 			},
-			importStep("unifi_port_forward.test"),
+			pt.ImportStep("unifi_port_forward.test"),
 		},
 	})
 }
@@ -66,8 +67,8 @@ func TestAccPortForward_src_ip(t *testing.T) {
 func TestAccPortForward_src_cidr(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -77,7 +78,7 @@ func TestAccPortForward_src_cidr(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_port_forward.test", "dst_port", "22"),
 				),
 			},
-			importStep("unifi_port_forward.test"),
+			pt.ImportStep("unifi_port_forward.test"),
 		},
 	})
 }

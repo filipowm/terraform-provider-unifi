@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"testing"
 
@@ -11,8 +12,8 @@ import (
 func TestAccRadiusProfile_basic(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -21,7 +22,7 @@ func TestAccRadiusProfile_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_radius_profile.test", "name", name),
 				),
 			},
-			importStep("unifi_radius_profile.test"),
+			pt.ImportStep("unifi_radius_profile.test"),
 		},
 	})
 }
@@ -29,8 +30,8 @@ func TestAccRadiusProfile_basic(t *testing.T) {
 func TestAccRadiusProfile_servers(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -39,15 +40,15 @@ func TestAccRadiusProfile_servers(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_radius_profile.test", "name", name),
 				),
 			},
-			importStep("unifi_radius_profile.test"),
+			pt.ImportStep("unifi_radius_profile.test"),
 		},
 	})
 }
 
 func TestAccRadiusProfile_importByName(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			// Apply and import network by name.
 			{

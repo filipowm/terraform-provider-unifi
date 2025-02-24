@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"strings"
 	"testing"
 
@@ -14,8 +15,8 @@ func TestAccSite_basic(t *testing.T) {
 	var siteName string
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// FIXME causes flaky tests. See: https://github.com/paultyng/terraform-provider-unifi/issues/480
 		//CheckDestroy:      testAccCheckSiteResourceDestroy,
 		Steps: []resource.TestStep{
@@ -31,14 +32,14 @@ func TestAccSite_basic(t *testing.T) {
 					},
 				),
 			},
-			importStep("unifi_site.test"),
+			pt.ImportStep("unifi_site.test"),
 			{
 				Config: testAccSiteConfig("tfacc-desc2"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_site.test", "description", "tfacc-desc2"),
 				),
 			},
-			importStep("unifi_site.test"),
+			pt.ImportStep("unifi_site.test"),
 
 			// test importing from name, not id
 			{
@@ -55,7 +56,7 @@ func TestAccSite_basic(t *testing.T) {
 
 //nolint:unused
 func testAccCheckSiteResourceDestroy(s *terraform.State) error {
-	sites, err := testClient.ListSites(context.Background())
+	sites, err := pt.TestClient().ListSites(context.Background())
 	if err != nil {
 		return err
 	}

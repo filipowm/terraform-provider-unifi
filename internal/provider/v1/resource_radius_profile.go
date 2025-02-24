@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourceRadiusProfile() *schema.Resource {
+func ResourceRadiusProfile() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_radius_profile` manages RADIUS profiles.",
 

@@ -3,13 +3,14 @@ package v1
 import (
 	"testing"
 
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 func TestAccDynamicDNS_dyndns(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -18,7 +19,7 @@ func TestAccDynamicDNS_dyndns(t *testing.T) {
 				// // testCheckFirewallGroupExists(t, "name"),
 				// ),
 			},
-			importStep("unifi_dynamic_dns.test"),
+			pt.ImportStep("unifi_dynamic_dns.test"),
 		},
 	})
 }

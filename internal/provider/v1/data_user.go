@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -10,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func dataUser() *schema.Resource {
+func DataUser() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_user` retrieves properties of a user (or \"client\" in the UI) of the network by MAC address.",
 
@@ -27,8 +28,8 @@ func dataUser() *schema.Resource {
 				Description:      "The MAC address of the user.",
 				Type:             schema.TypeString,
 				Required:         true,
-				DiffSuppressFunc: macDiffSuppressFunc,
-				ValidateFunc:     validation.StringMatch(macAddressRegexp, "Mac address is invalid"),
+				DiffSuppressFunc: utils.MacDiffSuppressFunc,
+				ValidateFunc:     validation.StringMatch(utils.MacAddressRegexp, "Mac address is invalid"),
 			},
 
 			// read-only / computed

@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"testing"
 
@@ -12,10 +13,10 @@ func TestAccPortProfile_basic(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
-			preCheckVersionConstraint(t, "< 7.4")
+			pt.PreCheck(t)
+			pt.PreCheckVersionConstraint(t, "< 7.4")
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -25,7 +26,7 @@ func TestAccPortProfile_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_port_profile.test", "name", name),
 				),
 			},
-			importStep("unifi_port_profile.test"),
+			pt.ImportStep("unifi_port_profile.test"),
 		},
 	})
 }

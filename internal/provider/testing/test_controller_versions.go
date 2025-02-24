@@ -1,4 +1,4 @@
-package v1
+package testing
 
 import (
 	"testing"
@@ -6,8 +6,8 @@ import (
 	"github.com/hashicorp/go-version"
 )
 
-func preCheckMinVersion(t *testing.T, min *version.Version) {
-	v, err := version.NewVersion(testClient.Version())
+func PreCheckMinVersion(t *testing.T, min *version.Version) {
+	v, err := version.NewVersion(TestClient().Version())
 	if err != nil {
 		t.Fatalf("error parsing version: %s", err)
 	}
@@ -16,8 +16,8 @@ func preCheckMinVersion(t *testing.T, min *version.Version) {
 	}
 }
 
-func preCheckVersionConstraint(t *testing.T, cs string) {
-	v, err := version.NewVersion(testClient.Version())
+func PreCheckVersionConstraint(t *testing.T, cs string) {
+	v, err := version.NewVersion(TestClient().Version())
 	if err != nil {
 		t.Fatalf("Error parsing version: %s", err)
 	}

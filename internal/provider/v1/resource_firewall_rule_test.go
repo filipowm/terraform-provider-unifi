@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"testing"
 
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
@@ -13,8 +14,8 @@ func TestAccFirewallRule_basic(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -24,14 +25,14 @@ func TestAccFirewallRule_basic(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_firewall_rule.test", "enabled", "true"),
 				),
 			},
-			importStep("unifi_firewall_rule.test"),
+			pt.ImportStep("unifi_firewall_rule.test"),
 			{
 				Config: testAccFirewallRuleConfig(name, false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_firewall_rule.test", "enabled", "false"),
 				),
 			},
-			importStep("unifi_firewall_rule.test"),
+			pt.ImportStep("unifi_firewall_rule.test"),
 		},
 	})
 }
@@ -40,8 +41,8 @@ func TestAccFirewallRule_port(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFirewallRuleConfigWithPort(name),
@@ -50,7 +51,7 @@ func TestAccFirewallRule_port(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_firewall_rule.test", "dst_port", "53"),
 				),
 			},
-			importStep("unifi_firewall_rule.test"),
+			pt.ImportStep("unifi_firewall_rule.test"),
 		},
 	})
 }
@@ -59,13 +60,13 @@ func TestAccFirewallRule_icmp(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFirewallRuleConfigWithICMP(name),
 			},
-			importStep("unifi_firewall_rule.test"),
+			pt.ImportStep("unifi_firewall_rule.test"),
 		},
 	})
 }
@@ -74,8 +75,8 @@ func TestAccFirewallRule_multiple_address_groups(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -90,8 +91,8 @@ func TestAccFirewallRule_multiple_port_groups(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -106,8 +107,8 @@ func TestAccFirewallRule_address_and_port_group(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -116,7 +117,7 @@ func TestAccFirewallRule_address_and_port_group(t *testing.T) {
 				// // testCheckFirewallGroupExists(t, "name"),
 				// ),
 			},
-			importStep("unifi_firewall_rule.test"),
+			pt.ImportStep("unifi_firewall_rule.test"),
 		},
 	})
 }
@@ -125,14 +126,14 @@ func TestAccFirewallRule_IPv6_basic(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFirewallRuleConfigIPv6(name),
 			},
-			importStep("unifi_firewall_rule.test"),
+			pt.ImportStep("unifi_firewall_rule.test"),
 		},
 	})
 }
@@ -141,13 +142,13 @@ func TestAccFirewallRule_IPv6_dst_port(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccFirewallRuleConfigIPv6WithPort(name),
 			},
-			importStep("unifi_firewall_rule.test"),
+			pt.ImportStep("unifi_firewall_rule.test"),
 		},
 	})
 }

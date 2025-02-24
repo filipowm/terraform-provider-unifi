@@ -1,13 +1,16 @@
 package provider
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/go-version"
 	"log"
+	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func IsServerErrorContains(err error, messageContains string) bool {
@@ -75,4 +78,22 @@ type Client struct {
 	unifi.Client
 	Site    string
 	Version *version.Version
+}
+
+func CreateHttpTransport(insecure bool) http.RoundTripper {
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: insecure,
+		},
+	}
 }

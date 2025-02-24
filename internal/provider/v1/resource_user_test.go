@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"net"
 	"regexp"
@@ -17,16 +18,16 @@ import (
 )
 
 func userImportStep(name string) resource.TestStep {
-	return importStep(name, "allow_existing", "skip_forget_on_destroy")
+	return pt.ImportStep(name, "allow_existing", "skip_forget_on_destroy")
 }
 
 func TestAccUser_basic(t *testing.T) {
-	mac, unallocateTestMac := allocateTestMac(t)
+	mac, unallocateTestMac := pt.AllocateTestMac(t)
 	defer unallocateTestMac()
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -56,10 +57,10 @@ func TestAccUser_basic(t *testing.T) {
 }
 
 func TestAccUser_fixed_ip(t *testing.T) {
-	mac, unallocateTestMac := allocateTestMac(t)
+	mac, unallocateTestMac := pt.AllocateTestMac(t)
 	defer unallocateTestMac()
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	ip, err := cidr.Host(subnet, 1)
 	if err != nil {
@@ -67,8 +68,8 @@ func TestAccUser_fixed_ip(t *testing.T) {
 	}
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -103,13 +104,13 @@ func TestAccUser_fixed_ip(t *testing.T) {
 }
 
 func TestAccUser_blocking(t *testing.T) {
-	mac, unallocateTestMac := allocateTestMac(t)
+	mac, unallocateTestMac := pt.AllocateTestMac(t)
 	defer unallocateTestMac()
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -141,15 +142,15 @@ func TestAccUser_blocking(t *testing.T) {
 }
 
 func TestAccUser_existing_mac_allow(t *testing.T) {
-	mac, unallocateTestMac := allocateTestMac(t)
+	mac, unallocateTestMac := pt.AllocateTestMac(t)
 	defer unallocateTestMac()
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 
-			_, err := testClient.CreateUser(context.Background(), "default", &unifi.User{
+			_, err := pt.TestClient().CreateUser(context.Background(), "default", &unifi.User{
 				MAC:  mac,
 				Name: name,
 				Note: "tfacc-existing",
@@ -158,11 +159,11 @@ func TestAccUser_existing_mac_allow(t *testing.T) {
 				t.Fatal(err)
 			}
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: CheckDestroy: ,
 
-			return testClient.DeleteUserByMAC(context.Background(), "default", mac)
+			return pt.TestClient().DeleteUserByMAC(context.Background(), "default", mac)
 		},
 		Steps: []resource.TestStep{
 			{
@@ -178,10 +179,10 @@ func TestAccUser_existing_mac_allow(t *testing.T) {
 }
 
 func TestAccUser_existing_mac_deny(t *testing.T) {
-	mac, unallocateTestMac := allocateTestMac(t)
+	mac, unallocateTestMac := pt.AllocateTestMac(t)
 	name := acctest.RandomWithPrefix("tfacc")
 
-	_, err := testClient.CreateUser(context.Background(), "default", &unifi.User{
+	_, err := pt.TestClient().CreateUser(context.Background(), "default", &unifi.User{
 		MAC:  mac,
 		Name: name,
 		Note: "tfacc-existing",
@@ -191,7 +192,7 @@ func TestAccUser_existing_mac_deny(t *testing.T) {
 	}
 
 	defer func() {
-		err := testClient.DeleteUserByMAC(context.Background(), "default", mac)
+		err := pt.TestClient().DeleteUserByMAC(context.Background(), "default", mac)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -200,8 +201,8 @@ func TestAccUser_existing_mac_deny(t *testing.T) {
 	}()
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccUserConfig_existing(mac, name, "tfacc note", false, false),
@@ -212,13 +213,13 @@ func TestAccUser_existing_mac_deny(t *testing.T) {
 }
 
 func TestAccUser_fingerprint(t *testing.T) {
-	mac, unallocateTestMac := allocateTestMac(t)
+	mac, unallocateTestMac := pt.AllocateTestMac(t)
 	defer unallocateTestMac()
 	name := acctest.RandomWithPrefix("tfacc")
 
 	resource.ParallelTest(t, resource.TestCase{
-		ProviderFactories: providerFactories,
-		CheckDestroy:      testCheckUserDestroy,
+		ProtoV6ProviderFactories: MuxProviders(t),
+		CheckDestroy:             testCheckUserDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccUserConfig_fingerprint(mac, name, 123),
@@ -246,11 +247,11 @@ func TestAccUser_fingerprint(t *testing.T) {
 }
 
 func TestAccUser_localdns(t *testing.T) {
-	mac, unallocateTestMac := allocateTestMac(t)
+	mac, unallocateTestMac := pt.AllocateTestMac(t)
 	defer unallocateTestMac()
 	name := acctest.RandomWithPrefix("tfacc")
 
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	ip, err := cidr.Host(subnet, 1)
 	if err != nil {
@@ -259,11 +260,11 @@ func TestAccUser_localdns(t *testing.T) {
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
-			preCheckVersionConstraint(t, ">= 7.2.91")
+			pt.PreCheck(t)
+			pt.PreCheckVersionConstraint(t, ">= 7.2.91")
 		},
-		ProviderFactories: providerFactories,
-		CheckDestroy:      testCheckUserDestroy,
+		ProtoV6ProviderFactories: MuxProviders(t),
+		CheckDestroy:             testCheckUserDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccUserConfig(mac, name, ""),
@@ -296,7 +297,7 @@ func testCheckUserDestroy(s *terraform.State) error {
 			continue
 		}
 
-		_, err := testClient.GetUser(context.Background(), "default", rs.Primary.ID)
+		_, err := pt.TestClient().GetUser(context.Background(), "default", rs.Primary.ID)
 		if err == nil {
 			return fmt.Errorf("User still exists: %s", rs.Primary.ID)
 		}

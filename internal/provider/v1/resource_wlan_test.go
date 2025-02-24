@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"net"
 	"testing"
 
@@ -13,11 +14,11 @@ import (
 
 func TestAccWLAN_wpapsk(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -26,22 +27,22 @@ func TestAccWLAN_wpapsk(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWLANConfig_wpapsk(name, subnet, vlan, "disabled"),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_open(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -50,36 +51,36 @@ func TestAccWLAN_open(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWLANConfig_open(name, subnet, vlan),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_open_mac_filter(name, subnet, vlan),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_open(name, subnet, vlan),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_change_security_and_pmf(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -88,50 +89,50 @@ func TestAccWLAN_change_security_and_pmf(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWLANConfig_wpapsk(name, subnet, vlan, "disabled"),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_open(name, subnet, vlan),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_wpapsk(name, subnet, vlan, "optional"),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_wpapsk(name, subnet, vlan, "required"),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_wpapsk(name, subnet, vlan, "disabled"),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_schedule(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -140,30 +141,30 @@ func TestAccWLAN_schedule(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWLANConfig_schedule(name, subnet, vlan),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			// remove schedule
 			{
 				Config: testAccWLANConfig_open(name, subnet, vlan),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_wpaeap(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -172,22 +173,22 @@ func TestAccWLAN_wpaeap(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWLANConfig_wpaeap(name, subnet, vlan),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_wlan_band(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -196,22 +197,22 @@ func TestAccWLAN_wlan_band(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWLANConfig_wlan_band(name, subnet, vlan),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_no2ghz_oui(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -220,22 +221,22 @@ func TestAccWLAN_no2ghz_oui(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWLANConfig_no2ghz_oui(name, subnet, vlan),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_proxy_arp(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -248,18 +249,18 @@ func TestAccWLAN_proxy_arp(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_wlan.test", "proxy_arp", "true"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_bss_transition(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -272,18 +273,18 @@ func TestAccWLAN_bss_transition(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_wlan.test", "bss_transition", "false"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_uapsd(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -292,22 +293,22 @@ func TestAccWLAN_uapsd(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWLANConfig_uapsd(name, subnet, vlan),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_fast_roaming_enabled(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -320,21 +321,21 @@ func TestAccWLAN_fast_roaming_enabled(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_wlan.test", "fast_roaming_enabled", "true"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_wpa3(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
-			preCheckMinVersion(t, provider.ControllerVersionWPA3)
+			pt.PreCheck(t)
+			pt.PreCheckMinVersion(t, provider.ControllerVersionWPA3)
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -343,36 +344,36 @@ func TestAccWLAN_wpa3(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWLANConfig_wpa3(name, subnet, vlan, false, "required"),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_wpa3(name, subnet, vlan, true, "optional"),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_wpa3(name, subnet, vlan, false, "required"),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }
 
 func TestAccWLAN_minimum_data_rate(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
-	subnet, vlan := getTestVLAN(t)
+	subnet, vlan := pt.GetTestVLAN(t)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		CheckDestroy: func(*terraform.State) error {
 			// TODO: actual CheckDestroy
 
@@ -381,39 +382,39 @@ func TestAccWLAN_minimum_data_rate(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccWLANConfig_minimum_data_rate(name, subnet, vlan, 5500, 18000),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_minimum_data_rate(name, subnet, vlan, 1000, 18000),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_minimum_data_rate(name, subnet, vlan, 0, 0),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_minimum_data_rate(name, subnet, vlan, 6000, 9000),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 			{
 				Config: testAccWLANConfig_minimum_data_rate(name, subnet, vlan, 18000, 6000),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
 				),
 			},
-			importStep("unifi_wlan.test"),
+			pt.ImportStep("unifi_wlan.test"),
 		},
 	})
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourcePortProfile() *schema.Resource {
+func ResourcePortProfile() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_port_profile` manages a port profile for use on network switches.",
 
@@ -21,7 +21,7 @@ func resourcePortProfile() *schema.Resource {
 		UpdateContext: resourcePortProfileUpdate,
 		DeleteContext: resourcePortProfileDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func dataNetwork() *schema.Resource {
+func DataNetwork() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_network` data source can be used to retrieve settings for a network by name or ID.",
 
@@ -129,7 +129,7 @@ func dataNetwork() *schema.Resource {
 				Computed:    true,
 			},
 			"dhcp_v6_start": {
-				Description: "Start address of the DHCPv6 range. Used in static DHCPv6 configuration.",
+				Description: "start address of the DHCPv6 range. Used in static DHCPv6 configuration.",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
@@ -169,7 +169,7 @@ func dataNetwork() *schema.Resource {
 				Computed:    true,
 			},
 			"ipv6_pd_start": {
-				Description: "Start address of the DHCPv6 range. Used if `ipv6_interface_type` is set to `pd`.",
+				Description: "start address of the DHCPv6 range. Used if `ipv6_interface_type` is set to `pd`.",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},

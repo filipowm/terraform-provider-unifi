@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -11,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourceSettingRadius() *schema.Resource {
+func ResourceSettingRadius() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_setting_radius` manages settings for the built-in RADIUS server.",
 
@@ -20,7 +21,7 @@ func resourceSettingRadius() *schema.Resource {
 		UpdateContext: resourceSettingRadiusUpdate,
 		DeleteContext: schema.NoopContext,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{
