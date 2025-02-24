@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func dataRADIUSProfile() *schema.Resource {
+func DataRADIUSProfile() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_radius_profile` data source can be used to retrieve the ID for a RADIUS profile by name.",
 

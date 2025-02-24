@@ -1,6 +1,7 @@
 package v1
 
 import (
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"sync"
 	"testing"
 
@@ -12,19 +13,19 @@ var settingMgmtLock = sync.Mutex{}
 func TestAccSettingMgmt_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 			settingMgmtLock.Lock()
 			t.Cleanup(func() {
 				settingMgmtLock.Unlock()
 			})
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingMgmtConfig_basic(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			importStep("unifi_setting_mgmt.test"),
+			pt.ImportStep("unifi_setting_mgmt.test"),
 		},
 	})
 }
@@ -32,13 +33,13 @@ func TestAccSettingMgmt_basic(t *testing.T) {
 func TestAccSettingMgmt_site(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 			settingMgmtLock.Lock()
 			t.Cleanup(func() {
 				settingMgmtLock.Unlock()
 			})
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingMgmtConfig_site(),
@@ -47,7 +48,7 @@ func TestAccSettingMgmt_site(t *testing.T) {
 			{
 				ResourceName:      "unifi_setting_mgmt.test",
 				ImportState:       true,
-				ImportStateIdFunc: siteAndIDImportStateIDFunc("unifi_setting_mgmt.test"),
+				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_setting_mgmt.test"),
 				ImportStateVerify: true,
 			},
 		},
@@ -57,13 +58,13 @@ func TestAccSettingMgmt_site(t *testing.T) {
 func TestAccSettingMgmt_sshKeys(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 			settingMgmtLock.Lock()
 			t.Cleanup(func() {
 				settingMgmtLock.Unlock()
 			})
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingMgmtConfig_sshKeys(),
@@ -72,7 +73,7 @@ func TestAccSettingMgmt_sshKeys(t *testing.T) {
 			{
 				ResourceName:      "unifi_setting_mgmt.test",
 				ImportState:       true,
-				ImportStateIdFunc: siteAndIDImportStateIDFunc("unifi_setting_mgmt.test"),
+				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_setting_mgmt.test"),
 				ImportStateVerify: true,
 			},
 		},

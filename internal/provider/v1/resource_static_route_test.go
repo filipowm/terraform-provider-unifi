@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"net"
 	"strconv"
 	"testing"
@@ -20,8 +21,8 @@ func TestAccStaticRoute_nextHop(t *testing.T) {
 	nextHop := net.IPv4(172, 16, 0, 1).To4()
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -34,7 +35,7 @@ func TestAccStaticRoute_nextHop(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_static_route.test", "next_hop", nextHop.String()),
 				),
 			},
-			importStep("unifi_static_route.test"),
+			pt.ImportStep("unifi_static_route.test"),
 		},
 	})
 }
@@ -49,8 +50,8 @@ func TestAccStaticRoute_nextHop_ipv6(t *testing.T) {
 	nextHop := net.IP{0xfd, 0x6a, 0x37, 0xbe, 0xe3, 0x62, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1}
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -63,7 +64,7 @@ func TestAccStaticRoute_nextHop_ipv6(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_static_route.test", "next_hop", nextHop.String()),
 				),
 			},
-			importStep("unifi_static_route.test"),
+			pt.ImportStep("unifi_static_route.test"),
 		},
 	})
 }
@@ -77,8 +78,8 @@ func TestAccStaticRoute_blackhole(t *testing.T) {
 	distance := 1
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -90,7 +91,7 @@ func TestAccStaticRoute_blackhole(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_static_route.test", "distance", strconv.Itoa(distance)),
 				),
 			},
-			importStep("unifi_static_route.test"),
+			pt.ImportStep("unifi_static_route.test"),
 		},
 	})
 }
@@ -104,8 +105,8 @@ func TestAccStaticRoute_blackhole_ipv6(t *testing.T) {
 	distance := 1
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -117,7 +118,7 @@ func TestAccStaticRoute_blackhole_ipv6(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_static_route.test", "distance", strconv.Itoa(distance)),
 				),
 			},
-			importStep("unifi_static_route.test"),
+			pt.ImportStep("unifi_static_route.test"),
 		},
 	})
 }
@@ -132,8 +133,8 @@ func TestAccStaticRoute_interface(t *testing.T) {
 	networkInterface := "WAN2"
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -146,7 +147,7 @@ func TestAccStaticRoute_interface(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_static_route.test", "interface", networkInterface),
 				),
 			},
-			importStep("unifi_static_route.test"),
+			pt.ImportStep("unifi_static_route.test"),
 		},
 	})
 }
@@ -161,8 +162,8 @@ func TestAccStaticRoute_interface_ipv6(t *testing.T) {
 	networkInterface := "WAN2"
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -175,7 +176,7 @@ func TestAccStaticRoute_interface_ipv6(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_static_route.test", "interface", networkInterface),
 				),
 			},
-			importStep("unifi_static_route.test"),
+			pt.ImportStep("unifi_static_route.test"),
 		},
 	})
 }

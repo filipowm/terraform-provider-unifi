@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func dataAccount() *schema.Resource {
+func DataAccount() *schema.Resource {
 	return &schema.Resource{
 		Description: "unifi_account data source can be used to retrieve RADIUS user accounts",
 

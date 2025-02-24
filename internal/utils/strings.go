@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -32,4 +33,8 @@ func StringSliceToList(list []string) []interface{} {
 
 func StringSliceToSet(src []string) *schema.Set {
 	return schema.NewSet(schema.HashString, StringSliceToList(src))
+}
+
+func IsStringValueNotEmpty(s basetypes.StringValue) bool {
+	return !s.IsUnknown() && !s.IsNull() && s.ValueString() != ""
 }

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"net"
 )
 
@@ -37,4 +38,18 @@ func CidrOneBased(cidr string) string {
 	cidrNet.IP[3]++
 
 	return cidrNet.String()
+}
+
+func CidrDiffSuppress(k, old, new string, d *schema.ResourceData) bool {
+	_, oldNet, err := net.ParseCIDR(old)
+	if err != nil {
+		return false
+	}
+
+	_, newNet, err := net.ParseCIDR(new)
+	if err != nil {
+		return false
+	}
+
+	return oldNet.String() == newNet.String()
 }

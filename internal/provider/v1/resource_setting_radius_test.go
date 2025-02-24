@@ -1,6 +1,7 @@
 package v1
 
 import (
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"sync"
 	"testing"
 
@@ -12,19 +13,19 @@ var settingRadiusLock = sync.Mutex{}
 func TestAccSettingRadius_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 			settingRadiusLock.Lock()
 			t.Cleanup(func() {
 				settingRadiusLock.Unlock()
 			})
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRadiusConfig_basic(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			importStep("unifi_setting_radius.test"),
+			pt.ImportStep("unifi_setting_radius.test"),
 		},
 	})
 }
@@ -32,13 +33,13 @@ func TestAccSettingRadius_basic(t *testing.T) {
 func TestAccSettingRadius_site(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 			settingRadiusLock.Lock()
 			t.Cleanup(func() {
 				settingRadiusLock.Unlock()
 			})
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRadiusConfig_site(),
@@ -47,7 +48,7 @@ func TestAccSettingRadius_site(t *testing.T) {
 			{
 				ResourceName:      "unifi_setting_radius.test",
 				ImportState:       true,
-				ImportStateIdFunc: siteAndIDImportStateIDFunc("unifi_setting_radius.test"),
+				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_setting_radius.test"),
 				ImportStateVerify: true,
 			},
 		},
@@ -57,13 +58,13 @@ func TestAccSettingRadius_site(t *testing.T) {
 func TestAccSettingRadius_full(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 			settingRadiusLock.Lock()
 			t.Cleanup(func() {
 				settingRadiusLock.Unlock()
 			})
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRadiusConfig_full(),
@@ -72,7 +73,7 @@ func TestAccSettingRadius_full(t *testing.T) {
 			{
 				ResourceName:      "unifi_setting_radius.test",
 				ImportState:       true,
-				ImportStateIdFunc: siteAndIDImportStateIDFunc("unifi_setting_radius.test"),
+				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_setting_radius.test"),
 				ImportStateVerify: true,
 			},
 		},
@@ -82,19 +83,19 @@ func TestAccSettingRadius_full(t *testing.T) {
 func TestAccSettingRadius_vlan(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 			settingRadiusLock.Lock()
 			t.Cleanup(func() {
 				settingRadiusLock.Unlock()
 			})
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRadiusConfig_vlan(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			importStep("unifi_setting_radius.test"),
+			pt.ImportStep("unifi_setting_radius.test"),
 		},
 	})
 }

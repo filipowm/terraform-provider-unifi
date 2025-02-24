@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourcePortForward() *schema.Resource {
+func ResourcePortForward() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_port_forward` manages a port forwarding rule on the gateway.",
 
@@ -21,7 +21,7 @@ func resourcePortForward() *schema.Resource {
 		UpdateContext: resourcePortForwardUpdate,
 		DeleteContext: resourcePortForwardDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

@@ -17,7 +17,7 @@ var firewallRuleProtocolRegexp = regexp.MustCompile("^$|all|([0-9]|[1-9][0-9]|1[
 var firewallRuleProtocolV6Regexp = regexp.MustCompile("^$|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|ah|all|dccp|eigrp|esp|gre|icmpv6|ipcomp|ipv6|ipv6-frag|ipv6-icmp|ipv6-nonxt|ipv6-opts|ipv6-route|isis|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|rsvp|sctp|shim6|tcp|tcp_udp|udp|vrrp")
 var firewallRuleICMPv6TypenameRegexp = regexp.MustCompile("^$|address-unreachable|bad-header|beyond-scope|communication-prohibited|destination-unreachable|echo-reply|echo-request|failed-policy|neighbor-advertisement|neighbor-solicitation|no-route|packet-too-big|parameter-problem|port-unreachable|redirect|reject-route|router-advertisement|router-solicitation|time-exceeded|ttl-zero-during-reassembly|ttl-zero-during-transit|unknown-header-type|unknown-option")
 
-func resourceFirewallRule() *schema.Resource {
+func ResourceFirewallRule() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_firewall_rule` manages an individual firewall rule on the gateway.",
 
@@ -26,7 +26,7 @@ func resourceFirewallRule() *schema.Resource {
 		UpdateContext: resourceFirewallRuleUpdate,
 		DeleteContext: resourceFirewallRuleDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

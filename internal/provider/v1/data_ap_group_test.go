@@ -1,17 +1,17 @@
 package v1
 
 import (
-	"testing"
-
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"testing"
 )
 
 func TestAccDataAPGroup_default(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{

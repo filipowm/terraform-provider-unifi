@@ -1,13 +1,12 @@
-package v1
+package utils
 
 import (
 	"context"
-	"strings"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"strings"
 )
 
-func importSiteAndID(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+func ImportSiteAndID(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	if id := d.Id(); strings.Contains(id, ":") {
 		importParts := strings.SplitN(id, ":", 2)
 		d.SetId(importParts[1])

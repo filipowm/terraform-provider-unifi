@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func resourceDynamicDNS() *schema.Resource {
+func ResourceDynamicDNS() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_dynamic_dns` manages dynamic DNS settings for different providers.",
 
@@ -19,7 +20,7 @@ func resourceDynamicDNS() *schema.Resource {
 		UpdateContext: resourceDynamicDNSUpdate,
 		DeleteContext: resourceDynamicDNSDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

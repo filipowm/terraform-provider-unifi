@@ -2,28 +2,26 @@ package v1
 
 import (
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider"
-	"testing"
-
-	"github.com/hashicorp/go-version"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"testing"
 )
 
 func TestAccDataNetwork_byName(t *testing.T) {
 	defaultName := "Default"
-	v, err := version.NewVersion(testClient.Version())
-	if err != nil {
-		t.Fatalf("error parsing version: %s", err)
-	}
-	if v.LessThan(provider.ControllerV7) {
-		defaultName = "LAN"
-	}
+	//v, err := version.NewVersion(testClient.Version())
+	//if err != nil {
+	//	t.Fatalf("error parsing version: %s", err)
+	//}
+	//if v.LessThan(provider.ControllerV7) {
+	//	defaultName = "LAN"
+	//}
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -38,19 +36,19 @@ func TestAccDataNetwork_byName(t *testing.T) {
 
 func TestAccDataNetwork_byID(t *testing.T) {
 	defaultName := "Default"
-	v, err := version.NewVersion(testClient.Version())
-	if err != nil {
-		t.Fatalf("error parsing version: %s", err)
-	}
-	if v.LessThan(provider.ControllerV7) {
-		defaultName = "LAN"
-	}
+	//v, err := version.NewVersion(testClient.Version())
+	//if err != nil {
+	//	t.Fatalf("error parsing version: %s", err)
+	//}
+	//if v.LessThan(provider.ControllerV7) {
+	//	defaultName = "LAN"
+	//}
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{

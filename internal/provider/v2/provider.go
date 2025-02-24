@@ -97,7 +97,7 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 			"Unknown UniFi Controller API URL",
 			"The provider cannot create the UniFi Controller API client as there is an unknown configuration value "+
 				"for the API endpoint. Either target apply the source of the value first, set the value statically in "+
-				"the configuration, or use the UNIFI_API_URL environment variable.",
+				"the configuration, or use the UNIFI_API environment variable.",
 		)
 	}
 
@@ -111,7 +111,7 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	username := utils.GetAnyStringEnv("UNIFI_USERNAME")
 	password := utils.GetAnyStringEnv("UNIFI_PASSWORD")
 	apiKey := utils.GetAnyStringEnv("UNIFI_API_KEY")
-	apiUrl := utils.GetAnyStringEnv("UNIFI_API_URL")
+	apiUrl := utils.GetAnyStringEnv("UNIFI_API")
 	site := utils.GetAnyStringEnv("UNIFI_SITE")
 	insecure := utils.GetAnyBoolEnv("UNIFI_INSECURE")
 
@@ -164,9 +164,14 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 }
 
 func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource {
-	return []func() resource.Resource{}
+	return []func() resource.Resource{
+		NewDnsRecordResource,
+	}
 }
 
 func (p *unifiProvider) DataSources(_ context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{}
+	return []func() datasource.DataSource{
+		NewDnsRecordsDatasource,
+		NewDnsRecordDatasource,
+	}
 }

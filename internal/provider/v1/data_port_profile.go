@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func dataPortProfile() *schema.Resource {
+func DataPortProfile() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_port_profile` data source can be used to retrieve the ID for a port profile by name.",
 

@@ -1,9 +1,9 @@
-package v1
+package v2
 
 import (
 	"context"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
-	v2 "github.com/filipowm/terraform-provider-unifi/internal/provider/v2"
+	v1 "github.com/filipowm/terraform-provider-unifi/internal/provider/v1"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -15,6 +15,14 @@ import (
 	"sync"
 	"testing"
 )
+
+func TestProviderInstantiation(t *testing.T) {
+	t.Parallel()
+	p := New("acctest")()
+	if p == nil {
+		t.Fatal("cannot instantiate UniFi Provider")
+	}
+}
 
 func TestMain(m *testing.M) {
 	os.Exit(pt.Run(m))
@@ -37,13 +45,13 @@ func MuxProviders(t *testing.T) map[string]func() (tfprotov6.ProviderServer, err
 	p := map[string]func() (tfprotov6.ProviderServer, error){
 		"unifi": func() (tfprotov6.ProviderServer, error) {
 			return tf6muxserver.NewMuxServer(ctx,
-				providerserver.NewProtocol6(v2.New("acctestv2")()),
+				providerserver.NewProtocol6(New("acctestv2")()),
 				func() tfprotov6.ProviderServer {
 					sdkV2Provider, err := tf5to6server.UpgradeServer(
 						ctx,
 						func() tfprotov5.ProviderServer {
 							return schema.NewGRPCProviderServer(
-								New("acctestv1")(),
+								v1.New("acctestv1")(),
 							)
 						},
 					)

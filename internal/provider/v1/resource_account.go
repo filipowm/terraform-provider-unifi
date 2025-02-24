@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -11,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
-func resourceAccount() *schema.Resource {
+func ResourceAccount() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_account` manages a RADIUS user account\n\n" +
 			"To authenticate devices based on MAC address, use the MAC address as the username and password under client creation. \n" +
@@ -24,7 +25,7 @@ func resourceAccount() *schema.Resource {
 		UpdateContext: resourceAccountUpdate,
 		DeleteContext: resourceAccountDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

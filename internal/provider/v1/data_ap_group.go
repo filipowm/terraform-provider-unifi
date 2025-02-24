@@ -8,11 +8,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func dataAPGroup() *schema.Resource {
+func DataAPGroup() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_ap_group` data source can be used to retrieve the ID for an AP group by name.",
 
-		ReadContext: dataAPGroupRead,
+		ReadContext: DataAPGroupRead,
 
 		Schema: map[string]*schema.Schema{
 			"id": {
@@ -35,7 +35,7 @@ func dataAPGroup() *schema.Resource {
 	}
 }
 
-func dataAPGroupRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func DataAPGroupRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*provider.Client)
 
 	name := d.Get("name").(string)

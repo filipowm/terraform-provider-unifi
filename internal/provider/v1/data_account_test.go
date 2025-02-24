@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"testing"
@@ -11,9 +12,9 @@ func TestAccDataAccount_default(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -25,14 +26,14 @@ func TestAccDataAccount_default(t *testing.T) {
 }
 
 func TestAccDataAccount_mac(t *testing.T) {
-	mac, unallocateMac := allocateTestMac(t)
+	mac, unallocateMac := pt.AllocateTestMac(t)
 	defer unallocateMac()
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{

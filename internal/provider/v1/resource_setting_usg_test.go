@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"regexp"
 	"sync"
 	"testing"
@@ -15,30 +16,30 @@ var settingUsgLock = sync.Mutex{}
 func TestAccSettingUsg_mdns_v6(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
-			preCheckVersionConstraint(t, "< 7")
+			pt.PreCheck(t)
+			pt.PreCheckVersionConstraint(t, "< 7")
 			settingUsgLock.Lock()
 			t.Cleanup(func() {
 				settingUsgLock.Unlock()
 			})
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingUsgConfig_mdns(true),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			importStep("unifi_setting_usg.test"),
+			pt.ImportStep("unifi_setting_usg.test"),
 			{
 				Config: testAccSettingUsgConfig_mdns(false),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			importStep("unifi_setting_usg.test"),
+			pt.ImportStep("unifi_setting_usg.test"),
 			{
 				Config: testAccSettingUsgConfig_mdns(true),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			importStep("unifi_setting_usg.test"),
+			pt.ImportStep("unifi_setting_usg.test"),
 		},
 	})
 }
@@ -46,14 +47,14 @@ func TestAccSettingUsg_mdns_v6(t *testing.T) {
 func TestAccSettingUsg_mdns_v7(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
-			preCheckVersionConstraint(t, ">= 7")
+			pt.PreCheck(t)
+			pt.PreCheckVersionConstraint(t, ">= 7")
 			settingUsgLock.Lock()
 			t.Cleanup(func() {
 				settingUsgLock.Unlock()
 			})
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccSettingUsgConfig_mdns(true),
@@ -66,19 +67,19 @@ func TestAccSettingUsg_mdns_v7(t *testing.T) {
 func TestAccSettingUsg_dhcpRelay(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 			settingUsgLock.Lock()
 			t.Cleanup(func() {
 				settingUsgLock.Unlock()
 			})
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingUsgConfig_dhcpRelay(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			importStep("unifi_setting_usg.test"),
+			pt.ImportStep("unifi_setting_usg.test"),
 		},
 	})
 }
@@ -86,13 +87,13 @@ func TestAccSettingUsg_dhcpRelay(t *testing.T) {
 func TestAccSettingUsg_site(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 			settingUsgLock.Lock()
 			t.Cleanup(func() {
 				settingUsgLock.Unlock()
 			})
 		},
-		ProviderFactories: providerFactories,
+		ProtoV6ProviderFactories: MuxProviders(t),
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingUsgConfig_site(),
@@ -101,7 +102,7 @@ func TestAccSettingUsg_site(t *testing.T) {
 			{
 				ResourceName:      "unifi_setting_usg.test",
 				ImportState:       true,
-				ImportStateIdFunc: siteAndIDImportStateIDFunc("unifi_setting_usg.test"),
+				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_setting_usg.test"),
 				ImportStateVerify: true,
 			},
 		},

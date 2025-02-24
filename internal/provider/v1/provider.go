@@ -2,18 +2,14 @@ package v1
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
-	"net"
-	"net/http"
-	"strings"
-	"time"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"net/http"
+	"strings"
 )
 
 func init() {
@@ -75,34 +71,34 @@ func New(version string) func() *schema.Provider {
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
-				"unifi_ap_group":       dataAPGroup(),
-				"unifi_network":        dataNetwork(),
-				"unifi_port_profile":   dataPortProfile(),
-				"unifi_radius_profile": dataRADIUSProfile(),
-				"unifi_user_group":     dataUserGroup(),
-				"unifi_user":           dataUser(),
-				"unifi_account":        dataAccount(),
+				"unifi_ap_group":       DataAPGroup(),
+				"unifi_network":        DataNetwork(),
+				"unifi_port_profile":   DataPortProfile(),
+				"unifi_radius_profile": DataRADIUSProfile(),
+				"unifi_user_group":     DataUserGroup(),
+				"unifi_user":           DataUser(),
+				"unifi_account":        DataAccount(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
 				// TODO: "unifi_ap_group"
-				"unifi_device":         resourceDevice(),
-				"unifi_dynamic_dns":    resourceDynamicDNS(),
-				"unifi_firewall_group": resourceFirewallGroup(),
-				"unifi_firewall_rule":  resourceFirewallRule(),
-				"unifi_network":        resourceNetwork(),
-				"unifi_port_forward":   resourcePortForward(),
-				"unifi_port_profile":   resourcePortProfile(),
-				"unifi_radius_profile": resourceRadiusProfile(),
-				"unifi_site":           resourceSite(),
-				"unifi_static_route":   resourceStaticRoute(),
-				"unifi_user_group":     resourceUserGroup(),
-				"unifi_user":           resourceUser(),
-				"unifi_wlan":           resourceWLAN(),
-				"unifi_account":        resourceAccount(),
+				"unifi_device":         ResourceDevice(),
+				"unifi_dynamic_dns":    ResourceDynamicDNS(),
+				"unifi_firewall_group": ResourceFirewallGroup(),
+				"unifi_firewall_rule":  ResourceFirewallRule(),
+				"unifi_network":        ResourceNetwork(),
+				"unifi_port_forward":   ResourcePortForward(),
+				"unifi_static_route":   ResourceStaticRoute(),
+				"unifi_wlan":           ResourceWLAN(),
+				"unifi_port_profile":   ResourcePortProfile(),
+				"unifi_site":           ResourceSite(),
+				"unifi_account":        ResourceAccount(),
+				"unifi_radius_profile": ResourceRadiusProfile(),
 
-				"unifi_setting_mgmt":   resourceSettingMgmt(),
-				"unifi_setting_radius": resourceSettingRadius(),
-				"unifi_setting_usg":    resourceSettingUsg(),
+				"unifi_setting_mgmt":   ResourceSettingMgmt(),
+				"unifi_setting_radius": ResourceSettingRadius(),
+				"unifi_setting_usg":    ResourceSettingUsg(),
+				"unifi_user_group":     ResourceUserGroup(),
+				"unifi_user":           ResourceUser(),
 			},
 		}
 
@@ -112,23 +108,7 @@ func New(version string) func() *schema.Provider {
 }
 
 func createHTTPTransport(insecure bool, subsystem string) http.RoundTripper {
-	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: insecure,
-		},
-	}
-
+	transport := provider.CreateHttpTransport(insecure)
 	t := logging.NewSubsystemLoggingHTTPTransport(subsystem, transport)
 	return t
 }

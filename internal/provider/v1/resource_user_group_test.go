@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"testing"
 
@@ -11,8 +12,8 @@ import (
 func TestAccUserGroup_basic(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -24,11 +25,11 @@ func TestAccUserGroup_basic(t *testing.T) {
 			{
 				Config: testAccUserGroupConfig_qos(name),
 			},
-			importStep("unifi_user_group.test"),
+			pt.ImportStep("unifi_user_group.test"),
 			{
 				Config: testAccUserGroupConfig(name),
 			},
-			importStep("unifi_user_group.test"),
+			pt.ImportStep("unifi_user_group.test"),
 		},
 	})
 }

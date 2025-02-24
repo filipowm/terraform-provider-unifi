@@ -7,14 +7,15 @@ import (
 	"strings"
 	"testing"
 
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 func TestAccFirewallGroup_port_group(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -23,11 +24,11 @@ func TestAccFirewallGroup_port_group(t *testing.T) {
 				// // testCheckFirewallGroupExists(t, "name"),
 				// ),
 			},
-			importStep("unifi_firewall_group.test"),
+			pt.ImportStep("unifi_firewall_group.test"),
 			{
 				Config: testAccFirewallGroupConfig(name, "port-group", []string{"80", "443"}),
 			},
-			importStep("unifi_firewall_group.test"),
+			pt.ImportStep("unifi_firewall_group.test"),
 		},
 	})
 }
@@ -35,8 +36,8 @@ func TestAccFirewallGroup_port_group(t *testing.T) {
 func TestAccFirewallGroup_address_group(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -45,23 +46,23 @@ func TestAccFirewallGroup_address_group(t *testing.T) {
 				// // testCheckFirewallGroupExists(t, "name"),
 				// ),
 			},
-			importStep("unifi_firewall_group.test"),
+			pt.ImportStep("unifi_firewall_group.test"),
 			{
 				Config: testAccFirewallGroupConfig(name, "address-group", []string{"10.0.0.1", "10.0.0.2"}),
 			},
-			importStep("unifi_firewall_group.test"),
+			pt.ImportStep("unifi_firewall_group.test"),
 			{
 				Config: testAccFirewallGroupConfig(name, "address-group", []string{"10.0.0.0/24"}),
 			},
-			importStep("unifi_firewall_group.test"),
+			pt.ImportStep("unifi_firewall_group.test"),
 		},
 	})
 }
 
 func TestAccFirewallGroup_same_name(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{

@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func resourceUserGroup() *schema.Resource {
+func ResourceUserGroup() *schema.Resource {
 	return &schema.Resource{
 		Description: "`unifi_user_group` manages a user group (called \"client group\" in the UI), which can be used " +
 			"to limit bandwidth for groups of users.",
@@ -20,7 +21,7 @@ func resourceUserGroup() *schema.Resource {
 		UpdateContext: resourceUserGroupUpdate,
 		DeleteContext: resourceUserGroupDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: importSiteAndID,
+			StateContext: utils.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

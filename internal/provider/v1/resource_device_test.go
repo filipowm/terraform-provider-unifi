@@ -11,6 +11,7 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/filipowm/go-unifi/unifi"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -22,12 +23,13 @@ var (
 )
 
 func allocateDevice(t *testing.T) (*unifi.Device, func()) {
+	pt.MarkAccTest(t)
 	ctx := context.Background()
 
 	deviceInit.Do(func() {
 		// The demo devices don't appear instantly when the controller starts.
 		err := retry.RetryContext(ctx, 1*time.Minute, func() *retry.RetryError {
-			devices, err := testClient.ListDevice(ctx, "default")
+			devices, err := pt.TestClient().ListDevice(ctx, "default")
 			if err != nil {
 				return retry.NonRetryableError(fmt.Errorf("Error listing devices: %w", err))
 			}
@@ -167,7 +169,7 @@ func isNephosSwitch(device unifi.Device) bool {
 }
 
 func preCheckDeviceExists(t *testing.T, site, mac string) {
-	_, err := testClient.GetDeviceByMAC(context.Background(), site, mac)
+	_, err := pt.TestClient().GetDeviceByMAC(context.Background(), site, mac)
 
 	if errors.Is(err, unifi.ErrNotFound) {
 		t.Fatal("Test device not found")
@@ -176,9 +178,10 @@ func preCheckDeviceExists(t *testing.T, site, mac string) {
 
 func TestAccDevice_empty(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { preCheck(t) },
-		ProviderFactories: providerFactories,
-		CheckDestroy:      testAccCheckDeviceDestroy,
+
+		PreCheck:                 func() { pt.PreCheck(t) },
+		ProtoV6ProviderFactories: MuxProviders(t),
+		CheckDestroy:             testAccCheckDeviceDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccDeviceConfigEmpty(),
@@ -197,14 +200,13 @@ func TestAccDevice_switch_basic(t *testing.T) {
 	defer unallocateDevice()
 
 	importStateVerifyIgnore := []string{"allow_adoption", "forget_on_destroy", "name"}
-
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 			preCheckDeviceExists(t, site, device.MAC)
 		},
-		ProviderFactories: providerFactories,
-		CheckDestroy:      testAccCheckDeviceDestroy,
+		ProtoV6ProviderFactories: MuxProviders(t),
+		CheckDestroy:             testAccCheckDeviceDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDeviceConfig(device.MAC),
@@ -255,12 +257,12 @@ func TestAccDevice_switch_portOverrides(t *testing.T) {
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
-			preCheck(t)
+			pt.PreCheck(t)
 			preCheckDeviceExists(t, site, device.MAC)
-			preCheckVersionConstraint(t, "< 7.4")
+			pt.PreCheckVersionConstraint(t, "< 7.4")
 		},
-		ProviderFactories: providerFactories,
-		CheckDestroy:      testAccCheckDeviceDestroy,
+		ProtoV6ProviderFactories: MuxProviders(t),
+		CheckDestroy:             testAccCheckDeviceDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDeviceConfig_withPortOverrides(device.MAC),
@@ -364,7 +366,7 @@ func testAccCheckDeviceDestroy(s *terraform.State) error {
 			continue
 		}
 
-		device, err := testClient.GetDevice(ctx, rs.Primary.Attributes["site"], rs.Primary.ID)
+		device, err := pt.TestClient().GetDevice(ctx, rs.Primary.Attributes["site"], rs.Primary.ID)
 		if device != nil {
 			return fmt.Errorf("Device still exists with ID %v", rs.Primary.ID)
 		}
@@ -390,7 +392,7 @@ func testAccCheckDeviceExists(n string) resource.TestCheckFunc {
 		id := rs.Primary.ID
 		site := rs.Primary.Attributes["site"]
 
-		device, err := testClient.GetDevice(context.Background(), site, id)
+		device, err := pt.TestClient().GetDevice(context.Background(), site, id)
 		if device == nil {
 			return fmt.Errorf("Device not found with ID %v", id)
 		}
