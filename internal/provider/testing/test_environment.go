@@ -3,9 +3,9 @@ package testing
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"net/http"
 	"os"
@@ -20,15 +20,13 @@ import (
 )
 
 const (
-	TestEnvStarting TestEnvironmentStatus = iota
+	TestEnvStarting testEnvironmentStatus = iota
 	TestEnvReady
 	TestEnvDown
 	TestEnvUnknown
 )
 
-var mutex = sync.Mutex{}
-
-type TestEnvironmentStatus int
+type testEnvironmentStatus int
 
 type TestEnvironment struct {
 	Client         unifi.Client
@@ -40,33 +38,27 @@ type TestEnvironment struct {
 	timeout        time.Duration
 }
 
-var testEnv *TestEnvironment
-var testClient unifi.Client
-
 type envStatus struct {
 	Meta struct {
 		Up bool `json:"up"`
 	} `json:"meta"`
 }
 
-func Run(m *testing.M) int {
+func Run(m *testing.M, callback func(env *TestEnvironment)) int {
 	if os.Getenv("TF_ACC") == "" {
 		// short circuit non-acceptance test runs
 		os.Exit(m.Run())
 	}
-	env := newTestEnvironment(5 * time.Minute)
-	return env.Run(m)
+	env := NewTestEnvironment(5 * time.Minute)
+	return env.run(m, callback)
 }
 
-func newTestEnvironment(startupTimeout time.Duration) *TestEnvironment {
-	mutex.Lock()
-	defer mutex.Unlock()
-	if testEnv != nil {
-		return testEnv
-	}
-	c := http.Client{Transport: provider.CreateHttpTransport(true)}
+func NewTestEnvironment(startupTimeout time.Duration) *TestEnvironment {
+	c := http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}}
 	ctx := context.Background()
-	testEnv = &TestEnvironment{
+	return &TestEnvironment{
 		Endpoint:       "https://localhost:8443", // default endpoint, assumed
 		timeout:        startupTimeout,
 		mutex:          sync.Mutex{},
@@ -74,39 +66,37 @@ func newTestEnvironment(startupTimeout time.Duration) *TestEnvironment {
 		internalClient: &c,
 		Shutdown:       func() {},
 	}
-	return testEnv
 }
 
-func (te *TestEnvironment) IsReady() bool {
+func (te *TestEnvironment) isReady() bool {
 	if st, _ := te.readStatus(te.ctx); st != TestEnvReady {
 		return false
 	}
 	return true
 }
 
-func (te *TestEnvironment) Run(m *testing.M) int {
-	mutex.Lock() // run one by one
-	defer mutex.Unlock()
-	err := te.start()
+func (te *TestEnvironment) run(m *testing.M, callback func(env *TestEnvironment)) int {
+	err := te.Start()
 	defer func() {
 		te.Shutdown()
 	}()
 	if err != nil {
 		panic(err)
 	}
-	err = te.waitUntilReady()
+	err = te.WaitUntilReady()
 	if err != nil {
 		panic(err)
 	}
-	c, err := te.NewTestClient()
+	c, err := te.newTestClient()
 	if err != nil {
 		panic(err)
 	}
 	te.Client = c
+	callback(te)
 	return m.Run()
 }
 
-func (te *TestEnvironment) readStatus(ctx context.Context) (TestEnvironmentStatus, error) {
+func (te *TestEnvironment) readStatus(ctx context.Context) (testEnvironmentStatus, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/status", te.Endpoint), nil)
 	if err != nil {
 		return TestEnvUnknown, err
@@ -162,7 +152,7 @@ func (te *TestEnvironment) startDockerController(ctx context.Context) error {
 	}
 
 	if err = dc.WithOsEnv().Up(ctx, compose.Wait(true)); err != nil {
-		return fmt.Errorf("failed to start docker-compose. Controller container might be already running or starting: %w", err)
+		return fmt.Errorf("failed to Start docker-compose. Controller container might be already running or starting: %w", err)
 	}
 	container, err := dc.ServiceContainer(ctx, "unifi")
 
@@ -193,27 +183,27 @@ func (te *TestEnvironment) startDockerController(ctx context.Context) error {
 	return nil
 }
 
-func (te *TestEnvironment) waitUntilReady() error {
+func (te *TestEnvironment) WaitUntilReady() error {
 	te.mutex.Lock()
 	ctx, cancel := context.WithTimeoutCause(te.ctx, te.timeout, fmt.Errorf("controller was not ready within %s", te.timeout))
 	defer cancel()
 	defer te.mutex.Unlock()
 	if st, _ := te.readStatus(ctx); st == TestEnvDown || st == TestEnvUnknown {
-		return fmt.Errorf("controller is not starting nor running. Use start() first to start the controller")
+		return fmt.Errorf("controller is not starting nor running. Use Start() first to Start the controller")
 	}
 	te.waitForController(ctx)
-	if !te.IsReady() {
+	if !te.isReady() {
 		return fmt.Errorf("controller is not ready within %s", te.timeout)
 	}
 	return nil
 }
 
-func (te *TestEnvironment) start() error {
+func (te *TestEnvironment) Start() error {
 	tflog.Error(te.ctx, "Starting test environment")
-	if te.IsReady() {
+	if te.isReady() {
 		tflog.Warn(te.ctx, "Environment is already running at "+te.Endpoint)
 		if te.Client == nil {
-			c, err := te.NewTestClient()
+			c, err := te.newTestClient()
 			if err != nil {
 				return err
 			}
@@ -221,7 +211,7 @@ func (te *TestEnvironment) start() error {
 		}
 		return nil
 	}
-	ctx, cancel := context.WithTimeoutCause(te.ctx, te.timeout, fmt.Errorf("controller did not start within %s", te.timeout))
+	ctx, cancel := context.WithTimeoutCause(te.ctx, te.timeout, fmt.Errorf("controller did not Start within %s", te.timeout))
 	defer cancel()
 	err := te.startDockerController(ctx)
 	if err != nil {
@@ -248,14 +238,7 @@ func (te *TestEnvironment) waitForController(ctx context.Context) {
 	wg.Wait()
 }
 
-func TestClient() unifi.Client {
-	if testClient == nil {
-		panic("Test client is not initialized")
-	}
-	return testClient
-}
-
-func (te *TestEnvironment) NewTestClient() (unifi.Client, error) {
+func (te *TestEnvironment) newTestClient() (unifi.Client, error) {
 	const user = "admin"
 	const password = "admin"
 	var err error
@@ -275,18 +258,12 @@ func (te *TestEnvironment) NewTestClient() (unifi.Client, error) {
 		return nil, err
 	}
 
-	c, err := unifi.NewClient(&unifi.ClientConfig{
-		URL:      te.Endpoint,
-		User:     user,
-		Password: password,
-		HttpRoundTripperProvider: func() http.RoundTripper {
-			return provider.CreateHttpTransport(true)
-		},
+	return unifi.NewClient(&unifi.ClientConfig{
+		URL:            te.Endpoint,
+		User:           user,
+		Password:       password,
+		VerifySSL:      false,
 		ValidationMode: unifi.DisableValidation,
 		Logger:         unifi.NewDefaultLogger(unifi.WarnLevel),
 	})
-	if err == nil {
-		testClient = c
-	}
-	return c, err
 }
