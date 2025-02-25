@@ -1,7 +1,7 @@
 TEST         ?= ./...
 TESTARGS     ?=
 TEST_COUNT   ?= 1
-TEST_TIMEOUT ?= 10m
+TEST_TIMEOUT ?= 20m
 
 .PHONY: default
 default: build

@@ -2,6 +2,7 @@ package acctest
 
 import (
 	"fmt"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"testing"
@@ -9,6 +10,7 @@ import (
 
 func TestDNSRecord_basic(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
+		MinVersion: base.ControllerVersionDnsRecords,
 		Steps: Steps{
 			{
 				Config: testAccDnsRecord("test.com", "192.168.0.128", "A"),
