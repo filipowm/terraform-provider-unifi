@@ -13,9 +13,7 @@ import (
 func MarkAccTest(t *testing.T) {
 	t.Helper()
 	if os.Getenv(resource.EnvTfAcc) == "" {
-		t.Skip(fmt.Sprintf(
-			"Acceptance tests skipped unless env '%s' set",
-			resource.EnvTfAcc))
+		t.Skipf("Acceptance tests skipped unless env '%s' set", resource.EnvTfAcc)
 		return
 	}
 }

@@ -29,7 +29,7 @@ func NewDnsRecordDatasource() datasource.DataSource {
 	return &dnsRecordDatasource{}
 }
 
-func (d dnsRecordDatasource) ConfigValidators(_ context.Context) []datasource.ConfigValidator {
+func (d *dnsRecordDatasource) ConfigValidators(_ context.Context) []datasource.ConfigValidator {
 	return []datasource.ConfigValidator{
 		datasourcevalidator.ExactlyOneOf(
 			path.MatchRoot("filter").AtName("name"),
@@ -38,19 +38,19 @@ func (d dnsRecordDatasource) ConfigValidators(_ context.Context) []datasource.Co
 	}
 }
 
-func (d dnsRecordDatasource) SetClient(client *base.Client) {
+func (d *dnsRecordDatasource) SetClient(client *base.Client) {
 	d.client = client
 }
 
-func (d dnsRecordDatasource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *dnsRecordDatasource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	base.ConfigureDatasource(d, req, resp)
 }
 
-func (d dnsRecordDatasource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *dnsRecordDatasource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = fmt.Sprintf("%s_%s", req.ProviderTypeName, resourceName)
 }
 
-func (d dnsRecordDatasource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *dnsRecordDatasource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Retrieves information about a specific DNS record.",
 		Attributes:  dnsRecordDatasourceAttributes,
@@ -75,7 +75,7 @@ func (d dnsRecordDatasource) Schema(_ context.Context, _ datasource.SchemaReques
 	}
 }
 
-func (d dnsRecordDatasource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *dnsRecordDatasource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	if !d.client.SupportsDnsRecords() {
 		resp.Diagnostics.AddError("DNS Records are not supported", fmt.Sprintf("The Unifi controller in version %q does not support DNS records. Required controller version: %q", d.client.Version, base.ControllerVersionDnsRecords))
 	}

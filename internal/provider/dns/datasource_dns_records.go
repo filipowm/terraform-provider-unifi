@@ -23,19 +23,19 @@ func NewDnsRecordsDatasource() datasource.DataSource {
 	return &dnsRecordsDatasource{}
 }
 
-func (d dnsRecordsDatasource) SetClient(client *base.Client) {
+func (d *dnsRecordsDatasource) SetClient(client *base.Client) {
 	d.client = client
 }
 
-func (d dnsRecordsDatasource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *dnsRecordsDatasource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	base.ConfigureDatasource(d, req, resp)
 }
 
-func (d dnsRecordsDatasource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *dnsRecordsDatasource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
 	resp.TypeName = fmt.Sprintf("%s_%ss", req.ProviderTypeName, resourceName)
 }
 
-func (d dnsRecordsDatasource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *dnsRecordsDatasource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Description: "Retrieves information about a all DNS records.",
 		Attributes: map[string]schema.Attribute{
@@ -50,7 +50,7 @@ func (d dnsRecordsDatasource) Schema(_ context.Context, _ datasource.SchemaReque
 	}
 }
 
-func (d dnsRecordsDatasource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *dnsRecordsDatasource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state dnsRecordsDatasourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
 

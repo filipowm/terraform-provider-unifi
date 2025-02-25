@@ -37,7 +37,7 @@ type AcceptanceTestCase struct {
 
 func AcceptanceTest(t *testing.T, testCase AcceptanceTestCase) {
 	t.Helper()
-	if testCase.Steps == nil || len(testCase.Steps) == 0 {
+	if len(testCase.Steps) == 0 {
 		t.Fatal("missing test steps")
 	}
 	resource.ParallelTest(t, resource.TestCase{

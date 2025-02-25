@@ -138,6 +138,9 @@ func findFileInProject(filename string) (string, error) {
 
 func (te *TestEnvironment) startDockerController(ctx context.Context) error {
 	composeFile, err := findFileInProject("docker-compose.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to find docker-compose.yaml file: %w", err)
+	}
 	dc, err := compose.NewDockerCompose(composeFile)
 	shutdown := func() {
 		if dc != nil {
@@ -155,6 +158,9 @@ func (te *TestEnvironment) startDockerController(ctx context.Context) error {
 		return fmt.Errorf("failed to Start docker-compose. Controller container might be already running or starting: %w", err)
 	}
 	container, err := dc.ServiceContainer(ctx, "unifi")
+	if err != nil {
+		return err
+	}
 
 	// Dump the container logs on exit.
 	//
@@ -168,7 +174,8 @@ func (te *TestEnvironment) startDockerController(ctx context.Context) error {
 
 		stream, err := container.Logs(ctx)
 		if err != nil {
-			panic(err)
+			fmt.Printf("Failed to get logs from container: %v", err)
+			return
 		}
 
 		buffer := new(bytes.Buffer)

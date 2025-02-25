@@ -22,8 +22,8 @@ func TestAccDataNetwork_byName(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataNetworkConfig_byName(defaultName),
-				Check: resource.ComposeTestCheckFunc(
-					// testCheckNetworkExists(t, "name"),
+				Check:  resource.ComposeTestCheckFunc(
+				// testCheckNetworkExists(t, "name"),
 				),
 			},
 		},
@@ -45,8 +45,8 @@ func TestAccDataNetwork_byID(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataNetworkConfig_byID(defaultName),
-				Check: resource.ComposeTestCheckFunc(
-					// testCheckNetworkExists(t, "name"),
+				Check:  resource.ComposeTestCheckFunc(
+				// testCheckNetworkExists(t, "name"),
 				),
 			},
 		},
