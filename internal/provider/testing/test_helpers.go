@@ -3,8 +3,10 @@ package testing
 import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -59,4 +61,18 @@ func PreCheck(t *testing.T) {
 			t.Fatalf("`%s` must be set for acceptance tests!", variable)
 		}
 	}
+}
+
+func CheckPlanPreApply(checks ...plancheck.PlanCheck) resource.ConfigPlanChecks {
+	return resource.ConfigPlanChecks{
+		PreApply: checks,
+	}
+}
+
+func CheckResourceAction(resourceAddress string, action plancheck.ResourceActionType) resource.ConfigPlanChecks {
+	return CheckPlanPreApply(plancheck.ExpectResourceAction(resourceAddress, action))
+}
+
+func ComposeConfig(configs ...string) string {
+	return strings.Join(configs, "\n")
 }

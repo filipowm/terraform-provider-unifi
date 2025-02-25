@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -45,7 +46,7 @@ type envStatus struct {
 }
 
 func Run(m *testing.M, callback func(env *TestEnvironment)) int {
-	if os.Getenv("TF_ACC") == "" {
+	if os.Getenv(resource.EnvTfAcc) == "" {
 		// short circuit non-acceptance test runs
 		os.Exit(m.Run())
 	}

@@ -23,7 +23,7 @@ type dnsRecordModel struct {
 }
 
 type dnsRecordDatasourceModel struct {
-	*dnsRecordModel
+	dnsRecordModel
 	Filter *dnsRecordFilterModel `tfsdk:"filter"`
 }
 
@@ -32,7 +32,8 @@ type dnsRecordsDatasourceModel struct {
 }
 
 var dnsRecordDatasourceAttributes = map[string]schema.Attribute{
-	"id": utils.ID(),
+	"id":      utils.ID(),
+	"site_id": utils.ID("The site ID where the DNS record is located."),
 	"name": schema.StringAttribute{
 		Description: "DNS record name.",
 		Computed:    true,

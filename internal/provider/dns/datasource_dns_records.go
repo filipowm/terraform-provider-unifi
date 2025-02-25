@@ -77,5 +77,5 @@ func (d *dnsRecordsDatasource) Read(ctx context.Context, req datasource.ReadRequ
 			Weight:   types.Int32Value(int32(record.Weight)),
 		})
 	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

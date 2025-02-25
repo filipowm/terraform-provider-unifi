@@ -126,6 +126,6 @@ func (d *dnsRecordDatasource) Read(ctx context.Context, req datasource.ReadReque
 		resp.Diagnostics.AddError("DNS record not found", "No DNS record found")
 		return
 	}
-	state.dnsRecordModel.merge(found)
-	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
+	(&state.dnsRecordModel).merge(found)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
