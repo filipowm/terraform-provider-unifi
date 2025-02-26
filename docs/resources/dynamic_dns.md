@@ -3,12 +3,30 @@
 page_title: "unifi_dynamic_dns Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_dynamic_dns manages dynamic DNS settings for different providers.
+  The unifi_dynamic_dns resource manages Dynamic DNS (DDNS).
+  Dynamic DNS allows you to access your network using a domain name even when your public IP address changes. This is useful for:
+  Remote access to your networkHosting services from your home/office networkVPN connections to your network
+  The resource supports various DDNS providers including:
+  DynDNSNo-IPDuck DNSAnd many others
+  Each DDNS configuration can be associated with either the primary (WAN) or secondary (WAN2) interface.
 ---
 
 # unifi_dynamic_dns (Resource)
 
-`unifi_dynamic_dns` manages dynamic DNS settings for different providers.
+The `unifi_dynamic_dns` resource manages Dynamic DNS (DDNS).
+
+Dynamic DNS allows you to access your network using a domain name even when your public IP address changes. This is useful for:
+  * Remote access to your network
+  * Hosting services from your home/office network
+  * VPN connections to your network
+
+The resource supports various DDNS providers including:
+  * DynDNS
+  * No-IP
+  * Duck DNS
+  * And many others
+
+Each DDNS configuration can be associated with either the primary (WAN) or secondary (WAN2) interface.
 
 ## Example Usage
 
@@ -29,17 +47,23 @@ resource "unifi_dynamic_dns" "test" {
 
 ### Required
 
-- `host_name` (String) The host name to update in the dynamic DNS service.
-- `service` (String) The Dynamic DNS service provider, various values are supported (for example `dyndns`, etc.).
+- `host_name` (String) The fully qualified domain name to update with your current public IP address (e.g., 'myhouse.dyndns.org' or 'myoffice.no-ip.com').
+- `service` (String) The Dynamic DNS service provider. Common values include:
+  * `dyndns` - DynDNS service
+  * `noip` - No-IP service
+  * `duckdns` - Duck DNS service
+Check your UniFi controller for the complete list of supported providers.
 
 ### Optional
 
-- `interface` (String) The interface for the dynamic DNS. Can be `wan` or `wan2`. Defaults to `wan`.
-- `login` (String) The server for the dynamic DNS service.
-- `password` (String, Sensitive) The server for the dynamic DNS service.
-- `server` (String) The server for the dynamic DNS service.
-- `site` (String) The name of the site to associate the dynamic DNS with.
+- `interface` (String) The WAN interface to use for the dynamic DNS updates. Valid values are:
+  * `wan` - Primary WAN interface (default)
+  * `wan2` - Secondary WAN interface Defaults to `wan`.
+- `login` (String) The username or login for your DDNS provider account.
+- `password` (String, Sensitive) The password or token for your DDNS provider account. This value will be stored securely and not displayed in logs.
+- `server` (String) The update server hostname for your DDNS provider. Usually not required as the UniFi controller knows the correct servers for common providers.
+- `site` (String) The name of the UniFi site where the dynamic DNS configuration should be created. If not specified, the default site will be used.
 
 ### Read-Only
 
-- `id` (String) The ID of the dynamic DNS.
+- `id` (String) The unique identifier of the dynamic DNS configuration in the UniFi controller.

@@ -3,12 +3,27 @@
 page_title: "unifi_radius_profile Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_radius_profile manages RADIUS profiles.
+  The unifi_radius_profile resource manages RADIUS authentication profiles for UniFi networks.
+  RADIUS (Remote Authentication Dial-In User Service) profiles enable enterprise-grade authentication and authorization for:
+  802.1X network access controlWPA2/WPA3-Enterprise wireless networksDynamic VLAN assignmentUser activity accounting
+  Each profile can be configured with:
+  Multiple authentication and accounting serversVLAN assignment settingsAccounting update intervals
 ---
 
 # unifi_radius_profile (Resource)
 
-`unifi_radius_profile` manages RADIUS profiles.
+The `unifi_radius_profile` resource manages RADIUS authentication profiles for UniFi networks.
+
+RADIUS (Remote Authentication Dial-In User Service) profiles enable enterprise-grade authentication and authorization for:
+  * 802.1X network access control
+  * WPA2/WPA3-Enterprise wireless networks
+  * Dynamic VLAN assignment
+  * User activity accounting
+
+Each profile can be configured with:
+  * Multiple authentication and accounting servers
+  * VLAN assignment settings
+  * Accounting update intervals
 
 
 
@@ -17,36 +32,44 @@ description: |-
 
 ### Required
 
-- `name` (String) The name of the profile.
+- `name` (String) A friendly name for the RADIUS profile to help identify its purpose (e.g., 'Corporate Users' or 'Guest Access').
 
 ### Optional
 
-- `accounting_enabled` (Boolean) Specifies whether to use RADIUS accounting. Defaults to `false`.
-- `acct_server` (Block List) RADIUS accounting servers. (see [below for nested schema](#nestedblock--acct_server))
-- `auth_server` (Block List) RADIUS authentication servers. (see [below for nested schema](#nestedblock--auth_server))
-- `interim_update_enabled` (Boolean) Specifies whether to use interim_update. Defaults to `false`.
-- `interim_update_interval` (Number) Specifies interim_update interval. Defaults to `3600`.
-- `site` (String) The name of the site to associate the settings with.
-- `use_usg_acct_server` (Boolean) Specifies whether to use usg as a RADIUS accounting server. Defaults to `false`.
-- `use_usg_auth_server` (Boolean) Specifies whether to use usg as a RADIUS authentication server. Defaults to `false`.
-- `vlan_enabled` (Boolean) Specifies whether to use vlan on wired connections. Defaults to `false`.
-- `vlan_wlan_mode` (String) Specifies whether to use vlan on wireless connections. Must be one of `disabled`, `optional`, or `required`. Defaults to ``.
+- `accounting_enabled` (Boolean) Enable RADIUS accounting to track user sessions, including login/logout times and data usage. Useful for billing and audit purposes. Defaults to `false`.
+- `acct_server` (Block List) List of RADIUS accounting servers to use with this profile. Accounting servers track session data like connection time and data usage. Each server requires:
+  * IP address of the RADIUS server
+  * Port number (default: 1813)
+  * Shared secret for secure communication (see [below for nested schema](#nestedblock--acct_server))
+- `auth_server` (Block List) List of RADIUS authentication servers to use with this profile. Multiple servers provide failover - if the first server is unreachable, the system will try the next server in the list. Each server requires:
+  * IP address of the RADIUS server
+  * Shared secret for secure communication (see [below for nested schema](#nestedblock--auth_server))
+- `interim_update_enabled` (Boolean) Enable periodic updates during active sessions. This allows tracking of ongoing session data like bandwidth usage. Defaults to `false`.
+- `interim_update_interval` (Number) The interval (in seconds) between interim updates when `interim_update_enabled` is true. Default is 3600 seconds (1 hour). Defaults to `3600`.
+- `site` (String) The name of the UniFi site where the RADIUS profile should be created. If not specified, the default site will be used.
+- `use_usg_acct_server` (Boolean) Use the controller as a RADIUS accounting server. This allows local accounting without an external RADIUS server. Defaults to `false`.
+- `use_usg_auth_server` (Boolean) Use the controller as a RADIUS authentication server. This allows local authentication without an external RADIUS server. Defaults to `false`.
+- `vlan_enabled` (Boolean) Enable VLAN assignment for wired clients based on RADIUS attributes. This allows network segmentation based on user authentication. Defaults to `false`.
+- `vlan_wlan_mode` (String) VLAN assignment mode for wireless networks. Valid values are:
+  * `disabled` - Do not use RADIUS-assigned VLANs
+  * `optional` - Use RADIUS-assigned VLAN if provided
+  * `required` - Require RADIUS-assigned VLAN for authentication to succeed Defaults to ``.
 
 ### Read-Only
 
-- `id` (String) The ID of the settings.
+- `id` (String) The unique identifier of the RADIUS profile in the UniFi controller.
 
 <a id="nestedblock--acct_server"></a>
 ### Nested Schema for `acct_server`
 
 Required:
 
-- `ip` (String) IP address of accounting service server.
-- `xsecret` (String, Sensitive) RADIUS secret.
+- `ip` (String) The IPv4 address of the RADIUS accounting server (e.g., '192.168.1.100'). Must be reachable from your UniFi network.
+- `xsecret` (String, Sensitive) The shared secret key used to secure communication between the UniFi controller and the RADIUS server. This must match the secret configured on your RADIUS server.
 
 Optional:
 
-- `port` (Number) Port of accounting service. Defaults to `1813`.
+- `port` (Number) The UDP port number where the RADIUS accounting service is listening. The standard port is 1813, but this can be changed if needed to match your server configuration. Defaults to `1813`.
 
 
 <a id="nestedblock--auth_server"></a>
@@ -54,9 +77,9 @@ Optional:
 
 Required:
 
-- `ip` (String) IP address of authentication service server.
-- `xsecret` (String, Sensitive) RADIUS secret.
+- `ip` (String) The IPv4 address of the RADIUS authentication server (e.g., '192.168.1.100'). Must be reachable from your UniFi network.
+- `xsecret` (String, Sensitive) The shared secret key used to secure communication between the UniFi controller and the RADIUS server. This must match the secret configured on your RADIUS server.
 
 Optional:
 
-- `port` (Number) Port of authentication service. Defaults to `1812`.
+- `port` (Number) The UDP port number where the RADIUS authentication service is listening. The standard port is 1812, but this can be changed if needed to match your server configuration. Defaults to `1812`.

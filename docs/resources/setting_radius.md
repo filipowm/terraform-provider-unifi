@@ -3,12 +3,29 @@
 page_title: "unifi_setting_radius Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_setting_radius manages settings for the built-in RADIUS server.
+  The unifi_setting_radius resource manages the built-in RADIUS server configuration in the UniFi controller.
+  This resource allows you to configure:
+  Authentication settings for network access controlAccounting settings for tracking user sessionsSecurity features like tunneled replies
+  The RADIUS server is commonly used for:
+  Enterprise WPA2/WPA3-Enterprise wireless networks802.1X port-based network access controlCentralized user authentication and accounting
+  When enabled, the RADIUS server can authenticate clients using the UniFi user database or external authentication sources.
 ---
 
 # unifi_setting_radius (Resource)
 
-`unifi_setting_radius` manages settings for the built-in RADIUS server.
+The `unifi_setting_radius` resource manages the built-in RADIUS server configuration in the UniFi controller.
+
+This resource allows you to configure:
+  * Authentication settings for network access control
+  * Accounting settings for tracking user sessions
+  * Security features like tunneled replies
+
+The RADIUS server is commonly used for:
+  * Enterprise WPA2/WPA3-Enterprise wireless networks
+  * 802.1X port-based network access control
+  * Centralized user authentication and accounting
+
+When enabled, the RADIUS server can authenticate clients using the UniFi user database or external authentication sources.
 
 
 
@@ -17,15 +34,15 @@ description: |-
 
 ### Optional
 
-- `accounting_enabled` (Boolean) Enable RADIUS accounting Defaults to `false`.
-- `accounting_port` (Number) The port for accounting communications. Defaults to `1813`.
-- `auth_port` (Number) The port for authentication communications. Defaults to `1812`.
-- `enabled` (Boolean) RAIDUS server enabled. Defaults to `true`.
-- `interim_update_interval` (Number) Statistics will be collected from connected clients at this interval. Defaults to `3600`.
-- `secret` (String, Sensitive) RAIDUS secret passphrase. Defaults to ``.
-- `site` (String) The name of the site to associate the settings with.
-- `tunneled_reply` (Boolean) Encrypt communication between the server and the client. Defaults to `true`.
+- `accounting_enabled` (Boolean) Enable RADIUS accounting to track user sessions, including connection time, data usage, and other metrics. This information can be useful for billing, capacity planning, and security auditing. Defaults to `false`.
+- `accounting_port` (Number) The UDP port number for RADIUS accounting communications. The standard port is 1813. Only change this if you need to avoid port conflicts or match specific network requirements. Defaults to `1813`.
+- `auth_port` (Number) The UDP port number for RADIUS authentication communications. The standard port is 1812. Only change this if you need to avoid port conflicts or match specific network requirements. Defaults to `1812`.
+- `enabled` (Boolean) Enable or disable the built-in RADIUS server. When disabled, no RADIUS authentication or accounting services will be provided, affecting any network services that rely on RADIUS (like WPA2-Enterprise networks). Defaults to `true`.
+- `interim_update_interval` (Number) The interval (in seconds) at which the RADIUS server collects and updates statistics from connected clients. Default is 3600 seconds (1 hour). Lower values provide more frequent updates but increase server load. Defaults to `3600`.
+- `secret` (String, Sensitive) The shared secret passphrase used to authenticate RADIUS clients (like wireless access points) with the RADIUS server. This should be a strong, random string known only to the server and its clients. Defaults to ``.
+- `site` (String) The name of the UniFi site where these RADIUS settings should be applied. If not specified, the default site will be used.
+- `tunneled_reply` (Boolean) Enable encrypted communication between the RADIUS server and clients using RADIUS tunneling. This adds an extra layer of security by protecting RADIUS attributes in transit. Defaults to `true`.
 
 ### Read-Only
 
-- `id` (String) The ID of the settings.
+- `id` (String) The unique identifier of the RADIUS settings configuration in the UniFi controller.

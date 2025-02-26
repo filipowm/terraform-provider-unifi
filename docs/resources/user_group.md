@@ -3,12 +3,33 @@
 page_title: "unifi_user_group Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_user_group manages a user group (called "client group" in the UI), which can be used to limit bandwidth for groups of users.
+  The unifi_user_group resource manages client groups in the UniFi controller, which allow you to apply common settings and restrictions to multiple network clients.
+  User groups are primarily used for:
+  Implementing Quality of Service (QoS) policiesSetting bandwidth limits for different types of usersOrganizing clients into logical groups (e.g., Staff, Guests, IoT devices)
+  Key features include:
+  Download rate limitingUpload rate limitingGroup-based policy application
+  User groups are particularly useful in:
+  Educational environments (different policies for staff and students)Guest networks (limiting guest bandwidth)Shared office spaces (managing different tenant groups)
 ---
 
 # unifi_user_group (Resource)
 
-`unifi_user_group` manages a user group (called "client group" in the UI), which can be used to limit bandwidth for groups of users.
+The `unifi_user_group` resource manages client groups in the UniFi controller, which allow you to apply common settings and restrictions to multiple network clients.
+
+User groups are primarily used for:
+  * Implementing Quality of Service (QoS) policies
+  * Setting bandwidth limits for different types of users
+  * Organizing clients into logical groups (e.g., Staff, Guests, IoT devices)
+
+Key features include:
+  * Download rate limiting
+  * Upload rate limiting
+  * Group-based policy application
+
+User groups are particularly useful in:
+  * Educational environments (different policies for staff and students)
+  * Guest networks (limiting guest bandwidth)
+  * Shared office spaces (managing different tenant groups)
 
 ## Example Usage
 
@@ -26,17 +47,17 @@ resource "unifi_user_group" "wifi" {
 
 ### Required
 
-- `name` (String) The name of the user group.
+- `name` (String) A descriptive name for the user group (e.g., 'Staff', 'Guests', 'IoT Devices'). This name will be displayed in the UniFi controller interface and used when assigning clients to the group.
 
 ### Optional
 
-- `qos_rate_max_down` (Number) The QOS maximum download rate. Defaults to `-1`.
-- `qos_rate_max_up` (Number) The QOS maximum upload rate. Defaults to `-1`.
-- `site` (String) The name of the site to associate the user group with.
+- `qos_rate_max_down` (Number) The maximum allowed download speed in Kbps (kilobits per second) for clients in this group. Set to -1 for unlimited. Note: Values of 0 or 1 are not allowed. Defaults to `-1`.
+- `qos_rate_max_up` (Number) The maximum allowed upload speed in Kbps (kilobits per second) for clients in this group. Set to -1 for unlimited. Note: Values of 0 or 1 are not allowed. Defaults to `-1`.
+- `site` (String) The name of the UniFi site where this user group should be created. If not specified, the default site will be used.
 
 ### Read-Only
 
-- `id` (String) The ID of the user group.
+- `id` (String) The unique identifier of the user group in the UniFi controller. This is automatically assigned.
 
 ## Import
 

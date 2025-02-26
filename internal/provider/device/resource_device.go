@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -19,10 +20,11 @@ import (
 
 func ResourceDevice() *schema.Resource {
 	return &schema.Resource{
-		Description: "`unifi_device` manages a device of the network.\n\n" +
-			"Devices are adopted by the controller, so it is not possible for this resource to be created through " +
-			"Terraform, the create operation instead will simply start managing the device specified by MAC address. " +
-			"It's safer to start this process with an explicit import of the device.",
+		Description: "The `unifi_device` resource manages UniFi network devices such as access points, switches, gateways, etc.\n\n" +
+			"Devices must first be adopted by the UniFi controller before they can be managed through Terraform. " +
+			"This resource cannot create new devices, but instead allows you to manage existing devices that have already been adopted. " +
+			"The recommended approach is to adopt devices through the UniFi controller UI first, then import them into Terraform using the device's MAC address.\n\n" +
+			"This resource supports managing device names, port configurations, and other device-specific settings.",
 
 		CreateContext: resourceDeviceCreate,
 		ReadContext:   resourceDeviceRead,
@@ -34,19 +36,19 @@ func ResourceDevice() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Description: "The ID of the device.",
+				Description: "The unique identifier of the device in the UniFi controller.",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
 			"site": {
-				Description: "The name of the site to associate the device with.",
+				Description: "The name of the UniFi site where the device is located. If not specified, the default site will be used.",
 				Type:        schema.TypeString,
 				Computed:    true,
 				Optional:    true,
 				ForceNew:    true,
 			},
 			"mac": {
-				Description:      "The MAC address of the device. This can be specified so that the provider can take control of a device (since devices are created through adoption).",
+				Description:      "The MAC address of the device in standard format (e.g., 'aa:bb:cc:dd:ee:ff'). This is used to identify and manage specific devices that have already been adopted by the controller.",
 				Type:             schema.TypeString,
 				Optional:         true,
 				Computed:         true,
@@ -55,41 +57,66 @@ func ResourceDevice() *schema.Resource {
 				ValidateFunc:     validation.StringMatch(utils.MacAddressRegexp, "Mac address is invalid"),
 			},
 			"name": {
-				Description: "The name of the device.",
-				Type:        schema.TypeString,
-				Optional:    true,
-				Computed:    true,
+				Description: "A friendly name for the device that will be displayed in the UniFi controller UI. Examples:\n" +
+					"* 'Office-AP-1' for an access point\n" +
+					"* 'Core-Switch-01' for a switch\n" +
+					"* 'Main-Gateway' for a gateway\n" +
+					"Choose descriptive names that indicate location and purpose.",
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
 			},
 			"disabled": {
-				Description: "Specifies whether this device should be disabled.",
+				Description: "Whether the device is administratively disabled. When true, the device will not forward traffic or provide services.",
 				Type:        schema.TypeBool,
 				Computed:    true,
 			},
 			"port_override": {
-				Description: "Settings overrides for specific switch ports.",
 				// TODO: this should really be a map or something when possible in the SDK
 				// see https://github.com/hashicorp/terraform-plugin-sdk/issues/62
+				Description: "A list of port-specific configuration overrides for UniFi switches. This allows you to customize individual port settings such as:\n" +
+					"  * Port names and labels for easy identification\n" +
+					"  * Port profiles for VLAN and security settings\n" +
+					"  * Operating modes for special functions\n\n" +
+					"Common use cases include:\n" +
+					"  * Setting up trunk ports for inter-switch connections\n" +
+					"  * Configuring PoE settings for powered devices\n" +
+					"  * Creating mirrored ports for network monitoring\n" +
+					"  * Setting up link aggregation between switches or servers",
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"number": {
-							Description: "Switch port number.",
+							Description: "The physical port number on the switch to configure.",
 							Type:        schema.TypeInt,
 							Required:    true,
 						},
 						"name": {
-							Description: "Human-readable name of the port.",
-							Type:        schema.TypeString,
-							Optional:    true,
+							Description: "A friendly name for the port that will be displayed in the UniFi controller UI. Examples:\n" +
+								"  * 'Uplink to Core Switch'\n" +
+								"  * 'Conference Room AP'\n" +
+								"  * 'Server LACP Group 1'\n" +
+								"  * 'VoIP Phone Port'",
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 						"port_profile_id": {
-							Description: "ID of the Port Profile used on this port.",
+							Description: "The ID of a pre-configured port profile to apply to this port. Port profiles define settings like VLANs, PoE, and other port-specific configurations.",
 							Type:        schema.TypeString,
 							Optional:    true,
 						},
 						"op_mode": {
-							Description:  "Operating mode of the port, valid values are `switch`, `mirror`, and `aggregate`.",
+							Description: "The operating mode of the port. Valid values are:\n" +
+								"  * `switch` - Normal switching mode (default)\n" +
+								"    - Standard port operation for connecting devices\n" +
+								"    - Supports VLANs and all standard switching features\n" +
+								"  * `mirror` - Port mirroring for traffic analysis\n" +
+								"    - Copies traffic from other ports for monitoring\n" +
+								"    - Useful for network troubleshooting and security\n" +
+								"  * `aggregate` - Link aggregation/bonding mode\n" +
+								"    - Combines multiple ports for increased bandwidth\n" +
+								"    - Used for switch uplinks or high-bandwidth servers",
 							Type:         schema.TypeString,
 							Optional:     true,
 							Default:      "switch",
@@ -102,13 +129,29 @@ func ResourceDevice() *schema.Resource {
 							},
 						},
 						"poe_mode": {
-							Description:  "PoE mode of the port; valid values are `auto`, `pasv24`, `passthrough`, and `off`.",
+							Description: "The Power over Ethernet (PoE) mode for the port. Valid values are:\n" +
+								"* `auto` - Automatically detect and power PoE devices (recommended)\n" +
+								"  - Provides power based on device negotiation\n" +
+								"  - Safest option for most PoE devices\n" +
+								"* `pasv24` - Passive 24V PoE\n" +
+								"  - For older UniFi devices requiring passive 24V\n" +
+								"  - Use with caution to avoid damage\n" +
+								"* `passthrough` - PoE passthrough mode\n" +
+								"  - For daisy-chaining PoE devices\n" +
+								"  - Available on select UniFi switches\n" +
+								"* `off` - Disable PoE on the port\n" +
+								"  - For non-PoE devices\n" +
+								"  - To prevent unwanted power delivery",
 							Type:         schema.TypeString,
 							Optional:     true,
 							ValidateFunc: validation.StringInSlice([]string{"auto", "pasv24", "passthrough", "off"}, false),
 						},
 						"aggregate_num_ports": {
-							Description:  "Number of ports in the aggregate.",
+							Description: "The number of ports to include in a link aggregation group (LAG). Valid range: 2-8 ports. Used when:\n" +
+								"* Creating switch-to-switch uplinks for increased bandwidth\n" +
+								"* Setting up high-availability connections\n" +
+								"* Connecting to servers requiring more bandwidth\n" +
+								"Note: All ports in the LAG must be sequential and have matching configurations.",
 							Type:         schema.TypeInt,
 							Optional:     true,
 							ValidateFunc: validation.IntBetween(2, 8),
@@ -124,16 +167,24 @@ func ResourceDevice() *schema.Resource {
 			},
 
 			"allow_adoption": {
-				Description: "Specifies whether this resource should tell the controller to adopt the device on create.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     true,
+				Description: "Whether to automatically adopt the device when creating this resource. When true:\n" +
+					"* The controller will attempt to adopt the device\n" +
+					"* Device must be in a pending adoption state\n" +
+					"* Device must be accessible on the network\n" +
+					"Set to false if you want to manage adoption manually.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
 			},
 			"forget_on_destroy": {
-				Description: "Specifies whether this resource should tell the controller to forget the device on destroy.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     true,
+				Description: "Whether to forget (un-adopt) the device when this resource is destroyed. When true:\n" +
+					"* The device will be removed from the controller\n" +
+					"* The device will need to be readopted to be managed again\n" +
+					"* Device configuration will be reset\n" +
+					"Set to false to keep the device adopted when removing from Terraform management.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
 			},
 		},
 	}

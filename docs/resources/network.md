@@ -3,12 +3,27 @@
 page_title: "unifi_network Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_network manages WAN/LAN/VLAN networks.
+  The unifi_network resource manages networks in your UniFi environment, including WAN, LAN, and VLAN networks. This resource enables you to:
+  Create and manage different types of networks (corporate, guest, WAN, VLAN-only)Configure network addressing and DHCP settingsSet up IPv6 networking featuresManage DHCP relay and DNS settingsConfigure network groups and VLANs
+  Common use cases include:
+  Setting up corporate and guest networks with different security policiesConfiguring WAN connectivity with various authentication methodsCreating VLANs for network segmentationManaging DHCP and DNS services for network clients
 ---
 
 # unifi_network (Resource)
 
-`unifi_network` manages WAN/LAN/VLAN networks.
+The `unifi_network` resource manages networks in your UniFi environment, including WAN, LAN, and VLAN networks. This resource enables you to:
+
+* Create and manage different types of networks (corporate, guest, WAN, VLAN-only)
+* Configure network addressing and DHCP settings
+* Set up IPv6 networking features
+* Manage DHCP relay and DNS settings
+* Configure network groups and VLANs
+
+Common use cases include:
+* Setting up corporate and guest networks with different security policies
+* Configuring WAN connectivity with various authentication methods
+* Creating VLANs for network segmentation
+* Managing DHCP and DNS services for network clients
 
 ## Example Usage
 
@@ -46,60 +61,200 @@ resource "unifi_network" "wan" {
 
 ### Required
 
-- `name` (String) The name of the network.
-- `purpose` (String) The purpose of the network. Must be one of `corporate`, `guest`, `wan`, or `vlan-only`.
+- `name` (String) The name of the network. This should be a descriptive name that helps identify the network's purpose, such as 'Corporate-Main', 'Guest-Network', or 'IoT-VLAN'.
+- `purpose` (String) The purpose/type of the network. Must be one of:
+* `corporate` - Standard network for corporate use with full access
+* `guest` - Isolated network for guest access with limited permissions
+* `wan` - External network connection (WAN uplink)
+* `vlan-only` - VLAN network without DHCP services
 
 ### Optional
 
-- `dhcp_dns` (List of String) Specifies the IPv4 addresses for the DNS server to be returned from the DHCP server. Leave blank to disable this feature.
-- `dhcp_enabled` (Boolean) Specifies whether DHCP is enabled or not on this network.
-- `dhcp_lease` (Number) Specifies the lease time for DHCP addresses in seconds. Defaults to `86400`.
-- `dhcp_relay_enabled` (Boolean) Specifies whether DHCP relay is enabled or not on this network.
-- `dhcp_start` (String) The IPv4 address where the DHCP range of addresses starts.
-- `dhcp_stop` (String) The IPv4 address where the DHCP range of addresses stops.
-- `dhcp_v6_dns` (List of String) Specifies the IPv6 addresses for the DNS server to be returned from the DHCP server. Used if `dhcp_v6_dns_auto` is set to `false`.
-- `dhcp_v6_dns_auto` (Boolean) Specifies DNS source to propagate. If set `false` the entries in `dhcp_v6_dns` are used, the upstream entries otherwise Defaults to `true`.
-- `dhcp_v6_enabled` (Boolean) Enable stateful DHCPv6 for static configuration.
-- `dhcp_v6_lease` (Number) Specifies the lease time for DHCPv6 addresses in seconds. Defaults to `86400`.
-- `dhcp_v6_start` (String) Start address of the DHCPv6 range. Used in static DHCPv6 configuration.
-- `dhcp_v6_stop` (String) End address of the DHCPv6 range. Used in static DHCPv6 configuration.
-- `dhcpd_boot_enabled` (Boolean) Toggles on the DHCP boot options. Should be set to true when you want to have dhcpd_boot_filename, and dhcpd_boot_server to take effect.
-- `dhcpd_boot_filename` (String) Specifies the file to PXE boot from on the dhcpd_boot_server.
-- `dhcpd_boot_server` (String) Specifies the IPv4 address of a TFTP server to network boot from.
-- `domain_name` (String) The domain name of this network.
-- `enabled` (Boolean) Specifies whether this network is enabled or not. Defaults to `true`.
-- `igmp_snooping` (Boolean) Specifies whether IGMP snooping is enabled or not.
-- `internet_access_enabled` (Boolean) Specifies whether this network should be allowed to access the internet or not. Defaults to `true`.
-- `ipv6_interface_type` (String) Specifies which type of IPv6 connection to use. Must be one of either `static`, `pd`, or `none`. Defaults to `none`.
-- `ipv6_pd_interface` (String) Specifies which WAN interface to use for IPv6 PD. Must be one of either `wan` or `wan2`.
-- `ipv6_pd_prefixid` (String) Specifies the IPv6 Prefix ID.
-- `ipv6_pd_start` (String) Start address of the DHCPv6 range. Used if `ipv6_interface_type` is set to `pd`.
-- `ipv6_pd_stop` (String) End address of the DHCPv6 range. Used if `ipv6_interface_type` is set to `pd`.
-- `ipv6_ra_enable` (Boolean) Specifies whether to enable router advertisements or not.
-- `ipv6_ra_preferred_lifetime` (Number) Lifetime in which the address can be used. Address becomes deprecated afterwards. Must be lower than or equal to `ipv6_ra_valid_lifetime` Defaults to `14400`.
-- `ipv6_ra_priority` (String) IPv6 router advertisement priority. Must be one of either `high`, `medium`, or `low`
-- `ipv6_ra_valid_lifetime` (Number) Total lifetime in which the address can be used. Must be equal to or greater than `ipv6_ra_preferred_lifetime`. Defaults to `86400`.
-- `ipv6_static_subnet` (String) Specifies the static IPv6 subnet when `ipv6_interface_type` is 'static'.
-- `multicast_dns` (Boolean) Specifies whether Multicast DNS (mDNS) is enabled or not on the network (Controller >=v7).
-- `network_group` (String) The group of the network. Defaults to `LAN`.
-- `network_isolation_enabled` (Boolean) Specifies whether this network should be isolated from other networks or not. Defaults to `false`.
+- `dhcp_dns` (List of String) List of IPv4 DNS server addresses to be provided to DHCP clients. Examples:
+* Use ['8.8.8.8', '8.8.4.4'] for Google DNS
+* Use ['1.1.1.1', '1.0.0.1'] for Cloudflare DNS
+* Use internal DNS servers for corporate networks
+Maximum 4 servers can be specified.
+- `dhcp_enabled` (Boolean) Controls whether DHCP server is enabled for this network. When enabled:
+* The network will automatically assign IP addresses to clients
+* DHCP options (DNS, lease time) will be provided to clients
+* Static IP assignments can still be made outside the DHCP range
+- `dhcp_lease` (Number) The DHCP lease time in seconds. Common values:
+* 86400 (1 day) - Default, suitable for most networks
+* 3600 (1 hour) - For testing or temporary networks
+* 604800 (1 week) - For stable networks with static clients
+* 2592000 (30 days) - For very stable networks Defaults to `86400`.
+- `dhcp_relay_enabled` (Boolean) Enables DHCP relay for this network. When enabled:
+* DHCP requests are forwarded to an external DHCP server
+* Local DHCP server is disabled
+* Useful for centralized DHCP management
+- `dhcp_start` (String) The starting IPv4 address of the DHCP range. Examples:
+* For subnet 192.168.1.0/24, typical start: '192.168.1.100'
+* For subnet 10.0.0.0/24, typical start: '10.0.0.100'
+Ensure this address is within the network's subnet.
+- `dhcp_stop` (String) The ending IPv4 address of the DHCP range. Examples:
+* For subnet 192.168.1.0/24, typical stop: '192.168.1.254'
+* For subnet 10.0.0.0/24, typical stop: '10.0.0.254'
+Must be greater than dhcp_start and within the network's subnet.
+- `dhcp_v6_dns` (List of String) List of IPv6 DNS server addresses for DHCPv6 clients. Examples:
+* Use ['2001:4860:4860::8888', '2001:4860:4860::8844'] for Google DNS
+* Use ['2606:4700:4700::1111', '2606:4700:4700::1001'] for Cloudflare DNS
+Only used when dhcp_v6_dns_auto is false. Maximum of 4 addresses are allowed.
+- `dhcp_v6_dns_auto` (Boolean) Controls DNS server source for DHCPv6 clients:
+* true - Use upstream DNS servers (recommended)
+* false - Use manually specified servers from dhcp_v6_dns
+Default is true for easier management. Defaults to `true`.
+- `dhcp_v6_enabled` (Boolean) Enables stateful DHCPv6 for IPv6 address assignment. When enabled:
+* Provides IPv6 addresses to clients
+* Works alongside SLAAC if configured
+* Allows for more controlled IPv6 addressing
+- `dhcp_v6_lease` (Number) The DHCPv6 lease time in seconds. Common values:
+* 86400 (1 day) - Default setting
+* 3600 (1 hour) - For testing
+* 604800 (1 week) - For stable networks
+Typically longer than IPv4 DHCP leases. Defaults to `86400`.
+- `dhcp_v6_start` (String) The starting IPv6 address for the DHCPv6 range. Used in static DHCPv6 configuration.
+Must be a valid IPv6 address within your allocated IPv6 subnet.
+- `dhcp_v6_stop` (String) The ending IPv6 address for the DHCPv6 range. Used in static DHCPv6 configuration.
+Must be after dhcp_v6_start in the IPv6 address space.
+- `dhcpd_boot_enabled` (Boolean) Enables DHCP boot options for PXE boot or network boot configurations. When enabled:
+* Allows network devices to boot from a TFTP server
+* Requires dhcpd_boot_server and dhcpd_boot_filename to be set
+* Commonly used for diskless workstations or network installations
+- `dhcpd_boot_filename` (String) The boot filename to be loaded from the TFTP server. Examples:
+* 'pxelinux.0' - Standard PXE boot loader
+* 'undionly.kpxe' - iPXE boot loader
+* Custom paths for specific boot images
+- `dhcpd_boot_server` (String) The IPv4 address of the TFTP server for network boot. This setting:
+* Is required when dhcpd_boot_enabled is true
+* Should be a reliable, always-on server
+* Must be accessible to all clients that need to boot
+- `domain_name` (String) The domain name for this network. Examples:
+* 'corp.example.com' - For corporate networks
+* 'guest.example.com' - For guest networks
+* 'iot.example.com' - For IoT networks
+Used for internal DNS resolution and DHCP options.
+- `enabled` (Boolean) Controls whether this network is active. When disabled:
+* Network will not be available to clients
+* DHCP services will be stopped
+* Existing clients will be disconnected
+Useful for temporary network maintenance or security measures. Defaults to `true`.
+- `igmp_snooping` (Boolean) Enables IGMP (Internet Group Management Protocol) snooping. When enabled:
+* Optimizes multicast traffic flow
+* Reduces network congestion
+* Improves performance for multicast applications (e.g., IPTV)
+Recommended for networks with multicast traffic.
+- `internet_access_enabled` (Boolean) Controls internet access for this network. When disabled:
+* Clients cannot access external networks
+* Internal network access remains available
+* Useful for creating isolated or secure networks Defaults to `true`.
+- `ipv6_interface_type` (String) Specifies the IPv6 connection type. Must be one of:
+* `none` - IPv6 disabled (default)
+* `static` - Static IPv6 addressing
+* `pd` - Prefix Delegation from upstream
+
+Choose based on your IPv6 deployment strategy and ISP capabilities. Defaults to `none`.
+- `ipv6_pd_interface` (String) The WAN interface to use for IPv6 Prefix Delegation. Options:
+* `wan` - Primary WAN interface
+* `wan2` - Secondary WAN interface
+Only applicable when `ipv6_interface_type` is 'pd'.
+- `ipv6_pd_prefixid` (String) The IPv6 Prefix ID for Prefix Delegation. Used to:
+* Differentiate multiple delegated prefixes
+* Create unique subnets from the delegated prefix
+Typically a hexadecimal value (e.g., '0', '1', 'a1').
+- `ipv6_pd_start` (String) The starting IPv6 address for Prefix Delegation range.
+Only used when `ipv6_interface_type` is 'pd'.
+Must be within the delegated prefix range.
+- `ipv6_pd_stop` (String) The ending IPv6 address for Prefix Delegation range.
+Only used when `ipv6_interface_type` is 'pd'.
+Must be after `ipv6_pd_start` within the delegated prefix.
+- `ipv6_ra_enable` (Boolean) Enables IPv6 Router Advertisements (RA). When enabled:
+* Announces IPv6 prefix information to clients
+* Enables SLAAC address configuration
+* Required for most IPv6 deployments
+- `ipv6_ra_preferred_lifetime` (Number) The preferred lifetime (in seconds) for IPv6 addresses in Router Advertisements.
+* Must be less than or equal to `ipv6_ra_valid_lifetime`
+* Default: 14400 (4 hours)
+* After this time, addresses become deprecated but still usable Defaults to `14400`.
+- `ipv6_ra_priority` (String) Sets the priority for IPv6 Router Advertisements. Options:
+* `high` - Preferred for primary networks
+* `medium` - Standard priority
+* `low` - For backup or secondary networks
+Affects router selection when multiple IPv6 routers exist.
+- `ipv6_ra_valid_lifetime` (Number) The valid lifetime (in seconds) for IPv6 addresses in Router Advertisements.
+* Must be greater than or equal to `ipv6_ra_preferred_lifetime`
+* Default: 86400 (24 hours)
+* After this time, addresses become invalid Defaults to `86400`.
+- `ipv6_static_subnet` (String) The static IPv6 subnet in CIDR notation (e.g., '2001:db8::/64') when using static IPv6.
+Only applicable when `ipv6_interface_type` is 'static'.
+Must be a valid IPv6 subnet allocated to your organization.
+- `multicast_dns` (Boolean) Enables Multicast DNS (mDNS/Bonjour/Avahi) on the network. When enabled:
+* Allows device discovery (e.g., printers, Chromecasts)
+* Supports zero-configuration networking
+* Available on Controller version 7 and later
+- `network_group` (String) The network group for this network. Default is 'LAN'. For WAN networks, use 'WAN' or 'WAN2'. Network groups help organize and apply policies to multiple networks. Defaults to `LAN`.
+- `network_isolation_enabled` (Boolean) Enables network isolation. When enabled:
+* Prevents communication between clients on this network
+* Each client can only communicate with the gateway
+* Commonly used for guest networks or IoT devices Defaults to `false`.
 - `site` (String) The name of the site to associate the network with.
-- `subnet` (String) The subnet of the network. Must be a valid CIDR address.
-- `vlan_id` (Number) The VLAN ID of the network.
-- `wan_dhcp_v6_pd_size` (Number) Specifies the IPv6 prefix size to request from ISP. Must be between 48 and 64.
-- `wan_dns` (List of String) DNS servers IPs of the WAN.
-- `wan_egress_qos` (Number) Specifies the WAN egress quality of service. Defaults to `0`.
-- `wan_gateway` (String) The IPv4 gateway of the WAN.
-- `wan_gateway_v6` (String) The IPv6 gateway of the WAN.
-- `wan_ip` (String) The IPv4 address of the WAN.
-- `wan_ipv6` (String) The IPv6 address of the WAN.
-- `wan_netmask` (String) The IPv4 netmask of the WAN.
-- `wan_networkgroup` (String) Specifies the WAN network group. Must be one of either `WAN`, `WAN2` or `WAN_LTE_FAILOVER`.
-- `wan_prefixlen` (Number) The IPv6 prefix length of the WAN. Must be between 1 and 128.
-- `wan_type` (String) Specifies the IPV4 WAN connection type. Must be one of either `disabled`, `static`, `dhcp`, or `pppoe`.
-- `wan_type_v6` (String) Specifies the IPV6 WAN connection type. Must be one of either `disabled`, `static`, or `dhcpv6`.
-- `wan_username` (String) Specifies the IPV4 WAN username.
-- `x_wan_password` (String) Specifies the IPV4 WAN password.
+- `subnet` (String) The IPv4 subnet for this network in CIDR notation (e.g., '192.168.1.0/24'). This defines the network's address space and determines the range of IP addresses available for DHCP.
+- `vlan_id` (Number) The VLAN ID for this network. Valid range is 0-4096. Common uses:
+* 1-4094: Standard VLAN range for network segmentation
+* 0: Untagged/native VLAN
+* >4094: Reserved for special purposes
+- `wan_dhcp_v6_pd_size` (Number) The IPv6 prefix size to request from ISP. Must be between 48 and 64.
+Only applicable when `wan_type_v6` is 'dhcpv6'.
+- `wan_dns` (List of String) List of IPv4 DNS servers for WAN interface. Examples:
+* ISP provided DNS servers
+* Public DNS services (e.g., 8.8.8.8, 1.1.1.1)
+* Maximum 4 servers can be specified
+- `wan_egress_qos` (Number) Quality of Service (QoS) priority for WAN egress traffic (0-7).
+* 0 (default) - Best effort
+* 1-4 - Increasing priority
+* 5-7 - Highest priority, use sparingly
+Higher values get preferential treatment. Defaults to `0`.
+- `wan_gateway` (String) The IPv4 gateway address for WAN interface.
+Required when `wan_type` is 'static'.
+Typically the ISP's router IP address.
+- `wan_gateway_v6` (String) The IPv6 gateway address for WAN interface.
+Required when `wan_type_v6` is 'static'.
+Typically the ISP's router IPv6 address.
+- `wan_ip` (String) The static IPv4 address for WAN interface.
+Required when `wan_type` is 'static'.
+Must be a valid public IP address assigned by your ISP.
+- `wan_ipv6` (String) The static IPv6 address for WAN interface.
+Required when `wan_type_v6` is 'static'.
+Must be a valid public IPv6 address assigned by your ISP.
+- `wan_netmask` (String) The IPv4 netmask for WAN interface (e.g., '255.255.255.0').
+Required when `wan_type` is 'static'.
+Must match the subnet mask provided by your ISP.
+- `wan_networkgroup` (String) The WAN interface group assignment. Options:
+* `WAN` - Primary WAN interface
+* `WAN2` - Secondary WAN interface
+* `WAN_LTE_FAILOVER` - LTE backup connection
+Used for dual WAN and failover configurations.
+- `wan_prefixlen` (Number) The IPv6 prefix length for WAN interface. Must be between 1 and 128.
+Only applicable when `wan_type_v6` is 'static'.
+- `wan_type` (String) The IPv4 WAN connection type. Options:
+* `disabled` - WAN interface disabled
+* `static` - Static IP configuration
+* `dhcp` - Dynamic IP from ISP
+* `pppoe` - PPPoE connection (common for DSL)
+Choose based on your ISP's requirements.
+- `wan_type_v6` (String) The IPv6 WAN connection type. Options:
+* `disabled` - IPv6 disabled
+* `static` - Static IPv6 configuration
+* `dhcpv6` - Dynamic IPv6 from ISP
+Choose based on your ISP's requirements.
+- `wan_username` (String) Username for WAN authentication.
+* Required for PPPoE connections
+* May be needed for some ISP configurations
+* Cannot contain spaces or special characters
+- `x_wan_password` (String) Password for WAN authentication.
+* Required for PPPoE connections
+* May be needed for some ISP configurations
+* Must be kept secret
 
 ### Read-Only
 

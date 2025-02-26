@@ -3,6 +3,7 @@ package dns
 import (
 	"context"
 	"fmt"
+
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
@@ -52,22 +53,26 @@ func (d *dnsRecordDatasource) Metadata(_ context.Context, req datasource.Metadat
 
 func (d *dnsRecordDatasource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Retrieves information about a specific DNS record.",
-		Attributes:  dnsRecordDatasourceAttributes,
+		Description: "Retrieves information about a specific DNS record configured in your UniFi network. " +
+			"This data source allows you to look up DNS records by either their name or record content. " +
+			"It's particularly useful for validating existing DNS configurations or referencing DNS records in other resources.",
+		Attributes: dnsRecordDatasourceAttributes,
 		Blocks: map[string]schema.Block{
 			"filter": schema.SingleNestedBlock{
-				Description: "Filter to apply to the DNS record.",
+				Description: "Filter criteria to identify the specific DNS record. You must specify either the record name or content.",
 				Validators: []validator.Object{
 					objectvalidator.IsRequired(),
 				},
 				Attributes: map[string]schema.Attribute{
 					"name": schema.StringAttribute{
-						Description: "DNS record name.",
-						Optional:    true,
+						Description: "The DNS record name to look up (e.g., 'example.com', 'subdomain.example.com'). " +
+							"Cannot be specified together with `record`.",
+						Optional: true,
 					},
 					"record": schema.StringAttribute{
-						Description: "DNS record content.",
-						Optional:    true,
+						Description: "The DNS record content to look up (e.g., IP address for A records, target hostname for CNAME records). " +
+							"Cannot be specified together with `name`.",
+						Optional: true,
 					},
 				},
 			},

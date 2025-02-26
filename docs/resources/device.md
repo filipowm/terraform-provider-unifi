@@ -3,15 +3,18 @@
 page_title: "unifi_device Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_device manages a device of the network.
-  Devices are adopted by the controller, so it is not possible for this resource to be created through Terraform, the create operation instead will simply start managing the device specified by MAC address. It's safer to start this process with an explicit import of the device.
+  The unifi_device resource manages UniFi network devices such as access points, switches, gateways, etc.
+  Devices must first be adopted by the UniFi controller before they can be managed through Terraform. This resource cannot create new devices, but instead allows you to manage existing devices that have already been adopted. The recommended approach is to adopt devices through the UniFi controller UI first, then import them into Terraform using the device's MAC address.
+  This resource supports managing device names, port configurations, and other device-specific settings.
 ---
 
 # unifi_device (Resource)
 
-`unifi_device` manages a device of the network.
+The `unifi_device` resource manages UniFi network devices such as access points, switches, gateways, etc.
 
-Devices are adopted by the controller, so it is not possible for this resource to be created through Terraform, the create operation instead will simply start managing the device specified by MAC address. It's safer to start this process with an explicit import of the device.
+Devices must first be adopted by the UniFi controller before they can be managed through Terraform. This resource cannot create new devices, but instead allows you to manage existing devices that have already been adopted. The recommended approach is to adopt devices through the UniFi controller UI first, then import them into Terraform using the device's MAC address.
+
+This resource supports managing device names, port configurations, and other device-specific settings.
 
 ## Example Usage
 
@@ -66,29 +69,79 @@ resource "unifi_device" "us_24_poe" {
 
 ### Optional
 
-- `allow_adoption` (Boolean) Specifies whether this resource should tell the controller to adopt the device on create. Defaults to `true`.
-- `forget_on_destroy` (Boolean) Specifies whether this resource should tell the controller to forget the device on destroy. Defaults to `true`.
-- `mac` (String) The MAC address of the device. This can be specified so that the provider can take control of a device (since devices are created through adoption).
-- `name` (String) The name of the device.
-- `port_override` (Block Set) Settings overrides for specific switch ports. (see [below for nested schema](#nestedblock--port_override))
-- `site` (String) The name of the site to associate the device with.
+- `allow_adoption` (Boolean) Whether to automatically adopt the device when creating this resource. When true:
+* The controller will attempt to adopt the device
+* Device must be in a pending adoption state
+* Device must be accessible on the network
+Set to false if you want to manage adoption manually. Defaults to `true`.
+- `forget_on_destroy` (Boolean) Whether to forget (un-adopt) the device when this resource is destroyed. When true:
+* The device will be removed from the controller
+* The device will need to be readopted to be managed again
+* Device configuration will be reset
+Set to false to keep the device adopted when removing from Terraform management. Defaults to `true`.
+- `mac` (String) The MAC address of the device in standard format (e.g., 'aa:bb:cc:dd:ee:ff'). This is used to identify and manage specific devices that have already been adopted by the controller.
+- `name` (String) A friendly name for the device that will be displayed in the UniFi controller UI. Examples:
+* 'Office-AP-1' for an access point
+* 'Core-Switch-01' for a switch
+* 'Main-Gateway' for a gateway
+Choose descriptive names that indicate location and purpose.
+- `port_override` (Block Set) A list of port-specific configuration overrides for UniFi switches. This allows you to customize individual port settings such as:
+  * Port names and labels for easy identification
+  * Port profiles for VLAN and security settings
+  * Operating modes for special functions
+
+Common use cases include:
+  * Setting up trunk ports for inter-switch connections
+  * Configuring PoE settings for powered devices
+  * Creating mirrored ports for network monitoring
+  * Setting up link aggregation between switches or servers (see [below for nested schema](#nestedblock--port_override))
+- `site` (String) The name of the UniFi site where the device is located. If not specified, the default site will be used.
 
 ### Read-Only
 
-- `disabled` (Boolean) Specifies whether this device should be disabled.
-- `id` (String) The ID of the device.
+- `disabled` (Boolean) Whether the device is administratively disabled. When true, the device will not forward traffic or provide services.
+- `id` (String) The unique identifier of the device in the UniFi controller.
 
 <a id="nestedblock--port_override"></a>
 ### Nested Schema for `port_override`
 
 Required:
 
-- `number` (Number) Switch port number.
+- `number` (Number) The physical port number on the switch to configure.
 
 Optional:
 
-- `aggregate_num_ports` (Number) Number of ports in the aggregate.
-- `name` (String) Human-readable name of the port.
-- `op_mode` (String) Operating mode of the port, valid values are `switch`, `mirror`, and `aggregate`. Defaults to `switch`.
-- `poe_mode` (String) PoE mode of the port; valid values are `auto`, `pasv24`, `passthrough`, and `off`.
-- `port_profile_id` (String) ID of the Port Profile used on this port.
+- `aggregate_num_ports` (Number) The number of ports to include in a link aggregation group (LAG). Valid range: 2-8 ports. Used when:
+* Creating switch-to-switch uplinks for increased bandwidth
+* Setting up high-availability connections
+* Connecting to servers requiring more bandwidth
+Note: All ports in the LAG must be sequential and have matching configurations.
+- `name` (String) A friendly name for the port that will be displayed in the UniFi controller UI. Examples:
+  * 'Uplink to Core Switch'
+  * 'Conference Room AP'
+  * 'Server LACP Group 1'
+  * 'VoIP Phone Port'
+- `op_mode` (String) The operating mode of the port. Valid values are:
+  * `switch` - Normal switching mode (default)
+    - Standard port operation for connecting devices
+    - Supports VLANs and all standard switching features
+  * `mirror` - Port mirroring for traffic analysis
+    - Copies traffic from other ports for monitoring
+    - Useful for network troubleshooting and security
+  * `aggregate` - Link aggregation/bonding mode
+    - Combines multiple ports for increased bandwidth
+    - Used for switch uplinks or high-bandwidth servers Defaults to `switch`.
+- `poe_mode` (String) The Power over Ethernet (PoE) mode for the port. Valid values are:
+* `auto` - Automatically detect and power PoE devices (recommended)
+  - Provides power based on device negotiation
+  - Safest option for most PoE devices
+* `pasv24` - Passive 24V PoE
+  - For older UniFi devices requiring passive 24V
+  - Use with caution to avoid damage
+* `passthrough` - PoE passthrough mode
+  - For daisy-chaining PoE devices
+  - Available on select UniFi switches
+* `off` - Disable PoE on the port
+  - For non-PoE devices
+  - To prevent unwanted power delivery
+- `port_profile_id` (String) The ID of a pre-configured port profile to apply to this port. Port profiles define settings like VLANs, PoE, and other port-specific configurations.

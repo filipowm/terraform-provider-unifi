@@ -3,12 +3,18 @@
 page_title: "unifi_wlan Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_wlan manages a WiFi network / SSID.
+  The unifi_wlan resource manages wireless networks (SSIDs) on UniFi access points.
+  This resource allows you to create and manage WiFi networks with various security options including WPA2, WPA3, and enterprise authentication. You can configure features such as guest policies, minimum data rates, band steering, and scheduled availability.
+  Each WLAN can be customized with different security settings, VLAN assignments, and client options to meet specific networking requirements.
 ---
 
 # unifi_wlan (Resource)
 
-`unifi_wlan` manages a WiFi network / SSID.
+The `unifi_wlan` resource manages wireless networks (SSIDs) on UniFi access points.
+
+This resource allows you to create and manage WiFi networks with various security options including WPA2, WPA3, and enterprise authentication. You can configure features such as guest policies, minimum data rates, band steering, and scheduled availability.
+
+Each WLAN can be customized with different security settings, VLAN assignments, and client options to meet specific networking requirements.
 
 ## Example Usage
 
@@ -55,54 +61,65 @@ resource "unifi_wlan" "wifi" {
 
 ### Required
 
-- `name` (String) The SSID of the network. SSID length must be between 1 and 32 characters.
-- `security` (String) The type of WiFi security for this network. Valid values are: `wpapsk`, `wpaeap`, and `open`.
-- `user_group_id` (String) ID of the user group to use for this network.
+- `name` (String) The SSID (network name) that will be broadcast by the access points. Must be between 1 and 32 characters long.
+- `security` (String) The security protocol for the wireless network. Valid values are:
+  * `wpapsk` - WPA Personal (PSK) with WPA2/WPA3 options
+  * `wpaeap` - WPA Enterprise (802.1x)
+  * `open` - Open network (no encryption)
+- `user_group_id` (String) The ID of the user group that defines the rate limiting and firewall rules for clients on this network.
 
 ### Optional
 
-- `ap_group_ids` (Set of String) IDs of the AP groups to use for this network.
-- `bss_transition` (Boolean) Improves client transitions between APs when they have a weak signal. Defaults to `true`.
-- `fast_roaming_enabled` (Boolean) Enables 802.11r fast roaming. Defaults to `false`.
-- `hide_ssid` (Boolean) Indicates whether or not to hide the SSID from broadcast.
-- `is_guest` (Boolean) Indicates that this is a guest WLAN and should use guest behaviors.
-- `l2_isolation` (Boolean) Isolates stations on layer 2 (ethernet) level. Defaults to `false`.
-- `mac_filter_enabled` (Boolean) Indicates whether or not the MAC filter is turned of for the network.
-- `mac_filter_list` (Set of String) List of MAC addresses to filter (only valid if `mac_filter_enabled` is `true`).
-- `mac_filter_policy` (String) MAC address filter policy (only valid if `mac_filter_enabled` is `true`). Defaults to `deny`.
-- `minimum_data_rate_2g_kbps` (Number) Set minimum data rate control for 2G devices, in Kbps. Use `0` to disable minimum data rates. Valid values are: `1000`, `2000`, `5500`, `6000`, `9000`, `11000`, `12000`, `18000`, `24000`, `36000`, `48000`,  and `54000`.
-- `minimum_data_rate_5g_kbps` (Number) Set minimum data rate control for 5G devices, in Kbps. Use `0` to disable minimum data rates. Valid values are: `6000`, `9000`, `12000`, `18000`, `24000`, `36000`, `48000`,  and `54000`.
-- `multicast_enhance` (Boolean) Indicates whether or not Multicast Enhance is turned of for the network.
-- `network_id` (String) ID of the network for this SSID
-- `no2ghz_oui` (Boolean) Connect high performance clients to 5 GHz only. Defaults to `true`.
-- `passphrase` (String, Sensitive) The passphrase for the network, this is only required if `security` is not set to `open`.
-- `pmf_mode` (String) Enable Protected Management Frames. This cannot be disabled if using WPA 3. Valid values are `required`, `optional` and `disabled`. Defaults to `disabled`.
-- `proxy_arp` (Boolean) Reduces airtime usage by allowing APs to "proxy" common broadcast frames as unicast. Defaults to `false`.
-- `radius_profile_id` (String) ID of the RADIUS profile to use when security `wpaeap`. You can query this via the `unifi_radius_profile` data source.
-- `schedule` (Block List) Start and stop schedules for the WLAN (see [below for nested schema](#nestedblock--schedule))
-- `site` (String) The name of the site to associate the wlan with.
-- `uapsd` (Boolean) Enable Unscheduled Automatic Power Save Delivery. Defaults to `false`.
-- `wlan_band` (String) Radio band your WiFi network will use. Defaults to `both`.
-- `wpa3_support` (Boolean) Enable WPA 3 support (security must be `wpapsk` and PMF must be turned on).
-- `wpa3_transition` (Boolean) Enable WPA 3 and WPA 2 support (security must be `wpapsk` and `wpa3_support` must be true).
+- `ap_group_ids` (Set of String) IDs of the AP groups that should broadcast this SSID. Used to control which access points broadcast this network.
+- `bss_transition` (Boolean) Enable BSS Transition Management to help clients roam between APs more efficiently. Defaults to `true`.
+- `fast_roaming_enabled` (Boolean) Enable 802.11r Fast BSS Transition for seamless roaming between APs. Requires client device support. Defaults to `false`.
+- `hide_ssid` (Boolean) When enabled, the access points will not broadcast the network name (SSID). Clients will need to manually enter the SSID to connect.
+- `is_guest` (Boolean) Mark this as a guest network. Guest networks are isolated from other networks and can have special restrictions like captive portals.
+- `l2_isolation` (Boolean) Isolates wireless clients from each other at layer 2 (ethernet) level. When enabled, devices on this WLAN cannot communicate directly with each other, improving security especially for guest networks or IoT devices. Each client can only communicate with the gateway/router. Defaults to `false`.
+- `mac_filter_enabled` (Boolean) Enable MAC address filtering to control network access based on client MAC addresses. Works in conjunction with `mac_filter_list` and `mac_filter_policy`.
+- `mac_filter_list` (Set of String) List of MAC addresses to filter in XX:XX:XX:XX:XX:XX format. Only applied when `mac_filter_enabled` is true. MAC addresses are case-insensitive.
+- `mac_filter_policy` (String) MAC address filter policy. Valid values are:
+  * `allow` - Only allow listed MAC addresses
+  * `deny` - Block listed MAC addresses Defaults to `deny`.
+- `minimum_data_rate_2g_kbps` (Number) Minimum data rate for 2.4GHz devices in Kbps. Use `0` to disable. Valid values: `1000`, `2000`, `5500`, `6000`, `9000`, `11000`, `12000`, `18000`, `24000`, `36000`, `48000`,  and `54000`
+- `minimum_data_rate_5g_kbps` (Number) Minimum data rate for 5GHz devices in Kbps. Use `0` to disable. Valid values: `6000`, `9000`, `12000`, `18000`, `24000`, `36000`, `48000`,  and `54000`
+- `multicast_enhance` (Boolean) Enable multicast enhancement to convert multicast traffic to unicast for better reliability and performance, especially for applications like video streaming.
+- `network_id` (String) ID of the network (VLAN) for this SSID. Used to assign the WLAN to a specific network segment.
+- `no2ghz_oui` (Boolean) When enabled, devices from specific manufacturers (identified by their OUI - Organizationally Unique Identifier) will be prevented from connecting on 2.4GHz and forced to use 5GHz. This improves overall network performance by ensuring capable devices use the less congested 5GHz band. Common examples include newer smartphones and laptops. Defaults to `true`.
+- `passphrase` (String, Sensitive) The WPA pre-shared key (password) for the network. Required when security is not set to `open`.
+- `pmf_mode` (String) Protected Management Frames (PMF) mode. It cannot be disabled if using WPA3. Valid values are:
+  * `required` - All clients must support PMF (required for WPA3)
+  * `optional` - Clients can optionally use PMF (recommended when transitioning from WPA2 to WPA3)
+  * `disabled` - PMF is disabled (not compatible with WPA3) Defaults to `disabled`.
+- `proxy_arp` (Boolean) Enable ARP proxy on this WLAN. When enabled, the UniFi controller will respond to ARP requests on behalf of clients, reducing broadcast traffic and potentially improving network performance. This is particularly useful in high-density wireless environments. Defaults to `false`.
+- `radius_profile_id` (String) ID of the RADIUS profile to use for WPA Enterprise authentication (when security is 'wpaeap'). Reference existing profiles using the `unifi_radius_profile` data source.
+- `schedule` (Block List) Time-based access control configuration for the wireless network. Allows automatic enabling/disabling of the network on specified schedules. (see [below for nested schema](#nestedblock--schedule))
+- `site` (String) The name of the UniFi site where the wireless network should be created. If not specified, the default site will be used.
+- `uapsd` (Boolean) Enable Unscheduled Automatic Power Save Delivery to improve battery life for mobile devices. Defaults to `false`.
+- `wlan_band` (String) Radio band selection. Valid values:
+  * `both` - Both 2.4GHz and 5GHz (default)
+  * `2g` - 2.4GHz only
+  * `5g` - 5GHz only Defaults to `both`.
+- `wpa3_support` (Boolean) Enable WPA3 security protocol. Requires security to be set to `wpapsk` and PMF mode to be enabled. WPA3 provides enhanced security features over WPA2.
+- `wpa3_transition` (Boolean) Enable WPA3 transition mode, which allows both WPA2 and WPA3 clients to connect. This provides backward compatibility while gradually transitioning to WPA3. Requires security to be set to `wpapsk` and `wpa3_support` to be true.
 
 ### Read-Only
 
-- `id` (String) The ID of the network.
+- `id` (String) The unique identifier of the wireless network in the UniFi controller.
 
 <a id="nestedblock--schedule"></a>
 ### Nested Schema for `schedule`
 
 Required:
 
-- `day_of_week` (String) Day of week for the block. Valid values are `sun`, `mon`, `tue`, `wed`, `thu`, `fri`, `sat`.
-- `duration` (Number) Length of the block in minutes.
-- `start_hour` (Number) Start hour for the block (0-23).
+- `day_of_week` (String) Day of week. Valid values: `sun`, `mon`, `tue`, `wed`, `thu`, `fri`, `sat`.
+- `duration` (Number) Duration in minutes that the network should remain active.
+- `start_hour` (Number) Start hour in 24-hour format (0-23).
 
 Optional:
 
-- `name` (String) Name of the block.
-- `start_minute` (Number) Start minute for the block (0-59). Defaults to `0`.
+- `name` (String) Friendly name for this schedule block (e.g., 'Business Hours', 'Weekend Access').
+- `start_minute` (Number) Start minute (0-59). Defaults to `0`.
 
 ## Import
 

@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
@@ -13,10 +14,21 @@ import (
 
 func ResourceUser() *schema.Resource {
 	return &schema.Resource{
-		Description: "`unifi_user` manages a user (or \"client\" in the UI) of the network, these are identified " +
-			"by unique MAC addresses.\n\n" +
-			"Users are created in the controller when observed on the network, so the resource defaults to allowing " +
-			"itself to just take over management of a MAC address, but this can be turned off.",
+		Description: "The `unifi_user` resource manages network clients in the UniFi controller, which are identified by their unique MAC addresses.\n\n" +
+			"This resource allows you to manage:\n" +
+			"  * Fixed IP assignments\n" +
+			"  * User groups and network access\n" +
+			"  * Network blocking and restrictions\n" +
+			"  * Local DNS records\n\n" +
+			"Important Notes:\n" +
+			"  * Users are automatically created in the controller when devices connect to the network\n" +
+			"  * By default, this resource can take over management of existing users (controlled by `allow_existing`)\n" +
+			"  * Users can be 'forgotten' on destroy (controlled by `skip_forget_on_destroy`)\n\n" +
+			"This resource is particularly useful for:\n" +
+			"  * Managing static IP assignments\n" +
+			"  * Implementing access control\n" +
+			"  * Setting up local DNS records\n" +
+			"  * Organizing devices into user groups",
 
 		CreateContext: resourceUserCreate,
 		ReadContext:   resourceUserRead,
@@ -28,19 +40,20 @@ func ResourceUser() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Description: "The ID of the user.",
+				Description: "The unique identifier of the user in the UniFi controller. This is automatically assigned.",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
 			"site": {
-				Description: "The name of the site to associate the user with.",
+				Description: "The name of the UniFi site where this user should be managed. If not specified, the default site will be used.",
 				Type:        schema.TypeString,
 				Computed:    true,
 				Optional:    true,
 				ForceNew:    true,
 			},
 			"mac": {
-				Description:      "The MAC address of the user.",
+				Description: "The MAC address of the device/client. This is used as the unique identifier and cannot be changed " +
+					"after creation. Must be a valid MAC address format (e.g., '00:11:22:33:44:55'). MAC addresses are case-insensitive.",
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
@@ -48,36 +61,42 @@ func ResourceUser() *schema.Resource {
 				ValidateFunc:     validation.StringMatch(utils.MacAddressRegexp, "Mac address is invalid"),
 			},
 			"name": {
-				Description: "The name of the user.",
-				Type:        schema.TypeString,
-				Required:    true,
+				Description: "A friendly name for the device/client. This helps identify the device in the UniFi interface " +
+					"(eg. 'Living Room TV', 'John's Laptop').",
+				Type:     schema.TypeString,
+				Required: true,
 			},
 			"user_group_id": {
-				Description: "The user group ID for the user.",
-				Type:        schema.TypeString,
-				Optional:    true,
+				Description: "The ID of the user group this client belongs to. User groups can be used to apply common " +
+					"settings and restrictions to multiple clients.",
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"note": {
-				Description: "A note with additional information for the user.",
-				Type:        schema.TypeString,
-				Optional:    true,
+				Description: "Additional information about the client that you want to record (e.g., 'Company asset tag #12345', " +
+					"'Guest device - expires 2024-03-01').",
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			// TODO: combine this with output IP for a single attribute ip_address?
 			"fixed_ip": {
-				Description:  "A fixed IPv4 address for this user.",
+				Description: "A static IPv4 address to assign to this client. Ensure this IP is within the client's network range " +
+					"and not already assigned to another device.",
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.IsIPv4Address,
 			},
 			"network_id": {
-				Description: "The network ID for this user.",
-				Type:        schema.TypeString,
-				Optional:    true,
+				Description: "The ID of the network this client should be associated with. This is particularly important " +
+					"when using VLANs or multiple networks.",
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"blocked": {
-				Description: "Specifies whether this user should be blocked from the network.",
-				Type:        schema.TypeBool,
-				Optional:    true,
+				Description: "When true, this client will be blocked from accessing the network. Useful for temporarily " +
+					"or permanently restricting network access for specific devices.",
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 			"dev_id_override": {
 				Description: "Override the device fingerprint.",
@@ -85,23 +104,29 @@ func ResourceUser() *schema.Resource {
 				Optional:    true,
 			},
 			"local_dns_record": {
-				Description: "Specifies the local DNS record for this user.",
-				Type:        schema.TypeString,
-				Optional:    true,
+				Description: "A local DNS hostname for this client. When set, other devices on the network can resolve " +
+					"this name to the client's IP address (e.g., 'printer.local', 'nas.home.arpa'). Such DNS record is automatically added to controller's DNS records.",
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 
 			// these are "meta" attributes that control TF UX
 			"allow_existing": {
-				Description: "Specifies whether this resource should just take over control of an existing user.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     true,
+				Description: "Allow this resource to take over management of an existing user in the UniFi controller. When true:\n" +
+					"  * The resource can manage users that were automatically created when devices connected\n" +
+					"  * Existing settings will be overwritten with the values specified in this resource\n" +
+					"  * If false, attempting to manage an existing user will result in an error\n\n" +
+					"Use with caution as it can modify settings for devices already connected to your network.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
 			},
 			"skip_forget_on_destroy": {
-				Description: "Specifies whether this resource should tell the controller to \"forget\" the user on destroy.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     false,
+				Description: "When false (default), the client will be 'forgotten' by the controller when this resource is destroyed. " +
+					"Set to true to keep the client's history in the controller after the resource is removed from Terraform.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
 			},
 
 			// computed only attributes
