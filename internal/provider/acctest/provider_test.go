@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"os"
+	"sync"
 	"testing"
 )
 
@@ -33,6 +34,7 @@ type AcceptanceTestCase struct {
 	MinVersion        *version.Version
 	PreCheck          func()
 	Steps             Steps
+	Lock              *sync.Mutex
 }
 
 func AcceptanceTest(t *testing.T, testCase AcceptanceTestCase) {
@@ -51,6 +53,12 @@ func AcceptanceTest(t *testing.T, testCase AcceptanceTestCase) {
 			}
 			if testCase.PreCheck != nil {
 				testCase.PreCheck()
+			}
+			if testCase.Lock != nil {
+				testCase.Lock.Lock()
+				t.Cleanup(func() {
+					testCase.Lock.Unlock()
+				})
 			}
 		},
 		ProtoV6ProviderFactories: providers,
