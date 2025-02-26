@@ -1,4 +1,7 @@
+![Latest](https://img.shields.io/github/v/release/filipowm/terraform-provider-unifi)
+[![Docs](https://img.shields.io/badge/docs-reference-blue)](https://registry.terraform.io/providers/filipowm/unifi/latest)
 ![Acceptance Tests](https://github.com/filipowm/terraform-provider-unifi/workflows/Acceptance%20Tests/badge.svg?event=push)
+![License](https://img.shields.io/github/license/filipowm/terraform-provider-unifi)
 
 # UniFi Terraform Provider
 
@@ -85,22 +88,11 @@ resource "unifi_network" "vlan_50" {
 }
 ```
 
-More examples can be found in the [examples](./examples) directory:
-
-- Network and WLAN configuration
-- Firewall rules and port forwarding
-- User management
-- Multiple site management
-- Data source usage
+More examples can be found in the [documentation](https://registry.terraform.io/providers/filipowm/unifi/latest/docs).
 
 ## Documentation
 
-Comprehensive documentation is available on the [Terraform Registry](https://registry.terraform.io/providers/filipowm/unifi/latest/docs), including:
-
-- Provider configuration
-- Resource documentation
-- Data source documentation
-- Guides and tutorials
+Comprehensive documentation is available on the [Terraform Registry](https://registry.terraform.io/providers/filipowm/unifi/latest/docs)
 
 ## Supported Platforms
 
@@ -109,6 +101,22 @@ Comprehensive documentation is available on the [Terraform Registry](https://reg
 * UniFi Dream Machine Pro (UDM-Pro)
 * UniFi Cloud Gateway (UCG)
 * Standard UniFi Controller deployments
+
+## Plans
+
+- [ ] Add support for zone-based firewalls
+- [x] Add support for DNS records
+- [ ] Add support for traffic management
+- [ ] Add support for more setting resources (eg. guest access, connectivity, country, IPS/IDS, etc.)
+- [x] Support API key authentication
+- [x] Improve documentation
+- [ ] Switch to Terraform Plugin Framework from Terraform Plugin SDK v2
+- [x] Fix flaky tests
+- [ ] Implement validation for fields and structures
+- [ ] Increase test coverage and make tests more reliable
+- [x] Update all dependencies to the latest versions
+- [x] Switch to [filipowm/go-unifi](https://github.com/filipowm/go-unifi) SDK
+- [x] Support newest controller versions (9.x)
 
 ## Contributing
 
