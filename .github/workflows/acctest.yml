@@ -7,6 +7,8 @@ on:
       - "tools/**"
       - "main.go"
       - "docker-compose.yaml"
+      - ".github/workflows/acctest.yml"
+      - "Makefile"
   push:
     branches:
       - "main"
@@ -18,13 +20,15 @@ on:
       - "tools/**"
       - "main.go"
       - "docker-compose.yaml"
+      - ".github/workflows/acctest.yml"
+      - "Makefile"
   schedule:
     - cron: "0 13 * * *"
 jobs:
   test:
     name: Matrix Test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -56,12 +60,13 @@ jobs:
           go-version-file: "go.mod"
           check-latest: true
 
+      - name: Set up Terraform
+        uses: "hashicorp/setup-terraform@v3"
       # The acceptance tests sometimes timeout for some unknown reason.
       - name: TF acceptance tests
         uses: "nick-fields/retry@v3"
         with:
           timeout_minutes: 20
           max_attempts: 3
-          command: make testacc TEST_TIMEOUT=1h UNIFI_STDOUT=true UNIFI_VERSION=${{ matrix.unifi_download_url && 'beta' || matrix.unifi_version }} UNIFI_DOWNLOAD_URL=${{ matrix.unifi_download_url }}
-#          retry_on: "all"
+          command: export TF_PLUGIN_CACHE_DIR=$(mktemp -d) && make testacc TEST_TIMEOUT=1h UNIFI_STDOUT=true UNIFI_VERSION=${{ matrix.unifi_download_url && 'beta' || matrix.unifi_version }} UNIFI_DOWNLOAD_URL=${{ matrix.unifi_download_url }}
           retry_on: "timeout"
