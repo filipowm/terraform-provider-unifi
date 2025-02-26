@@ -14,16 +14,8 @@ import (
 var settingUsgLock = sync.Mutex{}
 
 func TestAccSettingUsg_mdns_v6(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			pt.PreCheck(t)
-			PreCheckVersionConstraint(t, "< 7")
-			settingUsgLock.Lock()
-			t.Cleanup(func() {
-				settingUsgLock.Unlock()
-			})
-		},
-		ProtoV6ProviderFactories: providers,
+	AcceptanceTest(t, AcceptanceTestCase{
+		NonParallel: true,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingUsgConfig_mdns(true),
@@ -45,16 +37,8 @@ func TestAccSettingUsg_mdns_v6(t *testing.T) {
 }
 
 func TestAccSettingUsg_mdns_v7(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			pt.PreCheck(t)
-			PreCheckVersionConstraint(t, ">= 7")
-			settingUsgLock.Lock()
-			t.Cleanup(func() {
-				settingUsgLock.Unlock()
-			})
-		},
-		ProtoV6ProviderFactories: providers,
+	AcceptanceTest(t, AcceptanceTestCase{
+		NonParallel: true,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccSettingUsgConfig_mdns(true),
@@ -65,15 +49,8 @@ func TestAccSettingUsg_mdns_v7(t *testing.T) {
 }
 
 func TestAccSettingUsg_dhcpRelay(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			pt.PreCheck(t)
-			settingUsgLock.Lock()
-			t.Cleanup(func() {
-				settingUsgLock.Unlock()
-			})
-		},
-		ProtoV6ProviderFactories: providers,
+	AcceptanceTest(t, AcceptanceTestCase{
+		NonParallel: true,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingUsgConfig_dhcpRelay(),
@@ -85,15 +62,8 @@ func TestAccSettingUsg_dhcpRelay(t *testing.T) {
 }
 
 func TestAccSettingUsg_site(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			pt.PreCheck(t)
-			settingUsgLock.Lock()
-			t.Cleanup(func() {
-				settingUsgLock.Unlock()
-			})
-		},
-		ProtoV6ProviderFactories: providers,
+	AcceptanceTest(t, AcceptanceTestCase{
+		NonParallel: true,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingUsgConfig_site(),

@@ -33,6 +33,7 @@ type AcceptanceTestCase struct {
 	MinVersion        *version.Version
 	PreCheck          func()
 	Steps             Steps
+	NonParallel       bool
 }
 
 func AcceptanceTest(t *testing.T, testCase AcceptanceTestCase) {
@@ -40,7 +41,7 @@ func AcceptanceTest(t *testing.T, testCase AcceptanceTestCase) {
 	if len(testCase.Steps) == 0 {
 		t.Fatal("missing test steps")
 	}
-	resource.ParallelTest(t, resource.TestCase{
+	tc := resource.TestCase{
 		PreCheck: func() {
 			pt.PreCheck(t)
 			if testCase.VersionConstraint != "" {
@@ -56,7 +57,12 @@ func AcceptanceTest(t *testing.T, testCase AcceptanceTestCase) {
 		ProtoV6ProviderFactories: providers,
 		CheckDestroy:             testCase.CheckDestroy,
 		Steps:                    testCase.Steps,
-	})
+	}
+	if testCase.NonParallel {
+		resource.Test(t, tc)
+	} else {
+		resource.ParallelTest(t, tc)
+	}
 }
 
 func TestMain(m *testing.M) {

@@ -11,15 +11,8 @@ import (
 var settingRadiusLock = sync.Mutex{}
 
 func TestAccSettingRadius_basic(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			pt.PreCheck(t)
-			settingRadiusLock.Lock()
-			t.Cleanup(func() {
-				settingRadiusLock.Unlock()
-			})
-		},
-		ProtoV6ProviderFactories: providers,
+	AcceptanceTest(t, AcceptanceTestCase{
+		NonParallel: true,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRadiusConfig_basic(),
@@ -31,15 +24,8 @@ func TestAccSettingRadius_basic(t *testing.T) {
 }
 
 func TestAccSettingRadius_site(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			pt.PreCheck(t)
-			settingRadiusLock.Lock()
-			t.Cleanup(func() {
-				settingRadiusLock.Unlock()
-			})
-		},
-		ProtoV6ProviderFactories: providers,
+	AcceptanceTest(t, AcceptanceTestCase{
+		NonParallel: true,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRadiusConfig_site(),
@@ -56,15 +42,8 @@ func TestAccSettingRadius_site(t *testing.T) {
 }
 
 func TestAccSettingRadius_full(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			pt.PreCheck(t)
-			settingRadiusLock.Lock()
-			t.Cleanup(func() {
-				settingRadiusLock.Unlock()
-			})
-		},
-		ProtoV6ProviderFactories: providers,
+	AcceptanceTest(t, AcceptanceTestCase{
+		NonParallel: true,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRadiusConfig_full(),
@@ -81,15 +60,8 @@ func TestAccSettingRadius_full(t *testing.T) {
 }
 
 func TestAccSettingRadius_vlan(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			pt.PreCheck(t)
-			settingRadiusLock.Lock()
-			t.Cleanup(func() {
-				settingRadiusLock.Unlock()
-			})
-		},
-		ProtoV6ProviderFactories: providers,
+	AcceptanceTest(t, AcceptanceTestCase{
+		NonParallel: true,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRadiusConfig_vlan(),

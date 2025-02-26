@@ -11,15 +11,8 @@ import (
 var settingMgmtLock = sync.Mutex{}
 
 func TestAccSettingMgmt_basic(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			pt.PreCheck(t)
-			settingMgmtLock.Lock()
-			t.Cleanup(func() {
-				settingMgmtLock.Unlock()
-			})
-		},
-		ProtoV6ProviderFactories: providers,
+	AcceptanceTest(t, AcceptanceTestCase{
+		NonParallel: true,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingMgmtConfig_basic(),
@@ -31,15 +24,8 @@ func TestAccSettingMgmt_basic(t *testing.T) {
 }
 
 func TestAccSettingMgmt_site(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			pt.PreCheck(t)
-			settingMgmtLock.Lock()
-			t.Cleanup(func() {
-				settingMgmtLock.Unlock()
-			})
-		},
-		ProtoV6ProviderFactories: providers,
+	AcceptanceTest(t, AcceptanceTestCase{
+		NonParallel: true,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingMgmtConfig_site(),
@@ -56,15 +42,8 @@ func TestAccSettingMgmt_site(t *testing.T) {
 }
 
 func TestAccSettingMgmt_sshKeys(t *testing.T) {
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			pt.PreCheck(t)
-			settingMgmtLock.Lock()
-			t.Cleanup(func() {
-				settingMgmtLock.Unlock()
-			})
-		},
-		ProtoV6ProviderFactories: providers,
+	AcceptanceTest(t, AcceptanceTestCase{
+		NonParallel: true,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingMgmtConfig_sshKeys(),
