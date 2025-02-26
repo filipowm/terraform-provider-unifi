@@ -95,7 +95,7 @@ func New(version string) func() *schema.Provider {
 			DataSourcesMap: map[string]*schema.Resource{
 				"unifi_ap_group":       apgroup.DataAPGroup(),
 				"unifi_network":        network.DataNetwork(),
-				"unifi_port_profile":   network.DataPortProfile(),
+				"unifi_port_profile":   device.DataPortProfile(),
 				"unifi_radius_profile": radius.DataRADIUSProfile(),
 				"unifi_user_group":     user.DataUserGroup(),
 				"unifi_user":           user.DataUser(),
@@ -111,7 +111,7 @@ func New(version string) func() *schema.Provider {
 				"unifi_port_forward":   routing.ResourcePortForward(),
 				"unifi_static_route":   routing.ResourceStaticRoute(),
 				"unifi_wlan":           network.ResourceWLAN(),
-				"unifi_port_profile":   network.ResourcePortProfile(),
+				"unifi_port_profile":   device.ResourcePortProfile(),
 				"unifi_site":           site.ResourceSite(),
 				"unifi_account":        radius.ResourceAccount(),
 				"unifi_radius_profile": radius.ResourceRadiusProfile(),

@@ -1,4 +1,4 @@
-package network
+package device
 
 import (
 	"context"
@@ -319,7 +319,7 @@ func ResourcePortProfile() *schema.Resource {
 					"* Prevent network saturation from unknown destinations\n" +
 					"* Balance security with network usability\n" +
 					"Only effective when stormctrl_ucast_enabled is true",
-				Type:         schema.TypeFloat,
+				Type:         schema.TypeInt,
 				Optional:     true,
 				ValidateFunc: validation.IntBetween(0, 14880000),
 			},
