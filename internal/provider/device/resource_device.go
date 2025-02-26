@@ -260,8 +260,16 @@ func resourceDeviceDelete(ctx context.Context, d *schema.ResourceData, meta inte
 	if site == "" {
 		site = c.Site
 	}
-
-	err := c.ForgetDevice(ctx, site, mac)
+	err := retry.RetryContext(ctx, 1*time.Minute, func() *retry.RetryError {
+		internalErr := c.ForgetDevice(ctx, site, mac)
+		if internalErr == nil {
+			return nil
+		}
+		if base.IsServerErrorContains(internalErr, "api.err.DeviceBusy") {
+			return retry.RetryableError(internalErr)
+		}
+		return retry.NonRetryableError(internalErr)
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
