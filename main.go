@@ -3,8 +3,7 @@ package main // import "github.com/filipowm/terraform-provider-unifi"
 import (
 	"context"
 	"flag"
-	v1 "github.com/filipowm/terraform-provider-unifi/internal/provider/v1"
-	v2 "github.com/filipowm/terraform-provider-unifi/internal/provider/v2"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -31,7 +30,7 @@ func main() {
 	flag.BoolVar(&debugMode, "debug", false, "set to true to run the provider with support for debuggers like delve")
 	flag.Parse()
 
-	p := v1.New(version)
+	p := provider.New(version)
 	upgradedSdkServer, err := tf5to6server.UpgradeServer(
 		ctx,
 		func() tfprotov5.ProviderServer {
@@ -43,7 +42,7 @@ func main() {
 	}
 
 	providers := []func() tfprotov6.ProviderServer{
-		providerserver.NewProtocol6(v2.New(version)()),
+		providerserver.NewProtocol6(provider.NewV2(version)()),
 		func() tfprotov6.ProviderServer {
 			return upgradedSdkServer
 		},
