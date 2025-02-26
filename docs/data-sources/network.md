@@ -47,7 +47,7 @@ data "unifi_network" "my_network" {
 - `dhcp_v6_dns_auto` (Boolean) Specifies DNS source to propagate. If set `false` the entries in `dhcp_v6_dns` are used, the upstream entries otherwise
 - `dhcp_v6_enabled` (Boolean) Enable stateful DHCPv6 for static configuration.
 - `dhcp_v6_lease` (Number) Specifies the lease time for DHCPv6 addresses.
-- `dhcp_v6_start` (String) Start address of the DHCPv6 range. Used in static DHCPv6 configuration.
+- `dhcp_v6_start` (String) start address of the DHCPv6 range. Used in static DHCPv6 configuration.
 - `dhcp_v6_stop` (String) End address of the DHCPv6 range. Used in static DHCPv6 configuration.
 - `dhcpd_boot_enabled` (Boolean) Toggles on the DHCP boot options. will be set to true if you have dhcpd_boot_filename, and dhcpd_boot_server set.
 - `dhcpd_boot_filename` (String) the file to PXE boot from on the dhcpd_boot_server.
@@ -57,7 +57,7 @@ data "unifi_network" "my_network" {
 - `ipv6_interface_type` (String) Specifies which type of IPv6 connection to use. Must be one of either `static`, `pd`, or `none`.
 - `ipv6_pd_interface` (String) Specifies which WAN interface to use for IPv6 PD. Must be one of either `wan` or `wan2`.
 - `ipv6_pd_prefixid` (String) Specifies the IPv6 Prefix ID.
-- `ipv6_pd_start` (String) Start address of the DHCPv6 range. Used if `ipv6_interface_type` is set to `pd`.
+- `ipv6_pd_start` (String) start address of the DHCPv6 range. Used if `ipv6_interface_type` is set to `pd`.
 - `ipv6_pd_stop` (String) End address of the DHCPv6 range. Used if `ipv6_interface_type` is set to `pd`.
 - `ipv6_ra_enable` (Boolean) Specifies whether to enable router advertisements or not.
 - `ipv6_ra_preferred_lifetime` (Number) Lifetime in which the address can be used. Address becomes deprecated afterwards. Must be lower than or equal to `ipv6_ra_valid_lifetime`

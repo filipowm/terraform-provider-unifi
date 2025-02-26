@@ -3,23 +3,39 @@
 page_title: "unifi_account Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_account manages a RADIUS user account
-  To authenticate devices based on MAC address, use the MAC address as the username and password under client creation.
-  Convert lowercase letters to uppercase, and also remove colons or periods from the MAC address.
-  ATTENTION: If the user profile does not include a VLAN, the client will fall back to the untagged VLAN.
-  NOTE: MAC-based authentication accounts can only be used for wireless and wired clients. L2TP remote access does not apply.
+  The unifi_account resource manages RADIUS user accounts in the UniFi controller's built-in RADIUS server.
+  This resource is used for:
+  WPA2/WPA3-Enterprise wireless authentication802.1X wired authenticationMAC-based device authenticationVLAN assignment through RADIUS attributes
+  Important Notes:
+  For MAC-based authentication:
+  Use the device's MAC address as both username and passwordConvert MAC address to uppercase with no separators (e.g., '00:11:22:33:44:55' becomes '001122334455')VLAN Assignment:
+  If no VLAN is specified in the profile, clients will use the network's untagged VLANVLAN assignment uses standard RADIUS tunnel attributes
+  Limitations:
+  MAC-based authentication works only for wireless and wired clientsL2TP remote access VPN is not supported with MAC authenticationAccounts must be unique within a site
 ---
 
 # unifi_account (Resource)
 
-`unifi_account` manages a RADIUS user account
+The `unifi_account` resource manages RADIUS user accounts in the UniFi controller's built-in RADIUS server.
 
-To authenticate devices based on MAC address, use the MAC address as the username and password under client creation. 
-Convert lowercase letters to uppercase, and also remove colons or periods from the MAC address. 
+This resource is used for:
+  * WPA2/WPA3-Enterprise wireless authentication
+  * 802.1X wired authentication
+  * MAC-based device authentication
+  * VLAN assignment through RADIUS attributes
 
-ATTENTION: If the user profile does not include a VLAN, the client will fall back to the untagged VLAN. 
+Important Notes:
+1. For MAC-based authentication:
+   * Use the device's MAC address as both username and password
+   * Convert MAC address to uppercase with no separators (e.g., '00:11:22:33:44:55' becomes '001122334455')
+2. VLAN Assignment:
+   * If no VLAN is specified in the profile, clients will use the network's untagged VLAN
+   * VLAN assignment uses standard RADIUS tunnel attributes
 
-NOTE: MAC-based authentication accounts can only be used for wireless and wired clients. L2TP remote access does not apply.
+Limitations:
+  * MAC-based authentication works only for wireless and wired clients
+  * L2TP remote access VPN is not supported with MAC authentication
+  * Accounts must be unique within a site
 
 
 
@@ -28,16 +44,26 @@ NOTE: MAC-based authentication accounts can only be used for wireless and wired 
 
 ### Required
 
-- `name` (String) The name of the account.
-- `password` (String, Sensitive) The password of the account.
+- `name` (String) The username for this RADIUS account. For regular users, this can be any unique identifier. For MAC-based authentication, this must be the device's MAC address in uppercase with no separators (e.g., '001122334455').
+- `password` (String, Sensitive) The password for this RADIUS account. For MAC-based authentication, this must match the username (the MAC address). For regular users, this should be a secure password following your organization's password policies.
 
 ### Optional
 
-- `network_id` (String) ID of the network for this account
-- `site` (String) The name of the site to associate the account with.
-- `tunnel_medium_type` (Number) See [RFC 2868](https://www.rfc-editor.org/rfc/rfc2868) section 3.2 Defaults to `6`.
-- `tunnel_type` (Number) See [RFC 2868](https://www.rfc-editor.org/rfc/rfc2868) section 3.1 Defaults to `13`.
+- `network_id` (String) The ID of the network (VLAN) to assign to clients authenticating with this account. This is used in conjunction with the tunnel attributes to provide VLAN assignment via RADIUS.
+- `site` (String) The name of the UniFi site where this RADIUS account should be created. If not specified, the default site will be used.
+- `tunnel_medium_type` (Number) The RADIUS tunnel medium type attribute ([RFC 2868](https://tools.ietf.org/html/rfc2868), section 3.2). Common values:
+  * `6` - 802 (includes Ethernet, Token Ring, FDDI) (default)
+  * `1` - IPv4
+  * `2` - IPv6
+
+Only change this if you need specific tunneling behavior. Defaults to `6`.
+- `tunnel_type` (Number) The RADIUS tunnel type attribute ([RFC 2868](https://tools.ietf.org/html/rfc2868), section 3.1). Common values:
+  * `13` - VLAN (default)
+  * `1` - Point-to-Point Protocol (PPTP)
+  * `9` - Point-to-Point Protocol (L2TP)
+
+Only change this if you need specific tunneling behavior. Defaults to `13`.
 
 ### Read-Only
 
-- `id` (String) The ID of the account.
+- `id` (String) The unique identifier of the RADIUS account in the UniFi controller. This is automatically assigned.

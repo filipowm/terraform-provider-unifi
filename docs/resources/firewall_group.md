@@ -3,12 +3,27 @@
 page_title: "unifi_firewall_group Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_firewall_group manages groups of addresses or ports for use in firewall rules (unifi_firewall_rule).
+  The unifi_firewall_group resource manages reusable groups of addresses or ports that can be referenced in firewall rules (unifi_firewall_rule).
+  Firewall groups help organize and simplify firewall rule management by allowing you to:
+  Create collections of IP addresses or networksDefine sets of ports for specific servicesGroup IPv6 addresses for IPv6-specific rules
+  Common use cases include:
+  Creating groups of trusted IP addressesDefining port groups for specific applicationsManaging access control listsSimplifying rule maintenance by using groups instead of individual IPs/ports
 ---
 
 # unifi_firewall_group (Resource)
 
-`unifi_firewall_group` manages groups of addresses or ports for use in firewall rules (`unifi_firewall_rule`).
+The `unifi_firewall_group` resource manages reusable groups of addresses or ports that can be referenced in firewall rules (`unifi_firewall_rule`).
+
+Firewall groups help organize and simplify firewall rule management by allowing you to:
+  * Create collections of IP addresses or networks
+  * Define sets of ports for specific services
+  * Group IPv6 addresses for IPv6-specific rules
+
+Common use cases include:
+  * Creating groups of trusted IP addresses
+  * Defining port groups for specific applications
+  * Managing access control lists
+  * Simplifying rule maintenance by using groups instead of individual IPs/ports
 
 ## Example Usage
 
@@ -30,14 +45,20 @@ resource "unifi_firewall_group" "can_print" {
 
 ### Required
 
-- `members` (Set of String) The members of the firewall group.
-- `name` (String) The name of the firewall group.
-- `type` (String) The type of the firewall group. Must be one of: `address-group`, `port-group`, or `ipv6-address-group`.
+- `members` (Set of String) List of members in the group. The format depends on the group type:
+  * For address-group: IPv4 addresses or CIDR notation (e.g., ['192.168.1.10', '10.0.0.0/8'])
+  * For port-group: Port numbers or ranges (e.g., ['80', '443', '8000-8080'])
+  * For ipv6-address-group: IPv6 addresses or CIDR notation
+- `name` (String) A friendly name for the firewall group to help identify its purpose (e.g., 'Trusted IPs' or 'Web Server Ports'). Must be unique within the site.
+- `type` (String) The type of firewall group. Valid values are:
+  * `address-group` - Group of IPv4 addresses and/or networks (e.g., '192.168.1.10', '10.0.0.0/8')
+  * `port-group` - Group of ports or port ranges (e.g., '80', '443', '8000-8080')
+  * `ipv6-address-group` - Group of IPv6 addresses and/or networks
 
 ### Optional
 
-- `site` (String) The name of the site to associate the firewall group with.
+- `site` (String) The name of the UniFi site where the firewall group should be created. If not specified, the default site will be used.
 
 ### Read-Only
 
-- `id` (String) The ID of the firewall group.
+- `id` (String) The unique identifier of the firewall group in the UniFi controller.

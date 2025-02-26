@@ -3,12 +3,22 @@
 page_title: "unifi_port_forward Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_port_forward manages a port forwarding rule on the gateway.
+  The unifi_port_forward resource manages port forwarding rules on UniFi controllers.
+  Port forwarding allows external traffic to reach services hosted on your internal network by mapping external ports to internal IP addresses and ports. This is commonly used for:
+  Hosting web servers, game servers, or other servicesRemote access to internal servicesApplication-specific requirements
+  Each rule can be configured with source IP restrictions, protocol selection, and logging options for enhanced security and monitoring.
 ---
 
 # unifi_port_forward (Resource)
 
-`unifi_port_forward` manages a port forwarding rule on the gateway.
+The `unifi_port_forward` resource manages port forwarding rules on UniFi controllers.
+
+Port forwarding allows external traffic to reach services hosted on your internal network by mapping external ports to internal IP addresses and ports. This is commonly used for:
+  * Hosting web servers, game servers, or other services
+  * Remote access to internal services
+  * Application-specific requirements
+
+Each rule can be configured with source IP restrictions, protocol selection, and logging options for enhanced security and monitoring.
 
 
 
@@ -17,17 +27,23 @@ description: |-
 
 ### Optional
 
-- `dst_port` (String) The destination port for the forwarding.
+- `dst_port` (String) The external port(s) that will be forwarded. Can be a single port (e.g., '80') or a port range (e.g., '8080:8090').
 - `enabled` (Boolean, Deprecated) Specifies whether the port forwarding rule is enabled or not. Defaults to `true`. This will attribute will be removed in a future release. Instead of disabling a port forwarding rule you can remove it from your configuration.
-- `fwd_ip` (String) The IPv4 address to forward traffic to.
-- `fwd_port` (String) The port to forward traffic to.
-- `log` (Boolean) Specifies whether to log forwarded traffic or not. Defaults to `false`.
-- `name` (String) The name of the port forwarding rule.
-- `port_forward_interface` (String) The port forwarding interface. Can be `wan`, `wan2`, or `both`.
-- `protocol` (String) The protocol for the port forwarding rule. Can be `tcp`, `udp`, or `tcp_udp`. Defaults to `tcp_udp`.
-- `site` (String) The name of the site to associate the port forwarding rule with.
-- `src_ip` (String) The source IPv4 address (or CIDR) of the port forwarding rule. For all traffic, specify `any`. Defaults to `any`.
+- `fwd_ip` (String) The internal IPv4 address of the device or service that will receive the forwarded traffic (e.g., '192.168.1.100').
+- `fwd_port` (String) The internal port(s) that will receive the forwarded traffic. Can be a single port (e.g., '8080') or a port range (e.g., '8080:8090').
+- `log` (Boolean) Enable logging of traffic matching this port forwarding rule. Useful for monitoring and troubleshooting. Defaults to `false`.
+- `name` (String) A friendly name for the port forwarding rule to help identify its purpose (e.g., 'Web Server' or 'Game Server').
+- `port_forward_interface` (String) The WAN interface to apply the port forwarding rule to. Valid values are:
+  * `wan` - Primary WAN interface
+  * `wan2` - Secondary WAN interface
+  * `both` - Both WAN interfaces
+- `protocol` (String) The network protocol(s) this rule applies to. Valid values are:
+  * `tcp_udp` - Both TCP and UDP (default)
+  * `tcp` - TCP only
+  * `udp` - UDP only Defaults to `tcp_udp`.
+- `site` (String) The name of the UniFi site where the port forwarding rule should be created. If not specified, the default site will be used.
+- `src_ip` (String) The source IP address or network in CIDR notation that is allowed to use this port forward. Use 'any' to allow all source IPs. Examples: '203.0.113.1' for a single IP, '203.0.113.0/24' for a network, or 'any' for all IPs. Defaults to `any`.
 
 ### Read-Only
 
-- `id` (String) The ID of the port forwarding rule.
+- `id` (String) The unique identifier of the port forwarding rule in the UniFi controller.

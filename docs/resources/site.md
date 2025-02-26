@@ -3,12 +3,30 @@
 page_title: "unifi_site Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_site manages Unifi sites
+  The unifi_site resource manages UniFi sites, which are logical groupings of UniFi devices and their configurations.
+  Sites in UniFi are used to:
+  Organize network devices and settings for different physical locationsIsolate configurations between different networks or customersApply different policies and configurations to different groups of devices
+  Each site maintains its own:
+  Network configurationsWireless networks (WLANs)Security policiesDevice configurations
+  A UniFi controller can manage multiple sites, making it ideal for multi-tenant or distributed network deployments.
 ---
 
 # unifi_site (Resource)
 
-`unifi_site` manages Unifi sites
+The `unifi_site` resource manages UniFi sites, which are logical groupings of UniFi devices and their configurations.
+
+Sites in UniFi are used to:
+  * Organize network devices and settings for different physical locations
+  * Isolate configurations between different networks or customers
+  * Apply different policies and configurations to different groups of devices
+
+Each site maintains its own:
+  * Network configurations
+  * Wireless networks (WLANs)
+  * Security policies
+  * Device configurations
+
+A UniFi controller can manage multiple sites, making it ideal for multi-tenant or distributed network deployments.
 
 ## Example Usage
 
@@ -23,12 +41,12 @@ resource "unifi_site" "mysite" {
 
 ### Required
 
-- `description` (String) The description of the site.
+- `description` (String) A human-readable description of the site (e.g., 'Main Office', 'Remote Branch', 'Client A Network'). This is used as the display name in the UniFi controller interface.
 
 ### Read-Only
 
-- `id` (String) The ID of the site.
-- `name` (String) The name of the site.
+- `id` (String) The unique identifier of the site in the UniFi controller. This is automatically generated when the site is created.
+- `name` (String) The site's internal name in the UniFi system. This is automatically generated based on the description and is used in API calls and configurations. It's typically a lowercase, hyphenated version of the description.
 
 ## Import
 

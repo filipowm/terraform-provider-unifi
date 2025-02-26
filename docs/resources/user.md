@@ -3,15 +3,35 @@
 page_title: "unifi_user Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_user manages a user (or "client" in the UI) of the network, these are identified by unique MAC addresses.
-  Users are created in the controller when observed on the network, so the resource defaults to allowing itself to just take over management of a MAC address, but this can be turned off.
+  The unifi_user resource manages network clients in the UniFi controller, which are identified by their unique MAC addresses.
+  This resource allows you to manage:
+  Fixed IP assignmentsUser groups and network accessNetwork blocking and restrictionsLocal DNS records
+  Important Notes:
+  Users are automatically created in the controller when devices connect to the networkBy default, this resource can take over management of existing users (controlled by allow_existing)Users can be 'forgotten' on destroy (controlled by skip_forget_on_destroy)
+  This resource is particularly useful for:
+  Managing static IP assignmentsImplementing access controlSetting up local DNS recordsOrganizing devices into user groups
 ---
 
 # unifi_user (Resource)
 
-`unifi_user` manages a user (or "client" in the UI) of the network, these are identified by unique MAC addresses.
+The `unifi_user` resource manages network clients in the UniFi controller, which are identified by their unique MAC addresses.
 
-Users are created in the controller when observed on the network, so the resource defaults to allowing itself to just take over management of a MAC address, but this can be turned off.
+This resource allows you to manage:
+  * Fixed IP assignments
+  * User groups and network access
+  * Network blocking and restrictions
+  * Local DNS records
+
+Important Notes:
+  * Users are automatically created in the controller when devices connect to the network
+  * By default, this resource can take over management of existing users (controlled by `allow_existing`)
+  * Users can be 'forgotten' on destroy (controlled by `skip_forget_on_destroy`)
+
+This resource is particularly useful for:
+  * Managing static IP assignments
+  * Implementing access control
+  * Setting up local DNS records
+  * Organizing devices into user groups
 
 ## Example Usage
 
@@ -31,24 +51,29 @@ resource "unifi_user" "test" {
 
 ### Required
 
-- `mac` (String) The MAC address of the user.
-- `name` (String) The name of the user.
+- `mac` (String) The MAC address of the device/client. This is used as the unique identifier and cannot be changed after creation. Must be a valid MAC address format (e.g., '00:11:22:33:44:55'). MAC addresses are case-insensitive.
+- `name` (String) A friendly name for the device/client. This helps identify the device in the UniFi interface (eg. 'Living Room TV', 'John's Laptop').
 
 ### Optional
 
-- `allow_existing` (Boolean) Specifies whether this resource should just take over control of an existing user. Defaults to `true`.
-- `blocked` (Boolean) Specifies whether this user should be blocked from the network.
+- `allow_existing` (Boolean) Allow this resource to take over management of an existing user in the UniFi controller. When true:
+  * The resource can manage users that were automatically created when devices connected
+  * Existing settings will be overwritten with the values specified in this resource
+  * If false, attempting to manage an existing user will result in an error
+
+Use with caution as it can modify settings for devices already connected to your network. Defaults to `true`.
+- `blocked` (Boolean) When true, this client will be blocked from accessing the network. Useful for temporarily or permanently restricting network access for specific devices.
 - `dev_id_override` (Number) Override the device fingerprint.
-- `fixed_ip` (String) A fixed IPv4 address for this user.
-- `local_dns_record` (String) Specifies the local DNS record for this user.
-- `network_id` (String) The network ID for this user.
-- `note` (String) A note with additional information for the user.
-- `site` (String) The name of the site to associate the user with.
-- `skip_forget_on_destroy` (Boolean) Specifies whether this resource should tell the controller to "forget" the user on destroy. Defaults to `false`.
-- `user_group_id` (String) The user group ID for the user.
+- `fixed_ip` (String) A static IPv4 address to assign to this client. Ensure this IP is within the client's network range and not already assigned to another device.
+- `local_dns_record` (String) A local DNS hostname for this client. When set, other devices on the network can resolve this name to the client's IP address (e.g., 'printer.local', 'nas.home.arpa'). Such DNS record is automatically added to controller's DNS records.
+- `network_id` (String) The ID of the network this client should be associated with. This is particularly important when using VLANs or multiple networks.
+- `note` (String) Additional information about the client that you want to record (e.g., 'Company asset tag #12345', 'Guest device - expires 2024-03-01').
+- `site` (String) The name of the UniFi site where this user should be managed. If not specified, the default site will be used.
+- `skip_forget_on_destroy` (Boolean) When false (default), the client will be 'forgotten' by the controller when this resource is destroyed. Set to true to keep the client's history in the controller after the resource is removed from Terraform. Defaults to `false`.
+- `user_group_id` (String) The ID of the user group this client belongs to. User groups can be used to apply common settings and restrictions to multiple clients.
 
 ### Read-Only
 
 - `hostname` (String) The hostname of the user.
-- `id` (String) The ID of the user.
+- `id` (String) The unique identifier of the user in the UniFi controller. This is automatically assigned.
 - `ip` (String) The IP address of the user.

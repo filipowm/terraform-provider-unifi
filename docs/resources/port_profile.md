@@ -3,12 +3,24 @@
 page_title: "unifi_port_profile Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_port_profile manages a port profile for use on network switches.
+  The unifi_port_profile resource manages port profiles that can be applied to UniFi switch ports.
+  Port profiles define a collection of settings that can be applied to one or more switch ports, including:
+  Network and VLAN settingsPort speed and duplex settingsSecurity features like 802.1X authentication and port isolationRate limiting and QoS settingsNetwork protocols like LLDP and STP
+  Creating port profiles allows for consistent configuration across multiple switch ports and easier management of port settings.
 ---
 
 # unifi_port_profile (Resource)
 
-`unifi_port_profile` manages a port profile for use on network switches.
+The `unifi_port_profile` resource manages port profiles that can be applied to UniFi switch ports.
+
+Port profiles define a collection of settings that can be applied to one or more switch ports, including:
+  * Network and VLAN settings
+  * Port speed and duplex settings
+  * Security features like 802.1X authentication and port isolation
+  * Rate limiting and QoS settings
+  * Network protocols like LLDP and STP
+
+Creating port profiles allows for consistent configuration across multiple switch ports and easier management of port settings.
 
 ## Example Usage
 
@@ -41,43 +53,152 @@ resource "unifi_port_profile" "poe_disabled" {
 
 ### Optional
 
-- `autoneg` (Boolean) Enable link auto negotiation for the port profile. When set to `true` this overrides `speed`. Defaults to `true`.
-- `dot1x_ctrl` (String) The type of 802.1X control to use. Can be `auto`, `force_authorized`, `force_unauthorized`, `mac_based` or `multi_host`. Defaults to `force_authorized`.
-- `dot1x_idle_timeout` (Number) The timeout, in seconds, to use when using the MAC Based 802.1X control. Can be between 0 and 65535 Defaults to `300`.
-- `egress_rate_limit_kbps` (Number) The egress rate limit, in kpbs, for the port profile. Can be between `64` and `9999999`.
-- `egress_rate_limit_kbps_enabled` (Boolean) Enable egress rate limiting for the port profile. Defaults to `false`.
-- `excluded_network_ids` (Set of String) List of network IDs to exclude on the port profile when forward is set to customize.
-- `forward` (String) The type forwarding to use for the port profile. Can be `all`, `native`, `customize` or `disabled`. Defaults to `native`.
-- `full_duplex` (Boolean) Enable full duplex for the port profile. Defaults to `false`.
-- `isolation` (Boolean) Enable port isolation for the port profile. Defaults to `false`.
-- `lldpmed_enabled` (Boolean) Enable LLDP-MED for the port profile. Defaults to `true`.
-- `lldpmed_notify_enabled` (Boolean) Enable LLDP-MED topology change notifications for the port profile.
-- `name` (String) The name of the port profile.
-- `native_networkconf_id` (String) The ID of network to use as the main network on the port profile.
+- `autoneg` (Boolean) Enable automatic negotiation of port speed and duplex settings. When enabled, this overrides manual speed and duplex settings. Recommended for most use cases. Defaults to `true`.
+- `dot1x_ctrl` (String) 802.1X port-based network access control (PNAC) mode. Valid values are:
+  * `force_authorized` - Port allows all traffic, no authentication required (default)
+  * `force_unauthorized` - Port blocks all traffic regardless of authentication
+  * `auto` - Standard 802.1X authentication required before port access is granted
+  * `mac_based` - Authentication based on client MAC address, useful for devices that don't support 802.1X
+  * `multi_host` - Allows multiple devices after first successful authentication, common in VoIP phone setups
+
+Use 'auto' for highest security, 'mac_based' for legacy devices, and 'multi_host' when daisy-chaining devices. Defaults to `force_authorized`.
+- `dot1x_idle_timeout` (Number) The number of seconds before an inactive authenticated MAC address is removed when using MAC-based 802.1X control. Range: 0-65535 seconds. Defaults to `300`.
+- `egress_rate_limit_kbps` (Number) The maximum outbound bandwidth allowed on the port in kilobits per second. Range: 64-9999999 kbps. Only applied when egress_rate_limit_kbps_enabled is true.
+- `egress_rate_limit_kbps_enabled` (Boolean) Enable outbound bandwidth rate limiting on the port. When enabled, traffic will be limited to the rate specified in egress_rate_limit_kbps. Defaults to `false`.
+- `excluded_network_ids` (Set of String) List of network IDs to exclude when forward is set to 'customize'. This allows you to prevent specific networks from being accessible on ports using this profile.
+- `forward` (String) VLAN forwarding mode for the port. Valid values are:
+  * `all` - Forward all VLANs (trunk port)
+  * `native` - Only forward untagged traffic (access port)
+  * `customize` - Forward selected VLANs (use with `excluded_network_ids`)
+  * `disabled` - Disable VLAN forwarding
+
+Examples:
+  * Use 'all' for uplink ports or connections to VLAN-aware devices
+  * Use 'native' for end-user devices or simple network connections
+  * Use 'customize' to create a selective trunk port (e.g., for a server needing access to specific VLANs) Defaults to `native`.
+- `full_duplex` (Boolean) Enable full-duplex mode when auto-negotiation is disabled. Full duplex allows simultaneous two-way communication. Defaults to `false`.
+- `isolation` (Boolean) Enable port isolation. When enabled, devices connected to ports with this profile cannot communicate with each other, providing enhanced security. Defaults to `false`.
+- `lldpmed_enabled` (Boolean) Enable Link Layer Discovery Protocol-Media Endpoint Discovery (LLDP-MED). This allows for automatic discovery and configuration of devices like VoIP phones. Defaults to `true`.
+- `lldpmed_notify_enabled` (Boolean) Enable LLDP-MED topology change notifications. When enabled:
+* Network devices will be notified of topology changes
+* Useful for VoIP phones and other LLDP-MED capable devices
+* Helps maintain accurate network topology information
+* Facilitates faster device configuration and provisioning
+- `name` (String) A descriptive name for the port profile. Examples:
+* 'AP-Trunk-Port' - For access point uplinks
+* 'VoIP-Phone-Port' - For VoIP phone connections
+* 'User-Access-Port' - For standard user connections
+* 'IoT-Device-Port' - For IoT device connections
+- `native_networkconf_id` (String) The ID of the network to use as the native (untagged) network on ports using this profile. This is typically used for:
+* Access ports where devices need untagged access
+* Trunk ports to specify the native VLAN
+* Management networks for network devices
 - `op_mode` (String) The operation mode for the port profile. Can only be `switch` Defaults to `switch`.
 - `poe_mode` (String) The POE mode for the port profile. Can be one of `auto`, `passv24`, `passthrough` or `off`.
-- `port_security_enabled` (Boolean) Enable port security for the port profile. Defaults to `false`.
-- `port_security_mac_address` (Set of String) The MAC addresses associated with the port security for the port profile.
-- `priority_queue1_level` (Number) The priority queue 1 level for the port profile. Can be between 0 and 100.
-- `priority_queue2_level` (Number) The priority queue 2 level for the port profile. Can be between 0 and 100.
-- `priority_queue3_level` (Number) The priority queue 3 level for the port profile. Can be between 0 and 100.
-- `priority_queue4_level` (Number) The priority queue 4 level for the port profile. Can be between 0 and 100.
-- `site` (String) The name of the site to associate the port profile with.
-- `speed` (Number) The link speed to set for the port profile in Mbps. Can be one of `10`, `100`, `1000`, `2500`, `5000`, `10000`, `20000`, `25000`, `40000`, `50000` or `100000`. When `autoneg` is true, this setting is ignored.
-- `stormctrl_bcast_enabled` (Boolean) Enable broadcast Storm Control for the port profile. Defaults to `false`.
+- `port_security_enabled` (Boolean) Enable MAC address-based port security. When enabled:
+* Only devices with specified MAC addresses can connect
+* Unauthorized devices will be blocked
+* Provides protection against unauthorized network access
+* Must be used with port_security_mac_address list Defaults to `false`.
+- `port_security_mac_address` (Set of String) List of allowed MAC addresses when port security is enabled. Each address should be:
+* In standard format (e.g., 'aa:bb:cc:dd:ee:ff')
+* Unique per device
+* Verified to belong to authorized devices
+Only effective when port_security_enabled is true
+- `priority_queue1_level` (Number) Priority queue 1 level (0-100) for Quality of Service (QoS). Used for:
+* Low-priority background traffic
+* Bulk data transfers
+* Non-time-sensitive applications
+Higher values give more bandwidth to this queue
+- `priority_queue2_level` (Number) Priority queue 2 level (0-100) for Quality of Service (QoS). Used for:
+* Standard user traffic
+* Web browsing and email
+* General business applications
+Higher values give more bandwidth to this queue
+- `priority_queue3_level` (Number) Priority queue 3 level (0-100) for Quality of Service (QoS). Used for:
+* High-priority traffic
+* Voice and video conferencing
+* Time-sensitive applications
+Higher values give more bandwidth to this queue
+- `priority_queue4_level` (Number) Priority queue 4 level (0-100) for Quality of Service (QoS). Used for:
+* Highest priority traffic
+* Critical real-time applications
+* Emergency communications
+Higher values give more bandwidth to this queue
+- `site` (String) The name of the UniFi site where the port profile should be created. If not specified, the default site will be used.
+- `speed` (Number) Port speed in Mbps when auto-negotiation is disabled. Common values:
+* 10 - 10 Mbps (legacy devices)
+* 100 - 100 Mbps (Fast Ethernet)
+* 1000 - 1 Gbps (Gigabit Ethernet)
+* 2500 - 2.5 Gbps (Multi-Gigabit)
+* 5000 - 5 Gbps (Multi-Gigabit)
+* 10000 - 10 Gbps (10 Gigabit)
+Only used when autoneg is false
+- `stormctrl_bcast_enabled` (Boolean) Enable broadcast storm control. When enabled:
+* Limits broadcast traffic to prevent network flooding
+* Protects against broadcast storms
+* Helps maintain network stability
+Use with stormctrl_bcast_rate to set threshold Defaults to `false`.
 - `stormctrl_bcast_level` (Number) The broadcast Storm Control level for the port profile. Can be between 0 and 100.
-- `stormctrl_bcast_rate` (Number) The broadcast Storm Control rate for the port profile. Can be between 0 and 14880000.
-- `stormctrl_mcast_enabled` (Boolean) Enable multicast Storm Control for the port profile. Defaults to `false`.
+- `stormctrl_bcast_rate` (Number) Maximum broadcast traffic rate in packets per second (0 - 14880000). Used to:
+* Control broadcast traffic levels
+* Prevent network congestion
+* Balance between necessary broadcasts and network protection
+Only effective when `stormctrl_bcast_enabled` is true
+- `stormctrl_mcast_enabled` (Boolean) Enable multicast storm control. When enabled:
+* Limits multicast traffic to prevent network flooding
+* Important for networks with multicast applications
+* Helps maintain quality of service
+Use with `stormctrl_mcast_rate` to set threshold Defaults to `false`.
 - `stormctrl_mcast_level` (Number) The multicast Storm Control level for the port profile. Can be between 0 and 100.
-- `stormctrl_mcast_rate` (Number) The multicast Storm Control rate for the port profile. Can be between 0 and 14880000.
+- `stormctrl_mcast_rate` (Number) Maximum multicast traffic rate in packets per second (0 - 14880000). Used to:
+* Control multicast traffic levels
+* Ensure bandwidth for critical multicast services
+* Prevent multicast traffic from overwhelming the network
+Only effective when stormctrl_mcast_enabled is true
 - `stormctrl_type` (String) The type of Storm Control to use for the port profile. Can be one of `level` or `rate`.
-- `stormctrl_ucast_enabled` (Boolean) Enable unknown unicast Storm Control for the port profile. Defaults to `false`.
+- `stormctrl_ucast_enabled` (Boolean) Enable unknown unicast storm control. When enabled:
+* Limits unknown unicast traffic to prevent flooding
+* Protects against MAC spoofing attacks
+* Helps maintain network performance
+Use with stormctrl_ucast_rate to set threshold Defaults to `false`.
 - `stormctrl_ucast_level` (Number) The unknown unicast Storm Control level for the port profile. Can be between 0 and 100.
-- `stormctrl_ucast_rate` (Number) The unknown unicast Storm Control rate for the port profile. Can be between 0 and 14880000.
-- `stp_port_mode` (Boolean) Enable spanning tree protocol on the port profile. Defaults to `true`.
-- `tagged_vlan_mgmt` (String) The VLAN management type for the port profile. Can be one of 'auto', 'block_all', or 'custom'.
-- `voice_networkconf_id` (String) The ID of network to use as the voice network on the port profile.
+- `stormctrl_ucast_rate` (Number) Maximum unknown unicast traffic rate in packets per second (0 - 14880000). Used to:
+* Control unknown unicast traffic levels
+* Prevent network saturation from unknown destinations
+* Balance security with network usability
+Only effective when stormctrl_ucast_enabled is true
+- `stp_port_mode` (Boolean) Spanning Tree Protocol (STP) configuration for the port. When enabled:
+* Prevents network loops in switch-to-switch connections
+* Provides automatic failover in redundant topologies
+* Helps maintain network stability
+
+Best practices:
+* Enable on switch uplink ports
+* Enable on ports connecting to other switches
+* Can be disabled on end-device ports for faster initialization Defaults to `true`.
+- `tagged_vlan_mgmt` (String) VLAN tagging behavior for the port. Valid values are:
+* `auto` - Automatically handle VLAN tags (recommended)
+    - Intelligently manages tagged and untagged traffic
+    - Best for most deployments
+* `block_all` - Block all VLAN tagged traffic
+    - Use for security-sensitive ports
+    - Prevents VLAN hopping attacks
+* `custom` - Custom VLAN configuration
+    - Manual control over VLAN behavior
+    - For specific VLAN requirements
+- `voice_networkconf_id` (String) The ID of the network to use for Voice over IP (VoIP) traffic. Used for:
+* Automatic VoIP VLAN configuration
+* Voice traffic prioritization
+* QoS settings for voice packets
+
+Common scenarios:
+* IP phone deployments with separate voice VLAN
+* Unified communications systems
+* Converged voice/data networks
+
+Works in conjunction with LLDP-MED for automatic phone provisioning.
 
 ### Read-Only
 
-- `id` (String) The ID of the port profile.
+- `id` (String) The unique identifier of the port profile in the UniFi controller.

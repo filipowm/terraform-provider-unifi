@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 
@@ -17,7 +18,16 @@ import (
 
 func ResourceSettingMgmt() *schema.Resource {
 	return &schema.Resource{
-		Description: "`unifi_setting_mgmt` manages settings for a unifi site.",
+		Description: "The `unifi_setting_mgmt` resource manages site-wide management settings in the UniFi controller.\n\n" +
+			"This resource allows you to configure important management features including:\n" +
+			"  * Automatic firmware upgrades for UniFi devices\n" +
+			"  * SSH access for advanced configuration and troubleshooting\n" +
+			"  * SSH key management for secure remote access\n\n" +
+			"These settings affect how the UniFi controller manages devices at the site level. " +
+			"They are particularly important for:\n" +
+			"  * Maintaining device security through automatic updates\n" +
+			"  * Enabling secure remote administration\n" +
+			"  * Implementing SSH key-based authentication",
 
 		CreateContext: resourceSettingMgmtCreate,
 		ReadContext:   resourceSettingMgmtRead,
@@ -29,50 +39,57 @@ func ResourceSettingMgmt() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Description: "The ID of the settings.",
+				Description: "The unique identifier of the management settings configuration in the UniFi controller.",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
 			"site": {
-				Description: "The name of the site to associate the settings with.",
+				Description: "The name of the UniFi site where these management settings should be applied. If not specified, the default site will be used.",
 				Type:        schema.TypeString,
 				Computed:    true,
 				Optional:    true,
 				ForceNew:    true,
 			},
 			"auto_upgrade": {
-				Description: "Automatically upgrade device firmware.",
-				Type:        schema.TypeBool,
-				Optional:    true,
+				Description: "Enable automatic firmware upgrades for all UniFi devices at this site. When enabled, devices will automatically " +
+					"update to the latest stable firmware version approved for your controller version.",
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 			"ssh_enabled": {
-				Description: "Enable SSH authentication.",
-				Type:        schema.TypeBool,
-				Optional:    true,
+				Description: "Enable SSH access to UniFi devices at this site. When enabled, you can connect to devices using SSH for advanced " +
+					"configuration and troubleshooting. It's recommended to only enable this temporarily when needed.",
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 			"ssh_key": {
-				Description: "SSH key.",
-				Type:        schema.TypeSet,
-				Optional:    true,
+				Description: "List of SSH public keys that are allowed to connect to UniFi devices when SSH is enabled. Using SSH keys is more " +
+					"secure than password authentication.",
+				Type:     schema.TypeSet,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
-							Description: "Name of SSH key.",
+							Description: "A friendly name for the SSH key to help identify its owner or purpose (e.g., 'admin-laptop' or 'backup-server').",
 							Type:        schema.TypeString,
 							Required:    true,
 						},
 						"type": {
-							Description: "Type of SSH key, e.g. ssh-rsa.",
-							Type:        schema.TypeString,
-							Required:    true,
+							Description: "The type of SSH key. Common values include:\n" +
+								"  * `ssh-rsa` - RSA key (most common)\n" +
+								"  * `ssh-ed25519` - Ed25519 key (more secure)\n" +
+								"  * `ecdsa-sha2-nistp256` - ECDSA key",
+							Type:     schema.TypeString,
+							Required: true,
 						},
 						"key": {
-							Description: "Public SSH key.",
-							Type:        schema.TypeString,
-							Optional:    true,
+							Description: "The public key string. This is the content that would normally go in an authorized_keys file, " +
+								"excluding the type and comment (e.g., 'AAAAB3NzaC1yc2EA...').",
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 						"comment": {
-							Description: "Comment.",
+							Description: "An optional comment to provide additional context about the key (e.g., 'generated on 2024-01-01' or 'expires 2025-12-31').",
 							Type:        schema.TypeString,
 							Optional:    true,
 						},

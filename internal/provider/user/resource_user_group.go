@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 
@@ -13,8 +14,20 @@ import (
 
 func ResourceUserGroup() *schema.Resource {
 	return &schema.Resource{
-		Description: "`unifi_user_group` manages a user group (called \"client group\" in the UI), which can be used " +
-			"to limit bandwidth for groups of users.",
+		Description: "The `unifi_user_group` resource manages client groups in the UniFi controller, which allow you to apply " +
+			"common settings and restrictions to multiple network clients.\n\n" +
+			"User groups are primarily used for:\n" +
+			"  * Implementing Quality of Service (QoS) policies\n" +
+			"  * Setting bandwidth limits for different types of users\n" +
+			"  * Organizing clients into logical groups (e.g., Staff, Guests, IoT devices)\n\n" +
+			"Key features include:\n" +
+			"  * Download rate limiting\n" +
+			"  * Upload rate limiting\n" +
+			"  * Group-based policy application\n\n" +
+			"User groups are particularly useful in:\n" +
+			"  * Educational environments (different policies for staff and students)\n" +
+			"  * Guest networks (limiting guest bandwidth)\n" +
+			"  * Shared office spaces (managing different tenant groups)",
 
 		CreateContext: resourceUserGroupCreate,
 		ReadContext:   resourceUserGroupRead,
@@ -26,34 +39,37 @@ func ResourceUserGroup() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Description: "The ID of the user group.",
+				Description: "The unique identifier of the user group in the UniFi controller. This is automatically assigned.",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
 			"site": {
-				Description: "The name of the site to associate the user group with.",
+				Description: "The name of the UniFi site where this user group should be created. If not specified, the default site will be used.",
 				Type:        schema.TypeString,
 				Computed:    true,
 				Optional:    true,
 				ForceNew:    true,
 			},
 			"name": {
-				Description: "The name of the user group.",
-				Type:        schema.TypeString,
-				Required:    true,
+				Description: "A descriptive name for the user group (e.g., 'Staff', 'Guests', 'IoT Devices'). This name will be " +
+					"displayed in the UniFi controller interface and used when assigning clients to the group.",
+				Type:     schema.TypeString,
+				Required: true,
 			},
 			"qos_rate_max_down": {
-				Description: "The QOS maximum download rate.",
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Default:     -1,
+				Description: "The maximum allowed download speed in Kbps (kilobits per second) for clients in this group. " +
+					"Set to -1 for unlimited. Note: Values of 0 or 1 are not allowed.",
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  -1,
 				// TODO: validate does not equal 0,1
 			},
 			"qos_rate_max_up": {
-				Description: "The QOS maximum upload rate.",
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Default:     -1,
+				Description: "The maximum allowed upload speed in Kbps (kilobits per second) for clients in this group. " +
+					"Set to -1 for unlimited. Note: Values of 0 or 1 are not allowed.",
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  -1,
 				// TODO: validate does not equal 0,1
 			},
 		},

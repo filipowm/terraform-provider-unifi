@@ -1,25 +1,86 @@
 ---
 layout: ""
-page_title: "Provider: Unifi"
+page_title: "Provider: UniFi"
 description: |-
-  The Unifi provider provides resources to interact with a Unifi controller API.
+  The UniFi provider enables management and automation of Ubiquiti UniFi network infrastructure through Terraform.
 ---
 
-# Unifi Provider
+# UniFi Provider
 
-The Unifi provider provides resources to interact with a Unifi controller API.
+The UniFi provider enables infrastructure-as-code management of [Ubiquiti's UniFi](https://www.ui.com/) network controllers and devices. This provider allows you to automate the configuration and management of your UniFi network infrastructure using Terraform.
 
-It is not recommended to use your own account for management of your controller. A user specific to
-Terraform is recommended. You can create a **Limited Admin** with **Local Access Only** and
-provide that information for authentication. Two-factor authentication is not supported in the provider.
+## Supported Features
+
+The provider supports management of:
+
+* Networks and VLANs
+* Wireless Networks (WLANs)
+* Firewall Rules and Groups
+* Port Forwarding
+* DNS Records
+* User Management
+* Device Configuration
+* And more...
+
+## Supported Platforms
+
+* UniFi Controller version 6.x and later
+* UniFi Dream Machine (UDM)
+* UniFi Dream Machine Pro (UDM-Pro)
+* UniFi Cloud Gateway (UCG)
+* Standard UniFi Controller deployments
+
+## Authentication
+
+The provider supports two authentication methods:
+
+* **Username/Password Authentication** (Traditional method)
+* **API Key Authentication** (Recommended, requires controller version 9.0.108 or later)
+
+!> Hard-coding credentials into any Terraform configuration is not recommended, and risks secret leakage should this file ever be committed to a public version control system.
+
+### Security Recommendations
+
+* Use API Key authentication instead of username/password
+* Create a dedicated service account for Terraform with appropriate permissions
+* Use a **Limited Admin** role with **Local Access Only**
+* Enable HTTPS and valid SSL certificates for your controller
+* Store credentials securely using Terraform variables or environment variables
+* Two-factor authentication (2FA) is not supported
+
+### Generating an API Key
+
+1. Open your Site in UniFi Site Manager
+2. Click on `Control Plane -> Admins & Users`.
+3. Select your Admin user.
+4. Click `Create API Key`.
+5. Add a name for your API Key.
+6. Copy the key and store it securely, as it will only be displayed once.
+7. Click `Done` to ensure the key is hashed and securely stored.
+8. Use the API Key 🎉
 
 ## Example Usage
 
+Using API Key authentication:
+```terraform
+provider "unifi" {
+  api_key = var.api_key  # optionally use UNIFI_API_KEY env var
+  api_url = var.api_url  # optionally use UNIFI_API env var
+
+  # you may need to allow insecure TLS communications unless you have configured
+  # certificates for your controller
+  allow_insecure = var.insecure # optionally use UNIFI_INSECURE env var
+
+  # if you are not configuring the default site, you can change the site
+  # site = "foo" or optionally use UNIFI_SITE env var
+}
+```
+
+Using Username/Password authentication:
 ```terraform
 provider "unifi" {
   username = var.username # optionally use UNIFI_USERNAME env var
   password = var.password # optionally use UNIFI_PASSWORD env var
-  api_key = var.api_key  # optionally use UNIFI_API_KEY env var
   api_url = var.api_url  # optionally use UNIFI_API env var
 
   # you may need to allow insecure TLS communications unless you have configured
@@ -42,3 +103,5 @@ provider "unifi" {
 - `password` (String, Sensitive) Password for the user accessing the API. Can be specified with the `UNIFI_PASSWORD` environment variable.
 - `site` (String) The site in the Unifi controller this provider will manage. Can be specified with the `UNIFI_SITE` environment variable. Default: `default`
 - `username` (String) Local user name for the Unifi controller API. Can be specified with the `UNIFI_USERNAME` environment variable.
+
+## Migrating from paultyng/terraform-provider-unifi

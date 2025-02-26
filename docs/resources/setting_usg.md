@@ -3,12 +3,28 @@
 page_title: "unifi_setting_usg Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_setting_usg manages settings for a Unifi Security Gateway.
+  The unifi_setting_usg resource manages advanced settings for UniFi Security Gateways (USG) and UniFi Dream Machines (UDM/UDM-Pro).
+  This resource allows you to configure gateway-specific features including:
+  Multicast DNS (mDNS) for service discoveryDHCP relay for forwarding DHCP requests to external servers
+  These settings are particularly useful for:
+  Enabling device discovery across VLANs (using mDNS)Centralizing DHCP management in enterprise environmentsIntegration with existing network infrastructure
+  Note: Some settings may not be available on all controller versions. For example, multicast_dns_enabled is not supported on UniFi OS v7+.
 ---
 
 # unifi_setting_usg (Resource)
 
-`unifi_setting_usg` manages settings for a Unifi Security Gateway.
+The `unifi_setting_usg` resource manages advanced settings for UniFi Security Gateways (USG) and UniFi Dream Machines (UDM/UDM-Pro).
+
+This resource allows you to configure gateway-specific features including:
+  * Multicast DNS (mDNS) for service discovery
+  * DHCP relay for forwarding DHCP requests to external servers
+
+These settings are particularly useful for:
+  * Enabling device discovery across VLANs (using mDNS)
+  * Centralizing DHCP management in enterprise environments
+  * Integration with existing network infrastructure
+
+Note: Some settings may not be available on all controller versions. For example, multicast_dns_enabled is not supported on UniFi OS v7+.
 
 
 
@@ -17,10 +33,10 @@ description: |-
 
 ### Optional
 
-- `dhcp_relay_servers` (List of String) The DHCP relay servers.
-- `multicast_dns_enabled` (Boolean) Whether multicast DNS is enabled.
-- `site` (String) The name of the site to associate the settings with.
+- `dhcp_relay_servers` (List of String) List of up to 5 DHCP relay servers (specified by IP address) that will receive forwarded DHCP requests. This is useful when you want to use external DHCP servers instead of the built-in DHCP server. Example: ['192.168.1.5', '192.168.2.5']
+- `multicast_dns_enabled` (Boolean) Enable multicast DNS (mDNS/Bonjour/Avahi) forwarding across VLANs. This allows devices to discover services (like printers, Chromecasts, etc.) even when they are on different networks. Note: Not supported on UniFi OS v7+.
+- `site` (String) The name of the UniFi site where these USG settings should be applied. If not specified, the default site will be used.
 
 ### Read-Only
 
-- `id` (String) The ID of the settings.
+- `id` (String) The unique identifier of the USG settings configuration in the UniFi controller.

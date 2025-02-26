@@ -3,12 +3,12 @@
 page_title: "unifi_port_profile Data Source - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_port_profile data source can be used to retrieve the ID for a port profile by name.
+  unifi_port_profile data source can be used to retrieve port profile configurations from your UniFi network. Port profiles define settings and behaviors for switch ports, including VLANs, PoE settings, and other port-specific configurations. This data source is particularly useful when you need to reference existing port profiles in switch port configurations.
 ---
 
 # unifi_port_profile (Data Source)
 
-`unifi_port_profile` data source can be used to retrieve the ID for a port profile by name.
+`unifi_port_profile` data source can be used to retrieve port profile configurations from your UniFi network. Port profiles define settings and behaviors for switch ports, including VLANs, PoE settings, and other port-specific configurations. This data source is particularly useful when you need to reference existing port profiles in switch port configurations.
 
 ## Example Usage
 
@@ -22,9 +22,9 @@ data "unifi_port_profile" "all" {
 
 ### Optional
 
-- `name` (String) The name of the port profile to look up. Defaults to `All`.
-- `site` (String) The name of the site the port profile is associated with.
+- `name` (String) The name of the port profile to look up. This is the friendly name assigned to the profile in the UniFi controller. Defaults to "All" if not specified, which is the default port profile in UniFi. Defaults to `All`.
+- `site` (String) The name of the UniFi site where the port profile is configured. If not specified, the default site will be used.
 
 ### Read-Only
 
-- `id` (String) The ID of this port profile.
+- `id` (String) The unique identifier of the port profile. This is automatically assigned by UniFi and can be used to reference this port profile in other resources.

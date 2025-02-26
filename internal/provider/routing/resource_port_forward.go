@@ -3,6 +3,7 @@ package routing
 import (
 	"context"
 	"errors"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 
@@ -14,7 +15,13 @@ import (
 
 func ResourcePortForward() *schema.Resource {
 	return &schema.Resource{
-		Description: "`unifi_port_forward` manages a port forwarding rule on the gateway.",
+		Description: "The `unifi_port_forward` resource manages port forwarding rules on UniFi controllers.\n\n" +
+			"Port forwarding allows external traffic to reach services hosted on your internal network by mapping external ports to internal IP addresses and ports. " +
+			"This is commonly used for:\n" +
+			"  * Hosting web servers, game servers, or other services\n" +
+			"  * Remote access to internal services\n" +
+			"  * Application-specific requirements\n\n" +
+			"Each rule can be configured with source IP restrictions, protocol selection, and logging options for enhanced security and monitoring.",
 
 		CreateContext: resourcePortForwardCreate,
 		ReadContext:   resourcePortForwardRead,
@@ -26,19 +33,19 @@ func ResourcePortForward() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Description: "The ID of the port forwarding rule.",
+				Description: "The unique identifier of the port forwarding rule in the UniFi controller.",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
 			"site": {
-				Description: "The name of the site to associate the port forwarding rule with.",
+				Description: "The name of the UniFi site where the port forwarding rule should be created. If not specified, the default site will be used.",
 				Type:        schema.TypeString,
 				Computed:    true,
 				Optional:    true,
 				ForceNew:    true,
 			},
 			"dst_port": {
-				Description:  "The destination port for the forwarding.",
+				Description:  "The external port(s) that will be forwarded. Can be a single port (e.g., '80') or a port range (e.g., '8080:8090').",
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: utils.ValidatePortRange,
@@ -53,46 +60,53 @@ func ResourcePortForward() *schema.Resource {
 					"port forwarding rule you can remove it from your configuration.",
 			},
 			"fwd_ip": {
-				Description:  "The IPv4 address to forward traffic to.",
+				Description:  "The internal IPv4 address of the device or service that will receive the forwarded traffic (e.g., '192.168.1.100').",
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.IsIPv4Address,
 			},
 			"fwd_port": {
-				Description:  "The port to forward traffic to.",
+				Description:  "The internal port(s) that will receive the forwarded traffic. Can be a single port (e.g., '8080') or a port range (e.g., '8080:8090').",
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: utils.ValidatePortRange,
 			},
 			"log": {
-				Description: "Specifies whether to log forwarded traffic or not.",
+				Description: "Enable logging of traffic matching this port forwarding rule. Useful for monitoring and troubleshooting.",
 				Type:        schema.TypeBool,
 				Default:     false,
 				Optional:    true,
 			},
 			"name": {
-				Description: "The name of the port forwarding rule.",
+				Description: "A friendly name for the port forwarding rule to help identify its purpose (e.g., 'Web Server' or 'Game Server').",
 				Type:        schema.TypeString,
 				Optional:    true,
 			},
 			"port_forward_interface": {
-				Description:  "The port forwarding interface. Can be `wan`, `wan2`, or `both`.",
+				Description: "The WAN interface to apply the port forwarding rule to. Valid values are:\n" +
+					"  * `wan` - Primary WAN interface\n" +
+					"  * `wan2` - Secondary WAN interface\n" +
+					"  * `both` - Both WAN interfaces",
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.StringInSlice([]string{"wan", "wan2", "both"}, false),
 			},
 			"protocol": {
-				Description:  "The protocol for the port forwarding rule. Can be `tcp`, `udp`, or `tcp_udp`.",
+				Description: "The network protocol(s) this rule applies to. Valid values are:\n" +
+					"  * `tcp_udp` - Both TCP and UDP (default)\n" +
+					"  * `tcp` - TCP only\n" +
+					"  * `udp` - UDP only",
 				Type:         schema.TypeString,
 				Optional:     true,
 				Default:      "tcp_udp",
 				ValidateFunc: validation.StringInSlice([]string{"tcp_udp", "tcp", "udp"}, false),
 			},
 			"src_ip": {
-				Description: "The source IPv4 address (or CIDR) of the port forwarding rule. For all traffic, specify `any`.",
-				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "any",
+				Description: "The source IP address or network in CIDR notation that is allowed to use this port forward. Use 'any' to allow all source IPs. " +
+					"Examples: '203.0.113.1' for a single IP, '203.0.113.0/24' for a network, or 'any' for all IPs.",
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "any",
 				ValidateFunc: validation.Any(
 					validation.StringInSlice([]string{"any"}, false),
 					validation.IsIPv4Address,

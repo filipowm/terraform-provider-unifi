@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 
@@ -20,7 +21,12 @@ var (
 
 func ResourceWLAN() *schema.Resource {
 	return &schema.Resource{
-		Description: "`unifi_wlan` manages a WiFi network / SSID.",
+		Description: "The `unifi_wlan` resource manages wireless networks (SSIDs) on UniFi access points.\n\n" +
+			"This resource allows you to create and manage WiFi networks with various security options including WPA2, WPA3, " +
+			"and enterprise authentication. You can configure features such as guest policies, minimum data rates, band steering, " +
+			"and scheduled availability.\n\n" +
+			"Each WLAN can be customized with different security settings, VLAN assignments, and client options to meet specific " +
+			"networking requirements.",
 
 		CreateContext: resourceWLANCreate,
 		ReadContext:   resourceWLANRead,
@@ -32,80 +38,87 @@ func ResourceWLAN() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Description: "The ID of the network.",
+				Description: "The unique identifier of the wireless network in the UniFi controller.",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
 			"site": {
-				Description: "The name of the site to associate the wlan with.",
+				Description: "The name of the UniFi site where the wireless network should be created. If not specified, the default site will be used.",
 				Type:        schema.TypeString,
 				Computed:    true,
 				Optional:    true,
 				ForceNew:    true,
 			},
 			"name": {
-				Description:  "The SSID of the network. SSID length must be between 1 and 32 characters.",
+				Description:  "The SSID (network name) that will be broadcast by the access points. Must be between 1 and 32 characters long.",
 				Type:         schema.TypeString,
 				Required:     true,
 				ValidateFunc: validation.StringLenBetween(1, 32),
 			},
 			"user_group_id": {
-				Description: "ID of the user group to use for this network.",
+				Description: "The ID of the user group that defines the rate limiting and firewall rules for clients on this network.",
 				Type:        schema.TypeString,
 				Required:    true,
 			},
 			"security": {
-				Description:  "The type of WiFi security for this network. Valid values are: `wpapsk`, `wpaeap`, and `open`.",
+				Description: "The security protocol for the wireless network. Valid values are:\n" +
+					"  * `wpapsk` - WPA Personal (PSK) with WPA2/WPA3 options\n" +
+					"  * `wpaeap` - WPA Enterprise (802.1x)\n" +
+					"  * `open` - Open network (no encryption)",
 				Type:         schema.TypeString,
 				Required:     true,
 				ValidateFunc: validation.StringInSlice([]string{"wpapsk", "wpaeap", "open"}, false),
 			},
 			"wpa3_support": {
-				Description: "Enable WPA 3 support (security must be `wpapsk` and PMF must be turned on).",
+				Description: "Enable WPA3 security protocol. Requires security to be set to `wpapsk` and PMF mode to be enabled. WPA3 provides enhanced security features over WPA2.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 			},
 			"wpa3_transition": {
-				Description: "Enable WPA 3 and WPA 2 support (security must be `wpapsk` and `wpa3_support` must be true).",
-				Type:        schema.TypeBool,
-				Optional:    true,
+				Description: "Enable WPA3 transition mode, which allows both WPA2 and WPA3 clients to connect. This provides backward compatibility while gradually transitioning to WPA3." +
+					" Requires security to be set to `wpapsk` and `wpa3_support` to be true.",
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 			"pmf_mode": {
-				Description:  "Enable Protected Management Frames. This cannot be disabled if using WPA 3. Valid values are `required`, `optional` and `disabled`.",
+				Description: "Protected Management Frames (PMF) mode. It cannot be disabled if using WPA3. Valid values are:\n" +
+					"  * `required` - All clients must support PMF (required for WPA3)\n" +
+					"  * `optional` - Clients can optionally use PMF (recommended when transitioning from WPA2 to WPA3)\n" +
+					"  * `disabled` - PMF is disabled (not compatible with WPA3)",
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.StringInSlice([]string{"required", "optional", "disabled"}, false),
 				Default:      "disabled",
 			},
 			"passphrase": {
-				Description: "The passphrase for the network, this is only required if `security` is not set to `open`.",
+				Description: "The WPA pre-shared key (password) for the network. Required when security is not set to `open`.",
 				Type:        schema.TypeString,
 				// only required if security != open
 				Optional:  true,
 				Sensitive: true,
 			},
 			"hide_ssid": {
-				Description: "Indicates whether or not to hide the SSID from broadcast.",
+				Description: "When enabled, the access points will not broadcast the network name (SSID). Clients will need to manually enter the SSID to connect.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 			},
 			"is_guest": {
-				Description: "Indicates that this is a guest WLAN and should use guest behaviors.",
+				Description: "Mark this as a guest network. Guest networks are isolated from other networks and can have special restrictions like captive portals.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 			},
 			"multicast_enhance": {
-				Description: "Indicates whether or not Multicast Enhance is turned of for the network.",
+				Description: "Enable multicast enhancement to convert multicast traffic to unicast for better reliability and performance, especially for applications like video streaming.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 			},
 			"mac_filter_enabled": {
-				Description: "Indicates whether or not the MAC filter is turned of for the network.",
+				Description: "Enable MAC address filtering to control network access based on client MAC addresses. Works in conjunction with `mac_filter_list` and `mac_filter_policy`.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 			},
 			"mac_filter_list": {
-				Description: "List of MAC addresses to filter (only valid if `mac_filter_enabled` is `true`).",
+				Description: "List of MAC addresses to filter in XX:XX:XX:XX:XX:XX format. Only applied when `mac_filter_enabled` is true. MAC addresses are case-insensitive.",
 				Type:        schema.TypeSet,
 				Optional:    true,
 				Elem: &schema.Schema{
@@ -115,51 +128,52 @@ func ResourceWLAN() *schema.Resource {
 				},
 			},
 			"mac_filter_policy": {
-				Description:  "MAC address filter policy (only valid if `mac_filter_enabled` is `true`).",
+				Description: "MAC address filter policy. Valid values are:\n" +
+					"  * `allow` - Only allow listed MAC addresses\n" +
+					"  * `deny` - Block listed MAC addresses",
 				Type:         schema.TypeString,
 				Optional:     true,
 				Default:      "deny",
 				ValidateFunc: validation.StringInSlice([]string{"allow", "deny"}, false),
 			},
 			"radius_profile_id": {
-				Description: "ID of the RADIUS profile to use when security `wpaeap`. You can query this via the " +
-					"`unifi_radius_profile` data source.",
-				Type:     schema.TypeString,
-				Optional: true,
+				Description: "ID of the RADIUS profile to use for WPA Enterprise authentication (when security is 'wpaeap'). Reference existing profiles using the `unifi_radius_profile` data source.",
+				Type:        schema.TypeString,
+				Optional:    true,
 			},
 			"schedule": {
-				Description: "start and stop schedules for the WLAN",
+				Description: "Time-based access control configuration for the wireless network. Allows automatic enabling/disabling of the network on specified schedules.",
 				Type:        schema.TypeList,
 				Optional:    true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"day_of_week": {
-							Description:  "Day of week for the block. Valid values are `sun`, `mon`, `tue`, `wed`, `thu`, `fri`, `sat`.",
+							Description:  "Day of week. Valid values: `sun`, `mon`, `tue`, `wed`, `thu`, `fri`, `sat`.",
 							Type:         schema.TypeString,
 							Required:     true,
-							ValidateFunc: validation.StringInSlice([]string{"sun", "mon", "tue", "wed", "thu", "fri", "sat", "sun"}, false),
+							ValidateFunc: validation.StringInSlice([]string{"sun", "mon", "tue", "wed", "thu", "fri", "sat"}, false),
 						},
 						"start_hour": {
-							Description:  "start hour for the block (0-23).",
+							Description:  "Start hour in 24-hour format (0-23).",
 							Type:         schema.TypeInt,
 							Required:     true,
 							ValidateFunc: validation.IntBetween(0, 23),
 						},
 						"start_minute": {
-							Description:  "start minute for the block (0-59).",
+							Description:  "Start minute (0-59).",
 							Type:         schema.TypeInt,
 							Optional:     true,
 							Default:      0,
 							ValidateFunc: validation.IntBetween(0, 59),
 						},
 						"duration": {
-							Description:  "Length of the block in minutes.",
+							Description:  "Duration in minutes that the network should remain active.",
 							Type:         schema.TypeInt,
 							Required:     true,
 							ValidateFunc: validation.IntAtLeast(1),
 						},
 						"name": {
-							Description: "Name of the block.",
+							Description: "Friendly name for this schedule block (e.g., 'Business Hours', 'Weekend Access').",
 							Type:        schema.TypeString,
 							Optional:    true,
 						},
@@ -167,73 +181,78 @@ func ResourceWLAN() *schema.Resource {
 				},
 			},
 			"no2ghz_oui": {
-				Description: "Connect high performance clients to 5 GHz only.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     true,
+				Description: "When enabled, devices from specific manufacturers (identified by their OUI - Organizationally Unique Identifier) " +
+					"will be prevented from connecting on 2.4GHz and forced to use 5GHz. This improves overall network performance by " +
+					"ensuring capable devices use the less congested 5GHz band. Common examples include newer smartphones and laptops.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
 			},
 			"l2_isolation": {
-				Description: "Isolates stations on layer 2 (ethernet) level.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     false,
+				Description: "Isolates wireless clients from each other at layer 2 (ethernet) level. When enabled, devices on this WLAN " +
+					"cannot communicate directly with each other, improving security especially for guest networks or IoT devices. " +
+					"Each client can only communicate with the gateway/router.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
 			},
 			"proxy_arp": {
-				Description: "Reduces airtime usage by allowing APs to \"proxy\" common broadcast frames as unicast.",
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     false,
+				Description: "Enable ARP proxy on this WLAN. When enabled, the UniFi controller will respond to ARP requests on behalf " +
+					"of clients, reducing broadcast traffic and potentially improving network performance. This is particularly useful " +
+					"in high-density wireless environments.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
 			},
 			"bss_transition": {
-				Description: "Improves client transitions between APs when they have a weak signal.",
+				Description: "Enable BSS Transition Management to help clients roam between APs more efficiently.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     true,
 			},
 			"uapsd": {
-				Description: "Enable Unscheduled Automatic Power Save Delivery.",
+				Description: "Enable Unscheduled Automatic Power Save Delivery to improve battery life for mobile devices.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
 			},
 			"fast_roaming_enabled": {
-				Description: "Enables 802.11r fast roaming.",
+				Description: "Enable 802.11r Fast BSS Transition for seamless roaming between APs. Requires client device support.",
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
 			},
 			"minimum_data_rate_2g_kbps": {
-				Description: "Set minimum data rate control for 2G devices, in Kbps. " +
-					"Use `0` to disable minimum data rates. " +
-					"Valid values are: " + utils.MarkdownValueListInt(wlanValidMinimumDataRate2g) + ".",
-				Type:     schema.TypeInt,
-				Optional: true,
-				// TODO: this validation is from the UI, if other values work, perhaps remove this is set it to a range instead?
+				Description: "Minimum data rate for 2.4GHz devices in Kbps. Use `0` to disable. Valid values: " +
+					utils.MarkdownValueListInt(wlanValidMinimumDataRate2g),
+				Type:         schema.TypeInt,
+				Optional:     true,
 				ValidateFunc: validation.IntInSlice(append([]int{0}, wlanValidMinimumDataRate2g...)),
 			},
 			"minimum_data_rate_5g_kbps": {
-				Description: "Set minimum data rate control for 5G devices, in Kbps. " +
-					"Use `0` to disable minimum data rates. " +
-					"Valid values are: " + utils.MarkdownValueListInt(wlanValidMinimumDataRate5g) + ".",
-				Type:     schema.TypeInt,
-				Optional: true,
-				// TODO: this validation is from the UI, if other values work, perhaps remove this is set it to a range instead?
+				Description: "Minimum data rate for 5GHz devices in Kbps. Use `0` to disable. Valid values: " +
+					utils.MarkdownValueListInt(wlanValidMinimumDataRate5g),
+				Type:         schema.TypeInt,
+				Optional:     true,
 				ValidateFunc: validation.IntInSlice(append([]int{0}, wlanValidMinimumDataRate5g...)),
 			},
 			"wlan_band": {
-				Description:  "Radio band your WiFi network will use.",
+				Description: "Radio band selection. Valid values:\n" +
+					"  * `both` - Both 2.4GHz and 5GHz (default)\n" +
+					"  * `2g` - 2.4GHz only\n" +
+					"  * `5g` - 5GHz only",
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.StringInSlice([]string{"2g", "5g", "both"}, false),
 				Default:      "both",
 			},
 			"network_id": {
-				Description: "ID of the network for this SSID",
+				Description: "ID of the network (VLAN) for this SSID. Used to assign the WLAN to a specific network segment.",
 				Type:        schema.TypeString,
 				Optional:    true,
 			},
 			"ap_group_ids": {
-				Description: "IDs of the AP groups to use for this network.",
+				Description: "IDs of the AP groups that should broadcast this SSID. Used to control which access points broadcast this network.",
 				Type:        schema.TypeSet,
 				Optional:    true,
 				Elem: &schema.Schema{

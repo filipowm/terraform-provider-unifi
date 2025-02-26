@@ -3,6 +3,7 @@ package firewall
 import (
 	"context"
 	"errors"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 
@@ -14,7 +15,16 @@ import (
 
 func ResourceFirewallGroup() *schema.Resource {
 	return &schema.Resource{
-		Description: "`unifi_firewall_group` manages groups of addresses or ports for use in firewall rules (`unifi_firewall_rule`).",
+		Description: "The `unifi_firewall_group` resource manages reusable groups of addresses or ports that can be referenced in firewall rules (`unifi_firewall_rule`).\n\n" +
+			"Firewall groups help organize and simplify firewall rule management by allowing you to:\n" +
+			"  * Create collections of IP addresses or networks\n" +
+			"  * Define sets of ports for specific services\n" +
+			"  * Group IPv6 addresses for IPv6-specific rules\n\n" +
+			"Common use cases include:\n" +
+			"  * Creating groups of trusted IP addresses\n" +
+			"  * Defining port groups for specific applications\n" +
+			"  * Managing access control lists\n" +
+			"  * Simplifying rule maintenance by using groups instead of individual IPs/ports",
 
 		CreateContext: resourceFirewallGroupCreate,
 		ReadContext:   resourceFirewallGroupRead,
@@ -26,33 +36,40 @@ func ResourceFirewallGroup() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Description: "The ID of the firewall group.",
+				Description: "The unique identifier of the firewall group in the UniFi controller.",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
 			"site": {
-				Description: "The name of the site to associate the firewall group with.",
+				Description: "The name of the UniFi site where the firewall group should be created. If not specified, the default site will be used.",
 				Type:        schema.TypeString,
 				Computed:    true,
 				Optional:    true,
 				ForceNew:    true,
 			},
 			"name": {
-				Description: "The name of the firewall group.",
-				Type:        schema.TypeString,
-				Required:    true,
+				Description: "A friendly name for the firewall group to help identify its purpose (e.g., 'Trusted IPs' or 'Web Server Ports'). " +
+					"Must be unique within the site.",
+				Type:     schema.TypeString,
+				Required: true,
 			},
 			"type": {
-				Description:  "The type of the firewall group. Must be one of: `address-group`, `port-group`, or `ipv6-address-group`.",
+				Description: "The type of firewall group. Valid values are:\n" +
+					"  * `address-group` - Group of IPv4 addresses and/or networks (e.g., '192.168.1.10', '10.0.0.0/8')\n" +
+					"  * `port-group` - Group of ports or port ranges (e.g., '80', '443', '8000-8080')\n" +
+					"  * `ipv6-address-group` - Group of IPv6 addresses and/or networks",
 				Type:         schema.TypeString,
 				Required:     true,
 				ValidateFunc: validation.StringInSlice([]string{"address-group", "port-group", "ipv6-address-group"}, false),
 			},
 			"members": {
-				Description: "The members of the firewall group.",
-				Type:        schema.TypeSet,
-				Required:    true,
-				Elem:        &schema.Schema{Type: schema.TypeString},
+				Description: "List of members in the group. The format depends on the group type:\n" +
+					"  * For address-group: IPv4 addresses or CIDR notation (e.g., ['192.168.1.10', '10.0.0.0/8'])\n" +
+					"  * For port-group: Port numbers or ranges (e.g., ['80', '443', '8000-8080'])\n" +
+					"  * For ipv6-address-group: IPv6 addresses or CIDR notation",
+				Type:     schema.TypeSet,
+				Required: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 		},
 	}

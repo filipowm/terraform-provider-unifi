@@ -3,12 +3,18 @@
 page_title: "unifi_firewall_rule Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_firewall_rule manages an individual firewall rule on the gateway.
+  The unifi_firewall_rule resource manages firewall rules.
+  This resource allows you to create and manage firewall rules that control traffic flow between different network segments (WAN, LAN, Guest) for both IPv4 and IPv6 traffic. Rules can be configured to allow, drop, or reject traffic based on various criteria including protocols, ports, and IP addresses.
+  Rules are processed in order based on their rule_index, with lower numbers being processed first. Custom rules should use indices between 2000-2999 or 4000-4999 to avoid conflicts with system rules.
 ---
 
 # unifi_firewall_rule (Resource)
 
-`unifi_firewall_rule` manages an individual firewall rule on the gateway.
+The `unifi_firewall_rule` resource manages firewall rules.
+
+This resource allows you to create and manage firewall rules that control traffic flow between different network segments (WAN, LAN, Guest) for both IPv4 and IPv6 traffic. Rules can be configured to allow, drop, or reject traffic based on various criteria including protocols, ports, and IP addresses.
+
+Rules are processed in order based on their `rule_index`, with lower numbers being processed first. Custom rules should use indices between 2000-2999 or 4000-4999 to avoid conflicts with system rules.
 
 ## Example Usage
 
@@ -35,42 +41,103 @@ resource "unifi_firewall_rule" "drop_all" {
 
 ### Required
 
-- `action` (String) The action of the firewall rule. Must be one of `drop`, `accept`, or `reject`.
-- `name` (String) The name of the firewall rule.
-- `rule_index` (Number) The index of the rule. Must be >= 2000 < 3000 or >= 4000 < 5000.
-- `ruleset` (String) The ruleset for the rule. This is from the perspective of the security gateway. Must be one of `WAN_IN`, `WAN_OUT`, `WAN_LOCAL`, `LAN_IN`, `LAN_OUT`, `LAN_LOCAL`, `GUEST_IN`, `GUEST_OUT`, `GUEST_LOCAL`, `WANv6_IN`, `WANv6_OUT`, `WANv6_LOCAL`, `LANv6_IN`, `LANv6_OUT`, `LANv6_LOCAL`, `GUESTv6_IN`, `GUESTv6_OUT`, or `GUESTv6_LOCAL`.
+- `action` (String) The action to take when traffic matches this rule. Valid values are:
+  * `accept` - Allow the traffic
+  * `drop` - Silently block the traffic
+  * `reject` - Block the traffic and send an ICMP rejection message
+- `name` (String) A friendly name for the firewall rule. This helps identify the rule's purpose in the UniFi controller UI.
+- `rule_index` (Number) The processing order for this rule. Lower numbers are processed first. Custom rules should use:
+  * 2000-2999 for rules processed before auto-generated rules
+  * 4000-4999 for rules processed after auto-generated rules
+- `ruleset` (String) Defines which traffic flow this rule applies to. The format is [NETWORK]_[DIRECTION], where:
+  * NETWORK can be: WAN, LAN, GUEST (or their IPv6 variants WANv6, LANv6, GUESTv6)
+  * DIRECTION can be:
+    * IN - Traffic entering the network
+    * OUT - Traffic leaving the network
+    * LOCAL - Traffic destined for the USG/UDM itself
+
+Examples: WAN_IN (incoming WAN traffic), LAN_OUT (outgoing LAN traffic), GUEST_LOCAL (traffic to Controller from guest network)
 
 ### Optional
 
-- `dst_address` (String) The destination address of the firewall rule.
-- `dst_address_ipv6` (String) The IPv6 destination address of the firewall rule.
-- `dst_firewall_group_ids` (Set of String) The destination firewall group IDs of the firewall rule.
-- `dst_network_id` (String) The destination network ID of the firewall rule.
-- `dst_network_type` (String) The destination network type of the firewall rule. Can be one of `ADDRv4` or `NETv4`. Defaults to `NETv4`.
-- `dst_port` (String) The destination port of the firewall rule.
-- `enabled` (Boolean) Specifies whether the rule should be enabled. Defaults to `true`.
-- `icmp_typename` (String) ICMP type name.
-- `icmp_v6_typename` (String) ICMPv6 type name.
-- `ip_sec` (String) Specify whether the rule matches on IPsec packets. Can be one of `match-ipset` or `match-none`.
+- `dst_address` (String) The destination IPv4 address or network in CIDR notation (e.g., '192.168.1.10' or '192.168.0.0/24'). The format must match dst_network_type - use a single IP for ADDRv4 or CIDR for NETv4.
+- `dst_address_ipv6` (String) The destination IPv6 address or network in CIDR notation (e.g., '2001:db8::1' or '2001:db8::/64'). Used for IPv6 firewall rules.
+- `dst_firewall_group_ids` (Set of String) A list of firewall group IDs to use as destinations. Groups can contain IP addresses, networks, or port numbers. This allows you to create reusable sets of addresses/ports and reference them in multiple rules.
+- `dst_network_id` (String) The ID of the destination network this rule applies to. This can be found in the URL when viewing the network in the UniFi controller.
+- `dst_network_type` (String) The type of destination network address. Valid values are:
+  * `ADDRv4` - Single IPv4 address
+  * `NETv4` - IPv4 network in CIDR notation Defaults to `NETv4`.
+- `dst_port` (String) The destination port(s) for this rule. Can be:
+  * A single port number (e.g., '80')
+  * A port range (e.g., '8000:8080')
+  * A list of ports/ranges separated by commas
+- `enabled` (Boolean) Whether this firewall rule is active (true) or disabled (false). Defaults to true. Defaults to `true`.
+- `icmp_typename` (String) The ICMP type name when protocol is set to 'icmp'. Common values include:
+  * `echo-request` - ICMP ping requests
+  * `echo-reply` - ICMP ping replies
+  * `destination-unreachable` - Host/network unreachable messages
+  * `time-exceeded` - TTL exceeded messages (traceroute)
+- `icmp_v6_typename` (String) The ICMPv6 type name when protocol_v6 is set to 'ipv6-icmp'. Common values (not all are listed) include:
+  * `echo-request` - IPv6 ping requests
+  * `echo-reply` - IPv6 ping replies
+  * `neighbor-solicitation` - IPv6 neighbor discovery
+  * `neighbor-advertisement` - IPv6 neighbor announcements
+  * `destination-unreachable` - Host/network unreachable messages
+  * `packet-too-big` - Path MTU discovery messages
+- `ip_sec` (String) Specify whether the rule matches on IPsec packets. Can be one of `match-ipsec` or `match-none`.
 - `logging` (Boolean) Enable logging for the firewall rule.
-- `protocol` (String) The protocol of the rule.
-- `protocol_v6` (String) The IPv6 protocol of the rule.
-- `site` (String) The name of the site to associate the firewall rule with.
-- `src_address` (String) The source address for the firewall rule.
-- `src_address_ipv6` (String) The IPv6 source address for the firewall rule.
-- `src_firewall_group_ids` (Set of String) The source firewall group IDs for the firewall rule.
-- `src_mac` (String) The source MAC address of the firewall rule.
-- `src_network_id` (String) The source network ID for the firewall rule.
-- `src_network_type` (String) The source network type of the firewall rule. Can be one of `ADDRv4` or `NETv4`. Defaults to `NETv4`.
-- `src_port` (String) The source port of the firewall rule.
-- `state_established` (Boolean) Match where the state is established.
+- `protocol` (String) The IPv4 protocol this rule applies to. Common values (not all are listed) include:
+  * `all` - Match all protocols
+  * `tcp` - TCP traffic only (e.g., web, email)
+  * `udp` - UDP traffic only (e.g., DNS, VoIP)
+  * `tcp_udp` - Both TCP and UDP
+  * `icmp` - ICMP traffic (ping, traceroute)
+  * Protocol numbers (1-255) for other protocols
+
+Examples:
+  * Use 'tcp' for web server rules (ports 80, 443)
+  * Use 'udp' for VoIP or gaming traffic
+  * Use 'all' for general network access rules
+- `protocol_v6` (String) The IPv6 protocol this rule applies to. Similar to 'protocol' but for IPv6 traffic. Common values (not all are listed) include:
+  * `all` - Match all protocols
+  * `tcp` - TCP traffic only
+  * `udp` - UDP traffic only
+  * `tcp_udp` - Both TCP and UDP traffic
+  * `ipv6-icmp` - ICMPv6 traffic
+- `site` (String) The name of the UniFi site where the firewall rule should be created. If not specified, the default site will be used.
+- `src_address` (String) The source IPv4 address for the firewall rule.
+- `src_address_ipv6` (String) The source IPv6 address or network in CIDR notation (e.g., '2001:db8::1' or '2001:db8::/64'). Used for IPv6 firewall rules.
+- `src_firewall_group_ids` (Set of String) A list of firewall group IDs to use as sources. Groups can contain:
+  * IP Address Groups - For matching specific IP addresses
+  * Network Groups - For matching entire subnets
+  * Port Groups - For matching specific port numbers
+
+Example uses:
+  * Group of trusted admin IPs for remote access
+  * Group of IoT device networks for isolation
+  * Group of common service ports for allowing specific applications
+- `src_mac` (String) The source MAC address this rule applies to. Use this to create rules that match specific devices regardless of their IP address. Format: 'XX:XX:XX:XX:XX:XX'. MAC addresses are case-insensitive.
+- `src_network_id` (String) The ID of the source network this rule applies to. This can be found in the URL when viewing the network in the UniFi controller, or by using the network's name in the form `[site]/[network_name]`.
+- `src_network_type` (String) The type of source network address. Valid values are:
+  * `ADDRv4` - Single IPv4 address
+  * `NETv4` - IPv4 network in CIDR notation Defaults to `NETv4`.
+- `src_port` (String) The source port(s) for this rule. Can be:
+  * A single port number (e.g., '80')
+  * A port range (e.g., '8000:8080')
+  * A list of ports/ranges separated by commas
+- `state_established` (Boolean) Match established connections. When enabled:
+  * Rule only applies to packets that are part of an existing connection
+  * Useful for allowing return traffic without creating separate rules
+  * Common in WAN_IN rules to allow responses to outbound connections
+
+Example: Allow established connections from WAN while blocking new incoming connections
 - `state_invalid` (Boolean) Match where the state is invalid.
 - `state_new` (Boolean) Match where the state is new.
 - `state_related` (Boolean) Match where the state is related.
 
 ### Read-Only
 
-- `id` (String) The ID of the firewall rule.
+- `id` (String) The unique identifier of the firewall rule in the UniFi controller.
 
 ## Import
 

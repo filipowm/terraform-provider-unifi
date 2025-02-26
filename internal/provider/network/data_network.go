@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 

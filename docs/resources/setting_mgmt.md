@@ -3,12 +3,26 @@
 page_title: "unifi_setting_mgmt Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_setting_mgmt manages settings for a unifi site.
+  The unifi_setting_mgmt resource manages site-wide management settings in the UniFi controller.
+  This resource allows you to configure important management features including:
+  Automatic firmware upgrades for UniFi devicesSSH access for advanced configuration and troubleshootingSSH key management for secure remote access
+  These settings affect how the UniFi controller manages devices at the site level. They are particularly important for:
+  Maintaining device security through automatic updatesEnabling secure remote administrationImplementing SSH key-based authentication
 ---
 
 # unifi_setting_mgmt (Resource)
 
-`unifi_setting_mgmt` manages settings for a unifi site.
+The `unifi_setting_mgmt` resource manages site-wide management settings in the UniFi controller.
+
+This resource allows you to configure important management features including:
+  * Automatic firmware upgrades for UniFi devices
+  * SSH access for advanced configuration and troubleshooting
+  * SSH key management for secure remote access
+
+These settings affect how the UniFi controller manages devices at the site level. They are particularly important for:
+  * Maintaining device security through automatic updates
+  * Enabling secure remote administration
+  * Implementing SSH key-based authentication
 
 ## Example Usage
 
@@ -28,24 +42,27 @@ resource "unifi_setting_mgmt" "example" {
 
 ### Optional
 
-- `auto_upgrade` (Boolean) Automatically upgrade device firmware.
-- `site` (String) The name of the site to associate the settings with.
-- `ssh_enabled` (Boolean) Enable SSH authentication.
-- `ssh_key` (Block Set) SSH key. (see [below for nested schema](#nestedblock--ssh_key))
+- `auto_upgrade` (Boolean) Enable automatic firmware upgrades for all UniFi devices at this site. When enabled, devices will automatically update to the latest stable firmware version approved for your controller version.
+- `site` (String) The name of the UniFi site where these management settings should be applied. If not specified, the default site will be used.
+- `ssh_enabled` (Boolean) Enable SSH access to UniFi devices at this site. When enabled, you can connect to devices using SSH for advanced configuration and troubleshooting. It's recommended to only enable this temporarily when needed.
+- `ssh_key` (Block Set) List of SSH public keys that are allowed to connect to UniFi devices when SSH is enabled. Using SSH keys is more secure than password authentication. (see [below for nested schema](#nestedblock--ssh_key))
 
 ### Read-Only
 
-- `id` (String) The ID of the settings.
+- `id` (String) The unique identifier of the management settings configuration in the UniFi controller.
 
 <a id="nestedblock--ssh_key"></a>
 ### Nested Schema for `ssh_key`
 
 Required:
 
-- `name` (String) Name of SSH key.
-- `type` (String) Type of SSH key, e.g. ssh-rsa.
+- `name` (String) A friendly name for the SSH key to help identify its owner or purpose (e.g., 'admin-laptop' or 'backup-server').
+- `type` (String) The type of SSH key. Common values include:
+  * `ssh-rsa` - RSA key (most common)
+  * `ssh-ed25519` - Ed25519 key (more secure)
+  * `ecdsa-sha2-nistp256` - ECDSA key
 
 Optional:
 
-- `comment` (String) Comment.
-- `key` (String) Public SSH key.
+- `comment` (String) An optional comment to provide additional context about the key (e.g., 'generated on 2024-01-01' or 'expires 2025-12-31').
+- `key` (String) The public key string. This is the content that would normally go in an authorized_keys file, excluding the type and comment (e.g., 'AAAAB3NzaC1yc2EA...').

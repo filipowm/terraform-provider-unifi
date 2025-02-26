@@ -3,12 +3,23 @@
 page_title: "unifi_static_route Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_static_route manages a static route.
+  The unifi_static_route resource manages static routes on UniFi Security Gateways (USG) and UniFi Dream Machines (UDM/UDM-Pro).
+  Static routes allow you to manually configure routing paths for specific networks. This is useful for:
+  Connecting to networks not directly connected to your UniFi gatewayCreating backup routes for redundancyImplementing policy-based routingBlocking traffic to specific networks using blackhole routes
+  Routes can be configured to use either a next-hop IP address, a specific interface, or as a blackhole route.
 ---
 
 # unifi_static_route (Resource)
 
-`unifi_static_route` manages a static route.
+The `unifi_static_route` resource manages static routes on UniFi Security Gateways (USG) and UniFi Dream Machines (UDM/UDM-Pro).
+
+Static routes allow you to manually configure routing paths for specific networks. This is useful for:
+  * Connecting to networks not directly connected to your UniFi gateway
+  * Creating backup routes for redundancy
+  * Implementing policy-based routing
+  * Blocking traffic to specific networks using blackhole routes
+
+Routes can be configured to use either a next-hop IP address, a specific interface, or as a blackhole route.
 
 ## Example Usage
 
@@ -42,17 +53,23 @@ resource "unifi_static_route" "interface" {
 
 ### Required
 
-- `distance` (Number) The distance of the static route.
-- `name` (String) The name of the static route.
-- `network` (String) The network subnet address.
-- `type` (String) The type of static route. Can be `interface-route`, `nexthop-route`, or `blackhole`.
+- `distance` (Number) The administrative distance for this route. Lower values are preferred. Use this to control route selection when multiple routes to the same destination exist.
+- `name` (String) A friendly name for the static route to help identify its purpose (e.g., 'Backup DC Link' or 'Cloud VPN Route').
+- `network` (String) The destination network in CIDR notation that this route will direct traffic to (e.g., '10.0.0.0/16' or '192.168.100.0/24').
+- `type` (String) The type of static route. Valid values are:
+  * `interface-route` - Route traffic through a specific interface
+  * `nexthop-route` - Route traffic to a specific next-hop IP address
+  * `blackhole` - Drop all traffic to this network
 
 ### Optional
 
-- `interface` (String) The interface of the static route (only valid for `interface-route` type). This can be `WAN1`, `WAN2`, or a network ID.
-- `next_hop` (String) The next hop of the static route (only valid for `nexthop-route` type).
-- `site` (String) The name of the site to associate the static route with.
+- `interface` (String) The outbound interface to use for this route. Only used when type is set to 'interface-route'. Can be:
+  * `WAN1` - Primary WAN interface
+  * `WAN2` - Secondary WAN interface
+  * A network ID for internal networks
+- `next_hop` (String) The IP address of the next hop router for this route. Only used when type is set to 'nexthop-route'. This should be an IP address that is directly reachable from your UniFi gateway.
+- `site` (String) The name of the UniFi site where the static route should be created. If not specified, the default site will be used.
 
 ### Read-Only
 
-- `id` (String) The ID of the static route.
+- `id` (String) The unique identifier of the static route in the UniFi controller.
