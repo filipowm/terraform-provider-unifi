@@ -48,7 +48,7 @@ type countryResource struct {
 	client *base.Client
 }
 
-func (a *countryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (c *countryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	id, site := base.ImportIDWithSite(req, resp)
 	if resp.Diagnostics.HasError() {
 		return
@@ -57,7 +57,7 @@ func (a *countryResource) ImportState(ctx context.Context, req resource.ImportSt
 		ID:   types.StringValue(id),
 		Site: base.NewSite(site),
 	}
-	a.read(ctx, site, &state, &resp.Diagnostics)
+	c.read(ctx, site, &state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -68,19 +68,19 @@ func NewCountryResource() resource.Resource {
 	return &countryResource{}
 }
 
-func (a *countryResource) SetClient(client *base.Client) {
-	a.client = client
+func (c *countryResource) SetClient(client *base.Client) {
+	c.client = client
 }
 
-func (a *countryResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	base.ConfigureResource(a, req, resp)
+func (c *countryResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	base.ConfigureResource(c, req, resp)
 }
 
-func (a *countryResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (c *countryResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "unifi_setting_country"
 }
 
-func (a *countryResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (c *countryResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_setting_country` resource allows you to configure the country settings for your UniFi network. ",
 		Attributes: map[string]schema.Attribute{
@@ -102,16 +102,16 @@ func (a *countryResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 	}
 }
 
-func (a *countryResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (c *countryResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var plan countryModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	body := plan.asUnifiModel()
-	site := a.client.ResolveSite(&plan.Site)
+	site := c.client.ResolveSite(&plan.Site)
 
-	res, err := a.client.UpdateSettingCountry(ctx, site, body)
+	res, err := c.client.UpdateSettingCountry(ctx, site, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating country settings", err.Error())
 		return
@@ -121,8 +121,8 @@ func (a *countryResource) Create(ctx context.Context, req resource.CreateRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func (a *countryResource) read(ctx context.Context, site string, state *countryModel, diag *diag.Diagnostics) {
-	res, err := a.client.GetSettingCountry(ctx, site)
+func (c *countryResource) read(ctx context.Context, site string, state *countryModel, diag *diag.Diagnostics) {
+	res, err := c.client.GetSettingCountry(ctx, site)
 
 	if err != nil {
 		if errors.Is(err, unifi.ErrNotFound) {
@@ -135,14 +135,14 @@ func (a *countryResource) read(ctx context.Context, site string, state *countryM
 	state.merge(res)
 }
 
-func (a *countryResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+func (c *countryResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var state countryModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	site := a.client.ResolveSite(&state.Site)
-	a.read(ctx, site, &state, &resp.Diagnostics)
+	site := c.client.ResolveSite(&state.Site)
+	c.read(ctx, site, &state, &resp.Diagnostics)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -151,7 +151,7 @@ func (a *countryResource) Read(ctx context.Context, req resource.ReadRequest, re
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func (a *countryResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (c *countryResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan, state countryModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
@@ -159,9 +159,9 @@ func (a *countryResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 	body := plan.asUnifiModel()
-	site := a.client.ResolveSite(&plan.Site)
+	site := c.client.ResolveSite(&plan.Site)
 
-	res, err := a.client.UpdateSettingCountry(ctx, site, body)
+	res, err := c.client.UpdateSettingCountry(ctx, site, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Error updating country settings", err.Error())
 		return
@@ -171,6 +171,6 @@ func (a *countryResource) Update(ctx context.Context, req resource.UpdateRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func (a *countryResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
+func (c *countryResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
 	// Not supported
 }

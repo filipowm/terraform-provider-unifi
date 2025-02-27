@@ -1,6 +1,7 @@
 package validators
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -26,7 +27,7 @@ func TestCountryCodeValidation(t *testing.T) {
 			t.Parallel()
 			v := countryCodeAlpha2Validator{}
 			req, resp := newStringValidatorRequestResponse(tc.code)
-			v.ValidateString(nil, req, resp)
+			v.ValidateString(context.Background(), req, resp)
 			assert.Equal(t, tc.validationFailed, resp.Diagnostics.HasError())
 		})
 	}

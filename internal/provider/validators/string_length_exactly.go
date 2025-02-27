@@ -17,7 +17,7 @@ type stringLengthExactlyValidator struct {
 }
 
 func (v stringLengthExactlyValidator) invalidUsageMessage() string {
-	return fmt.Sprintf("length cannot be less than zero")
+	return "length cannot be less than zero"
 }
 
 func (v stringLengthExactlyValidator) Description(_ context.Context) string {

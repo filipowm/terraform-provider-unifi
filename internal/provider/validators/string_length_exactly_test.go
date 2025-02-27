@@ -1,6 +1,7 @@
 package validators
 
 import (
+	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -27,7 +28,7 @@ func TestStringLengthExactlyValidation(t *testing.T) {
 			t.Parallel()
 			v := StringLengthExactly(tc.length)
 			req, resp := newStringValidatorRequestResponse(tc.value)
-			v.ValidateString(nil, req, resp)
+			v.ValidateString(context.Background(), req, resp)
 			assert.Equal(t, tc.validationFailed, resp.Diagnostics.HasError())
 		})
 	}
