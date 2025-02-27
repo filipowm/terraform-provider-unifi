@@ -31,7 +31,7 @@ func ResourceFirewallGroup() *schema.Resource {
 		UpdateContext: resourceFirewallGroupUpdate,
 		DeleteContext: resourceFirewallGroupDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: utils.ImportSiteAndID,
+			StateContext: base.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

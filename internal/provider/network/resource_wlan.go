@@ -33,7 +33,7 @@ func ResourceWLAN() *schema.Resource {
 		UpdateContext: resourceWLANUpdate,
 		DeleteContext: resourceWLANDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: utils.ImportSiteAndID,
+			StateContext: base.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

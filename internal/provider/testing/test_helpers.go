@@ -20,6 +20,21 @@ func MarkAccTest(t *testing.T) {
 	}
 }
 
+func ImportStepWithSite(name string, ignore ...string) resource.TestStep {
+	step := &resource.TestStep{
+		ResourceName:      name,
+		ImportState:       true,
+		ImportStateVerify: true,
+		ImportStateIdFunc: SiteAndIDImportStateIDFunc(name),
+	}
+
+	if len(ignore) > 0 {
+		step.ImportStateVerifyIgnore = ignore
+	}
+
+	return *step
+}
+
 func ImportStep(name string, ignore ...string) resource.TestStep {
 	step := resource.TestStep{
 		ResourceName:      name,
@@ -69,8 +84,12 @@ func CheckPlanPreApply(checks ...plancheck.PlanCheck) resource.ConfigPlanChecks 
 	}
 }
 
-func CheckResourceAction(resourceAddress string, action plancheck.ResourceActionType) resource.ConfigPlanChecks {
-	return CheckPlanPreApply(plancheck.ExpectResourceAction(resourceAddress, action))
+func CheckResourceActions(resourceAddress string, actions ...plancheck.ResourceActionType) resource.ConfigPlanChecks {
+	var checks []plancheck.PlanCheck
+	for _, a := range actions {
+		checks = append(checks, plancheck.ExpectResourceAction(resourceAddress, a))
+	}
+	return CheckPlanPreApply(checks...)
 }
 
 func ComposeConfig(configs ...string) string {

@@ -162,7 +162,7 @@ func TestDNSRecord_Update(t *testing.T) {
 			{
 				Config:           testAccDnsRecordConfig(updated),
 				Check:            testAccDnsRecordCheckAttrs(updated),
-				ConfigPlanChecks: pt.CheckResourceAction(testDnsRecordResourceName, plancheck.ResourceActionUpdate),
+				ConfigPlanChecks: pt.CheckResourceActions(testDnsRecordResourceName, plancheck.ResourceActionUpdate),
 			},
 		},
 	})

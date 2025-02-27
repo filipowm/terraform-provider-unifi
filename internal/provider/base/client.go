@@ -80,6 +80,13 @@ type Client struct {
 	Version *version.Version
 }
 
+func (c *Client) ResolveSite(site *Site) string {
+	if site == nil || IsEmptyString(site.Site) {
+		return c.Site
+	}
+	return site.AsString()
+}
+
 func CreateHttpTransport(insecure bool) http.RoundTripper {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,

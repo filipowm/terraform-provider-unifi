@@ -29,7 +29,7 @@ func ResourcePortProfile() *schema.Resource {
 		UpdateContext: resourcePortProfileUpdate,
 		DeleteContext: resourcePortProfileDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: utils.ImportSiteAndID,
+			StateContext: base.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{
