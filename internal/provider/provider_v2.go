@@ -168,6 +168,7 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		dns.NewDnsRecordResource,
+		settings.NewAutoSpeedtestResource,
 		settings.NewCountryResource,
 	}
 }
