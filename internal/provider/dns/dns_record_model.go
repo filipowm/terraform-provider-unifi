@@ -2,7 +2,7 @@ package dns
 
 import (
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -32,8 +32,8 @@ type dnsRecordsDatasourceModel struct {
 }
 
 var dnsRecordDatasourceAttributes = map[string]schema.Attribute{
-	"id":      utils.ID(),
-	"site_id": utils.ID("The site ID where the DNS record is located."),
+	"id":      base.ID(),
+	"site_id": base.ID("The site ID where the DNS record is located."),
 	"name": schema.StringAttribute{
 		Description: "DNS record name.",
 		Computed:    true,

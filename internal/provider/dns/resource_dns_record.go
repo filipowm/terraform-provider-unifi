@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -53,8 +52,8 @@ func (d *dnsRecordResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			"  * Adding TXT records for service verification\n\n",
 
 		Attributes: map[string]schema.Attribute{
-			"id":      utils.ID(),
-			"site_id": utils.ID("The site ID where the DNS record is located."),
+			"id":      base.ID(),
+			"site_id": base.ID("The site ID where the DNS record is located."),
 			"name": schema.StringAttribute{
 				MarkdownDescription: "DNS record name.",
 				Required:            true,
@@ -241,11 +240,6 @@ func (d *dnsRecordResource) ImportState(ctx context.Context, req resource.Import
 
 	state := dnsRecordModel{
 		ID: types.StringValue(id),
-	}
-	d.read(ctx, &state, &resp.Diagnostics)
-
-	if resp.Diagnostics.HasError() {
-		return
 	}
 	d.read(ctx, &state, &resp.Diagnostics)
 

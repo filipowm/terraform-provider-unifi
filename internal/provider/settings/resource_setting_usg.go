@@ -42,7 +42,7 @@ func ResourceSettingUsg() *schema.Resource {
 		UpdateContext: resourceSettingUsgLocker(resourceSettingUsgUpsert),
 		DeleteContext: schema.NoopContext,
 		Importer: &schema.ResourceImporter{
-			StateContext: utils.ImportSiteAndID,
+			StateContext: base.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

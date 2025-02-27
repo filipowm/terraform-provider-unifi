@@ -28,7 +28,7 @@ func ResourceStaticRoute() *schema.Resource {
 		UpdateContext: resourceStaticRouteUpdate,
 		DeleteContext: resourceStaticRouteDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: utils.ImportSiteAndID,
+			StateContext: base.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

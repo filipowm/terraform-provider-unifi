@@ -35,7 +35,7 @@ func ResourceUser() *schema.Resource {
 		UpdateContext: resourceUserUpdate,
 		DeleteContext: resourceUserDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: utils.ImportSiteAndID,
+			StateContext: base.ImportSiteAndID,
 		},
 
 		Schema: map[string]*schema.Schema{

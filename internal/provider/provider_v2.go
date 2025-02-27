@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/dns"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/settings"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -167,6 +168,7 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		dns.NewDnsRecordResource,
+		settings.NewCountryResource,
 	}
 }
 

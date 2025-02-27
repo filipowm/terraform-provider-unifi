@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
-
 	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -34,9 +32,10 @@ func ResourceSettingMgmt() *schema.Resource {
 		UpdateContext: resourceSettingMgmtUpdate,
 		DeleteContext: resourceSettingMgmtDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: utils.ImportSiteAndID,
+			StateContext: base.ImportSiteAndID,
 		},
 
+		// TODO add more
 		Schema: map[string]*schema.Schema{
 			"id": {
 				Description: "The unique identifier of the management settings configuration in the UniFi controller.",
