@@ -119,15 +119,6 @@ func createRequiredNoneIfBoolConfig(schema schema.Schema, testCase requiredNoneI
 	}
 }
 
-// Function to verify validation results
-func verifyRequiredNoneIfResults(t *testing.T, diagnostics error, testCase requiredNoneIfTestCase) {
-	if testCase.expectError {
-		assert.Error(t, diagnostics)
-	} else {
-		assert.NoError(t, diagnostics)
-	}
-}
-
 // Test RequiredNoneIf with string condition
 func TestRequiredNoneIf(t *testing.T) {
 	testCases := map[string]requiredNoneIfTestCase{

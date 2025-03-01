@@ -22,16 +22,14 @@ import (
 
 // Common test case structure for string conditions
 type stringConditionTestCase struct {
-	condition   types.String
-	field1      types.String
-	expectError bool
+	condition types.String
+	field1    types.String
 }
 
 // Common test case structure for bool conditions
 type boolConditionTestCase struct {
-	condition   types.Bool
-	field1      types.String
-	expectError bool
+	condition types.Bool
+	field1    types.String
 }
 
 // Function to create a schema object with string condition
