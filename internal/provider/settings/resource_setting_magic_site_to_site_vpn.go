@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -63,7 +62,6 @@ func (r *magicSiteToSiteVpnResource) Schema(_ context.Context, _ resource.Schema
 			"enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether the Magic Site to Site VPN is enabled.",
 				Required:            true,
-				Default:             booldefault.StaticBool(false),
 			},
 		},
 	}
