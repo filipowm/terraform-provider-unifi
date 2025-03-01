@@ -1,7 +1,8 @@
-package validators
+package validators_test
 
 import (
 	"context"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -25,7 +26,7 @@ func TestCountryCodeValidation(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			v := countryCodeAlpha2Validator{}
+			v := validators.CountryCodeAlpha2()
 			req, resp := newStringValidatorRequestResponse(tc.code)
 			v.ValidateString(context.Background(), req, resp)
 			assert.Equal(t, tc.validationFailed, resp.Diagnostics.HasError())
