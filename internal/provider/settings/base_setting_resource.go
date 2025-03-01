@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
@@ -92,6 +93,10 @@ func (b *BaseSettingResource[T]) Create(ctx context.Context, req resource.Create
 	res, err := b.updater(ctx, b.client, site, body)
 	if err != nil {
 		resp.Diagnostics.AddError("Error creating settings", err.Error())
+		return
+	}
+	if res == nil {
+		resp.Diagnostics.AddError("Error creating settings", fmt.Sprintf("No %[1]s settings returned from the UniFi controller. %[1]s might not be supported on this controller", b.typeName))
 		return
 	}
 	plan.Merge(res)

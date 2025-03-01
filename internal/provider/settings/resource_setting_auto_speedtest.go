@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"fmt"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -19,7 +20,6 @@ var (
 
 type autoSpeedtestModel struct {
 	base.Model
-	ID             types.String `tfsdk:"id"`
 	CronExpression types.String `tfsdk:"cron"`
 	Enabled        types.Bool   `tfsdk:"enabled"`
 }
@@ -45,14 +45,11 @@ type autoSpeedtestResource struct {
 	*BaseSettingResource[*autoSpeedtestModel]
 }
 
-func checkAutoSpeedtestUnsupportedError(err error, diag *diag.Diagnostics) bool {
+func checkAutoSpeedtestUnsupportedError(err error) error {
 	if base.IsServerErrorContains(err, "api.err.SpeedTestNotSupported") {
-		if diag != nil {
-			diag.AddError("Auto Speedtest is not supported", "Auto Speedtest is not supported on this controller")
-		}
-		return true
+		return fmt.Errorf("Auto Speedtest is not supported on this controller")
 	}
-	return false
+	return err
 }
 
 func NewAutoSpeedtestResource() resource.Resource {
@@ -62,15 +59,15 @@ func NewAutoSpeedtestResource() resource.Resource {
 		func() *autoSpeedtestModel { return &autoSpeedtestModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {
 			res, err := client.GetSettingAutoSpeedtest(ctx, site)
-			if err != nil && !checkAutoSpeedtestUnsupportedError(err, nil) {
-				return nil, err
+			if err != nil {
+				return nil, checkAutoSpeedtestUnsupportedError(err)
 			}
 			return res, nil
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
 			res, err := client.UpdateSettingAutoSpeedtest(ctx, site, body.(*unifi.SettingAutoSpeedtest))
-			if err != nil && !checkAutoSpeedtestUnsupportedError(err, nil) {
-				return nil, err
+			if err != nil {
+				return nil, checkAutoSpeedtestUnsupportedError(err)
 			}
 			return res, nil
 		},
