@@ -13,7 +13,8 @@ var settingMagicSiteToSiteVpnLock = &sync.Mutex{}
 
 func TestAccSettingMagicSiteToSiteVpn(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingMagicSiteToSiteVpnLock,
+		VersionConstraint: ">= 7.4",
+		Lock:              settingMagicSiteToSiteVpnLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingMagicSiteToSiteVpnConfig(true),
