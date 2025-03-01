@@ -2,7 +2,6 @@ package settings
 
 import (
 	"context"
-	"errors"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -11,75 +10,72 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+var (
+	_ resource.Resource                = &autoSpeedtestResource{}
+	_ resource.ResourceWithConfigure   = &autoSpeedtestResource{}
+	_ resource.ResourceWithImportState = &autoSpeedtestResource{}
+	_ base.Resource                    = &autoSpeedtestResource{}
+)
+
 type autoSpeedtestModel struct {
-	base.Site
+	base.Model
 	ID             types.String `tfsdk:"id"`
 	CronExpression types.String `tfsdk:"cron"`
 	Enabled        types.Bool   `tfsdk:"enabled"`
 }
 
-func (d *autoSpeedtestModel) asUnifiModel() *unifi.SettingAutoSpeedtest {
+func (d *autoSpeedtestModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
 	return &unifi.SettingAutoSpeedtest{
 		ID:       d.ID.ValueString(),
 		CronExpr: d.CronExpression.ValueString(),
 		Enabled:  d.Enabled.ValueBool(),
+	}, diag.Diagnostics{}
+}
+
+func (d *autoSpeedtestModel) Merge(other interface{}) diag.Diagnostics {
+	if typed, ok := other.(*unifi.SettingAutoSpeedtest); ok {
+		d.ID = types.StringValue(typed.ID)
+		d.CronExpression = types.StringValue(typed.CronExpr)
+		d.Enabled = types.BoolValue(typed.Enabled)
 	}
+	return diag.Diagnostics{}
 }
-
-func (d *autoSpeedtestModel) merge(other *unifi.SettingAutoSpeedtest) {
-	d.ID = types.StringValue(other.ID)
-	d.CronExpression = types.StringValue(other.CronExpr)
-	d.Enabled = types.BoolValue(other.Enabled)
-}
-
-var (
-	_ resource.Resource                = &autoSpeedtestResource{}
-	_ resource.ResourceWithConfigure   = &autoSpeedtestResource{}
-	_ resource.ResourceWithImportState = &autoSpeedtestResource{}
-	_ base.BaseData                    = &autoSpeedtestResource{}
-)
 
 type autoSpeedtestResource struct {
-	client *base.Client
+	*BaseSettingResource[*autoSpeedtestModel]
+}
+
+func checkAutoSpeedtestUnsupportedError(err error, diag *diag.Diagnostics) bool {
+	if base.IsServerErrorContains(err, "api.err.SpeedTestNotSupported") {
+		if diag != nil {
+			diag.AddError("Auto Speedtest is not supported", "Auto Speedtest is not supported on this controller")
+		}
+		return true
+	}
+	return false
 }
 
 func NewAutoSpeedtestResource() resource.Resource {
-	return &autoSpeedtestResource{}
-}
-
-func (a *autoSpeedtestResource) SetClient(client *base.Client) {
-	a.client = client
-}
-
-func checkAutoSpeedtestUnsupportedError(err error, diag *diag.Diagnostics) {
-	if base.IsServerErrorContains(err, "api.err.SpeedTestNotSupported") {
-		diag.AddError("Auto Speedtest is not supported", "Auto Speedtest is not supported on this controller")
-
-	}
-}
-
-func (a *autoSpeedtestResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	id, site := base.ImportIDWithSite(req, resp)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	state := autoSpeedtestModel{
-		ID:   types.StringValue(id),
-		Site: base.NewSite(site),
-	}
-	a.read(ctx, site, &state, &resp.Diagnostics)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-}
-
-func (a *autoSpeedtestResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	base.ConfigureResource(a, req, resp)
-}
-
-func (a *autoSpeedtestResource) Metadata(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = "unifi_setting_auto_speedtest"
+	r := &autoSpeedtestResource{}
+	r.BaseSettingResource = NewBaseSettingResource(
+		"unifi_setting_auto_speedtest",
+		func() *autoSpeedtestModel { return &autoSpeedtestModel{} },
+		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {
+			res, err := client.GetSettingAutoSpeedtest(ctx, site)
+			if err != nil && !checkAutoSpeedtestUnsupportedError(err, nil) {
+				return nil, err
+			}
+			return res, nil
+		},
+		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
+			res, err := client.UpdateSettingAutoSpeedtest(ctx, site, body.(*unifi.SettingAutoSpeedtest))
+			if err != nil && !checkAutoSpeedtestUnsupportedError(err, nil) {
+				return nil, err
+			}
+			return res, nil
+		},
+	)
+	return r
 }
 
 func (a *autoSpeedtestResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -100,88 +96,4 @@ func (a *autoSpeedtestResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 		},
 	}
-}
-
-func (a *autoSpeedtestResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan autoSpeedtestModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	body := plan.asUnifiModel()
-	site := a.client.ResolveSite(&plan.Site)
-
-	res, err := a.client.UpdateSettingAutoSpeedtest(ctx, site, body)
-	if err != nil {
-		checkAutoSpeedtestUnsupportedError(err, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		resp.Diagnostics.AddError("Error creating auto speedtest settings", err.Error())
-		return
-	}
-	plan.merge(res)
-	plan.Site.SetSite(site)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-}
-
-func (a *autoSpeedtestResource) read(ctx context.Context, site string, state *autoSpeedtestModel, diag *diag.Diagnostics) {
-	res, err := a.client.GetSettingAutoSpeedtest(ctx, site)
-	if err != nil {
-		checkAutoSpeedtestUnsupportedError(err, diag)
-		if diag.HasError() {
-			return
-		}
-		if errors.Is(err, unifi.ErrNotFound) {
-			diag.AddError("Auto speedtest settings not found", "The auto speedtest settings were not found in the UniFi controller")
-		} else {
-			diag.AddError("Error reading auto speedtest settings", err.Error())
-		}
-		return
-	}
-	state.merge(res)
-}
-
-func (a *autoSpeedtestResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state autoSpeedtestModel
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	site := a.client.ResolveSite(&state.Site)
-	a.read(ctx, site, &state, &resp.Diagnostics)
-
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	(&state).Site.SetSite(site)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-}
-
-func (a *autoSpeedtestResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan, state autoSpeedtestModel
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	body := plan.asUnifiModel()
-	site := a.client.ResolveSite(&plan.Site)
-
-	res, err := a.client.UpdateSettingAutoSpeedtest(ctx, site, body)
-	if err != nil {
-		checkAutoSpeedtestUnsupportedError(err, &resp.Diagnostics)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		resp.Diagnostics.AddError("Error updating auto speedtest settings", err.Error())
-		return
-	}
-	state.merge(res)
-	state.Site.SetSite(site)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-}
-
-func (a *autoSpeedtestResource) Delete(_ context.Context, _ resource.DeleteRequest, _ *resource.DeleteResponse) {
-	// Not supported
 }

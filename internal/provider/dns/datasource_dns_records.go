@@ -12,7 +12,7 @@ import (
 var (
 	_ datasource.DataSource              = &dnsRecordsDatasource{}
 	_ datasource.DataSourceWithConfigure = &dnsRecordsDatasource{}
-	_ base.BaseData                      = &dnsRecordsDatasource{}
+	_ base.Resource                      = &dnsRecordsDatasource{}
 )
 
 type dnsRecordsDatasource struct {
