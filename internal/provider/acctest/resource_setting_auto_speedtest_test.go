@@ -13,7 +13,7 @@ func TestAccSettingAutoSpeedtest(t *testing.T) {
 	t.Skip("Auto Speedtest is not supported on test controller")
 	AcceptanceTest(t, AcceptanceTestCase{
 		MinVersion:        version.Must(version.NewVersion("7.2")),
-		VersionConstraint: "< 7.4.156",
+		VersionConstraint: "< 7.5",
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingAutoSpeedtestConfig(true, "0 0 * * *"),
@@ -45,7 +45,7 @@ func TestAccSettingAutoSpeedtest(t *testing.T) {
 // TODO remove when controller changed from USG, which has removed support of speedtest since 7.4. Other controllers still have it.
 func TestAccSettingAutoSpeedtest_unsupported(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: ">= 7.4.156",
+		VersionConstraint: ">= 7.5",
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccSettingAutoSpeedtestConfig(true, "0 0 * * *"),
