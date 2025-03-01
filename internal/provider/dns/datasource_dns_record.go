@@ -18,7 +18,7 @@ import (
 var (
 	_ datasource.DataSource                     = &dnsRecordDatasource{}
 	_ datasource.DataSourceWithConfigure        = &dnsRecordDatasource{}
-	_ base.BaseData                             = &dnsRecordDatasource{}
+	_ base.Resource                             = &dnsRecordDatasource{}
 	_ datasource.DataSourceWithConfigValidators = &dnsRecordDatasource{}
 )
 

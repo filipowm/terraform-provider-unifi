@@ -26,8 +26,10 @@ func TestSettingCountry_ProperCountryCodeMappingFromModel(t *testing.T) {
 			model := countryModel{
 				Code: types.StringValue(tc.code),
 			}
-			unifiModel := model.asUnifiModel()
-			assert.Equal(t, tc.expectedNumericCode, unifiModel.Code)
+			unifiModel, _ := model.AsUnifiModel()
+			typed, ok := unifiModel.(*unifi.SettingCountry)
+			assert.True(t, ok)
+			assert.Equal(t, tc.expectedNumericCode, typed.Code)
 		})
 	}
 }
@@ -52,7 +54,7 @@ func TestSettingCountry_ProperCountryCodeMappingToModel(t *testing.T) {
 				Code: tc.numericCode,
 			}
 			model := countryModel{}
-			model.merge(unifiModel)
+			model.Merge(unifiModel)
 			assert.Equal(t, tc.expectedCode, model.Code.ValueString())
 		})
 	}

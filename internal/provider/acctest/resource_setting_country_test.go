@@ -19,6 +19,8 @@ func TestAccSettingCountry(t *testing.T) {
 			{
 				Config: testAccSettingCountryConfig("US"),
 				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_setting_country.test", "id"),
+					resource.TestCheckResourceAttr("unifi_setting_country.test", "site", "default"),
 					resource.TestCheckResourceAttr("unifi_setting_country.test", "code", "US"),
 					resource.TestCheckResourceAttr("unifi_setting_country.test", "code_numeric", "840"),
 				),
@@ -28,6 +30,8 @@ func TestAccSettingCountry(t *testing.T) {
 			{
 				Config: testAccSettingCountryConfig("PL"),
 				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_setting_country.test", "id"),
+					resource.TestCheckResourceAttr("unifi_setting_country.test", "site", "default"),
 					resource.TestCheckResourceAttr("unifi_setting_country.test", "code", "PL"),
 					resource.TestCheckResourceAttr("unifi_setting_country.test", "code_numeric", "616"),
 				),
@@ -37,8 +41,10 @@ func TestAccSettingCountry(t *testing.T) {
 	})
 }
 
-var invalidCountryCodeErrorRegex = regexp.MustCompile("ISO 3166-1 alpha-2")
-var stringLengthExactly2Regex = regexp.MustCompile("string length must be exactly 2")
+var (
+	invalidCountryCodeErrorRegex = regexp.MustCompile("ISO 3166-1 alpha-2")
+	stringLengthExactly2Regex    = regexp.MustCompile("string length must be exactly 2")
+)
 
 func TestAccSettingCountry_invalidCode(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{

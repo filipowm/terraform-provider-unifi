@@ -80,11 +80,11 @@ type Client struct {
 	Version *version.Version
 }
 
-func (c *Client) ResolveSite(site *Site) string {
-	if site == nil || IsEmptyString(site.Site) {
+func (c *Client) ResolveSite(res ResourceModel) string {
+	if res == nil || IsEmptyString(res.GetRawSite()) {
 		return c.Site
 	}
-	return site.AsString()
+	return res.GetSite()
 }
 
 func CreateHttpTransport(insecure bool) http.RoundTripper {

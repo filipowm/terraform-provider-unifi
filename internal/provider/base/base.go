@@ -2,34 +2,59 @@ package base
 
 import (
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type BaseData interface {
+type Resource interface {
 	SetClient(client *Client)
 }
 
-type Site struct {
+// ResourceModel defines the interface that all setting models must implement
+type ResourceModel interface {
+	GetSite() string
+	GetRawSite() types.String
+	SetSite(string)
+	GetID() string
+	GetRawID() types.String
+	SetID(string)
+	AsUnifiModel() (interface{}, diag.Diagnostics)
+	Merge(interface{}) diag.Diagnostics
+}
+
+type Model struct {
+	ID   types.String `tfsdk:"id"`
 	Site types.String `tfsdk:"site"`
 }
 
-func NewSite(str string) Site {
-	return Site{
-		Site: types.StringValue(str),
-	}
+func (b *Model) GetID() string {
+	return b.ID.ValueString()
 }
 
-func (s *Site) SetSite(site string) {
-	s.Site = types.StringValue(site)
+func (b *Model) GetRawID() types.String {
+	return b.ID
 }
 
-func (s *Site) AsString() string {
-	return s.Site.ValueString()
+func (b *Model) SetID(id string) {
+	b.ID = types.StringValue(id)
 }
 
-func ConfigureDatasource(base BaseData, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (b *Model) GetSite() string {
+	return b.Site.ValueString()
+}
+
+func (b *Model) GetRawSite() types.String {
+	return b.Site
+}
+
+func (b *Model) SetSite(site string) {
+	b.Site = types.StringValue(site)
+}
+
+func ConfigureDatasource(base Resource, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -46,7 +71,7 @@ func ConfigureDatasource(base BaseData, req datasource.ConfigureRequest, resp *d
 	base.SetClient(cfg)
 }
 
-func ConfigureResource(base BaseData, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func ConfigureResource(base Resource, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}

@@ -19,7 +19,7 @@ var (
 	_ resource.Resource                = &dnsRecordResource{}
 	_ resource.ResourceWithConfigure   = &dnsRecordResource{}
 	_ resource.ResourceWithImportState = &dnsRecordResource{}
-	_ base.BaseData                    = &dnsRecordResource{}
+	_ base.Resource                    = &dnsRecordResource{}
 )
 
 type dnsRecordResource struct {
