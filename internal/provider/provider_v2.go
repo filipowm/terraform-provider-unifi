@@ -5,6 +5,7 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/dns"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/settings"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -24,6 +25,10 @@ func NewV2(version string) func() provider.Provider {
 		}
 	}
 }
+
+var (
+	_ provider.Provider = &unifiProvider{}
+)
 
 type unifiProvider struct {
 	version string
@@ -64,6 +69,7 @@ func (p *unifiProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp
 				MarkdownDescription: ProviderAPIURLDescription,
 				Validators: []validator.String{
 					stringvalidator.LengthAtLeast(1), // workaround for `required: true`, because it fails on doc generation due to incorrectly detected difference between v1 and v2
+					validators.HTTPSUrl(),
 				},
 				Optional: true,
 			},
@@ -98,8 +104,8 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 			path.Root("api_url"),
 			"Unknown UniFi Controller API URL",
 			"The provider cannot create the UniFi Controller API client as there is an unknown configuration value "+
-				"for the API endpoint. Either target apply the source of the value first, set the value statically in "+
-				"the configuration, or use the UNIFI_API environment variable.",
+					"for the API endpoint. Either target apply the source of the value first, set the value statically in "+
+					"the configuration, or use the UNIFI_API environment variable.",
 		)
 	}
 
@@ -170,6 +176,7 @@ func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource 
 		dns.NewDnsRecordResource,
 		settings.NewAutoSpeedtestResource,
 		settings.NewCountryResource,
+		settings.NewLocaleResource,
 	}
 }
 
