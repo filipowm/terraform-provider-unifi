@@ -180,6 +180,7 @@ func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource 
 		settings.NewMagicSiteToSiteVpnResource,
 		settings.NewNetworkOptimizationResource,
 		settings.NewNtpResource,
+		settings.NewSslInspectionResource,
 	}
 }
 
