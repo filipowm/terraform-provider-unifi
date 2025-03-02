@@ -1,7 +1,8 @@
-package validators
+package validators_test
 
 import (
 	"context"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -59,7 +60,7 @@ func TestURLValidator(t *testing.T) {
 				ConfigValue: test.val,
 			}
 			response := validator.StringResponse{}
-			URL().ValidateString(context.Background(), request, &response)
+			validators.URL().ValidateString(context.Background(), request, &response)
 
 			if !response.Diagnostics.HasError() && test.expectError {
 				t.Fatal("expected error, got no error")
@@ -114,7 +115,7 @@ func TestHTTPSURLValidator(t *testing.T) {
 				ConfigValue: test.val,
 			}
 			response := validator.StringResponse{}
-			HTTPSUrl().ValidateString(context.Background(), request, &response)
+			validators.HTTPSUrl().ValidateString(context.Background(), request, &response)
 
 			if !response.Diagnostics.HasError() && test.expectError {
 				t.Fatal("expected error, got no error")

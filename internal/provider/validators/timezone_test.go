@@ -1,7 +1,8 @@
-package validators
+package validators_test
 
 import (
 	"context"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -71,7 +72,7 @@ func TestTimezoneValidator(t *testing.T) {
 				ConfigValue: test.val,
 			}
 			response := validator.StringResponse{}
-			Timezone().ValidateString(context.Background(), request, &response)
+			validators.Timezone().ValidateString(context.Background(), request, &response)
 
 			if !response.Diagnostics.HasError() && test.expectError {
 				t.Fatal("expected error, got no error")
