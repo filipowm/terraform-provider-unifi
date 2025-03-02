@@ -13,7 +13,8 @@ var settingSslInspectionLock = &sync.Mutex{}
 
 func TestAccSettingSslInspection(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingSslInspectionLock,
+		VersionConstraint: ">= 8.2",
+		Lock:              settingSslInspectionLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingSslInspectionConfig("off"),
