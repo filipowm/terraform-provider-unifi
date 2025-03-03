@@ -48,15 +48,19 @@ func (d *teleportModel) Merge(other interface{}) diag.Diagnostics {
 }
 
 var (
-	_ base.ResourceModel                    = &teleportModel{}
-	_ resource.Resource                     = &teleportResource{}
-	_ resource.ResourceWithConfigure        = &teleportResource{}
-	_ resource.ResourceWithImportState      = &teleportResource{}
-	_ resource.ResourceWithConfigValidators = &teleportResource{}
+	_ base.ResourceModel               = &teleportModel{}
+	_ resource.Resource                = &teleportResource{}
+	_ resource.ResourceWithConfigure   = &teleportResource{}
+	_ resource.ResourceWithImportState = &teleportResource{}
+	_ resource.ResourceWithModifyPlan  = &teleportResource{}
 )
 
 type teleportResource struct {
 	*BaseSettingResource[*teleportModel]
+}
+
+func (r *teleportResource) ModifyPlan(_ context.Context, _ resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	resp.Diagnostics.Append(r.RequireMinVersion("7.1")...)
 }
 
 func (r *teleportResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -78,12 +82,6 @@ func (r *teleportResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				},
 			},
 		},
-	}
-}
-
-func (r *teleportResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
-	return []resource.ConfigValidator{
-		validators.ResourceRequireMinVersion(r.GetClient(), "7.1", "Teleport requires UniFi controller version 7.1 or higher"),
 	}
 }
 

@@ -23,11 +23,16 @@ var (
 )
 
 type dnsRecordResource struct {
+	base.ControllerVersionValidator
 	client *base.Client
 }
 
 func (d *dnsRecordResource) SetClient(client *base.Client) {
 	d.client = client
+}
+
+func (d *dnsRecordResource) SetVersionValidator(validator base.ControllerVersionValidator) {
+	d.ControllerVersionValidator = validator
 }
 
 func NewDnsRecordResource() resource.Resource {

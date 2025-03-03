@@ -11,6 +11,7 @@ import (
 
 type Resource interface {
 	SetClient(client *Client)
+	SetVersionValidator(validator ControllerVersionValidator)
 }
 
 // ResourceModel defines the interface that all setting models must implement
@@ -69,6 +70,7 @@ func ConfigureDatasource(base Resource, req datasource.ConfigureRequest, resp *d
 		return
 	}
 	base.SetClient(cfg)
+	base.SetVersionValidator(NewControllerVersionValidator(cfg))
 }
 
 func ConfigureResource(base Resource, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -86,4 +88,5 @@ func ConfigureResource(base Resource, req resource.ConfigureRequest, resp *resou
 		return
 	}
 	base.SetClient(cfg)
+	base.SetVersionValidator(NewControllerVersionValidator(cfg))
 }
