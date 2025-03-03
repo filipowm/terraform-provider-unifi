@@ -9,6 +9,12 @@ func asVersion(versionString string) *version.Version {
 	return version.Must(version.NewVersion(versionString))
 }
 
+// AsVersion converts a string version to a *version.Version
+// This is a utility function for consumers of this package
+func AsVersion(versionString string) *version.Version {
+	return asVersion(versionString)
+}
+
 var (
 	ControllerV6                = asVersion("6.0.0")
 	ControllerV7                = asVersion("7.0.0")

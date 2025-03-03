@@ -181,6 +181,7 @@ func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource 
 		settings.NewNetworkOptimizationResource,
 		settings.NewNtpResource,
 		settings.NewSslInspectionResource,
+		settings.NewTeleportResource,
 	}
 }
 
