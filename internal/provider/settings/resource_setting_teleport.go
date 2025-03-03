@@ -83,7 +83,7 @@ func (r *teleportResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 
 func (r *teleportResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
-		validators.ResourceRequireMinVersion(r.GetClient(), "7.0", "Teleport requires UniFi controller version 7.0 or higher"),
+		validators.ResourceRequireMinVersion(r.GetClient(), "7.1", "Teleport requires UniFi controller version 7.1 or higher"),
 	}
 }
 
