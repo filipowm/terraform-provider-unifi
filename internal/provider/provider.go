@@ -27,11 +27,11 @@ const (
 	ProviderPasswordDescription = "Password for the user accessing the API. Can be specified with the `UNIFI_PASSWORD` environment variable."
 	ProviderAPIKeyDescription   = "API Key for the user accessing the API. Can be specified with the `UNIFI_API_KEY` environment variable. Controller version 9.0.108 or later is required."
 	ProviderAPIURLDescription   = "URL of the controller API. Can be specified with the `UNIFI_API` environment variable. " +
-		"You should **NOT** supply the path (`/api`), the SDK will discover the appropriate paths. This is to support UDM Pro style API paths as well as more standard controller paths."
+			"You should **NOT** supply the path (`/api`), the SDK will discover the appropriate paths. This is to support UDM Pro style API paths as well as more standard controller paths."
 	ProviderSiteDescription          = "The site in the Unifi controller this provider will manage. Can be specified with the `UNIFI_SITE` environment variable. Default: `default`"
 	ProviderAllowInsecureDescription = "Skip verification of TLS certificates of API requests. You may need to set this to `true` " +
-		"if you are using your local API without setting up a signed certificate. Can be specified with the " +
-		"`UNIFI_INSECURE` environment variable."
+			"if you are using your local API without setting up a signed certificate. Can be specified with the " +
+			"`UNIFI_INSECURE` environment variable."
 )
 
 func init() {
@@ -115,10 +115,8 @@ func New(version string) func() *schema.Provider {
 				"unifi_site":           site.ResourceSite(),
 				"unifi_account":        radius.ResourceAccount(),
 				"unifi_radius_profile": radius.ResourceRadiusProfile(),
-
 				"unifi_setting_mgmt":   settings.ResourceSettingMgmt(),
 				"unifi_setting_radius": settings.ResourceSettingRadius(),
-				"unifi_setting_usg":    settings.ResourceSettingUsg(),
 				"unifi_user_group":     user.ResourceUserGroup(),
 				"unifi_user":           user.ResourceUser(),
 			},
