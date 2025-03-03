@@ -132,7 +132,7 @@ func (v ControllerVersionValidator) validateAttributeVersion(ctx context.Context
 	if v.exactVersion != nil && !controllerVersion.Equal(v.exactVersion) {
 		diags.Append(validatordiag.InvalidAttributeValueDiagnostic(
 			req,
-			v.Description(ctx),
+			message,
 			fmt.Sprintf("Controller version %s does not match required version %s to use given attribute", controllerVersion, v.exactVersion),
 		))
 		return diags
@@ -141,7 +141,7 @@ func (v ControllerVersionValidator) validateAttributeVersion(ctx context.Context
 	if v.minVersion != nil && controllerVersion.LessThan(v.minVersion) {
 		diags.Append(validatordiag.InvalidAttributeValueDiagnostic(
 			req,
-			v.Description(ctx),
+			message,
 			fmt.Sprintf("Controller version %s is less than minimum required version %s to use given attribute", controllerVersion, v.minVersion),
 		))
 		return diags
@@ -150,7 +150,7 @@ func (v ControllerVersionValidator) validateAttributeVersion(ctx context.Context
 	if v.maxVersion != nil && controllerVersion.GreaterThan(v.maxVersion) {
 		diags.Append(validatordiag.InvalidAttributeValueDiagnostic(
 			req,
-			v.Description(ctx),
+			message,
 			fmt.Sprintf("Controller version %s is greater than maximum allowed version %s to use given attribute", controllerVersion, v.maxVersion),
 		))
 		return diags
