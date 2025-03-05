@@ -16,7 +16,7 @@ type networkOptimizationModel struct {
 	Enabled types.Bool `tfsdk:"enabled"`
 }
 
-func (d *networkOptimizationModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
+func (d *networkOptimizationModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 
 	model := &unifi.SettingNetworkOptimization{
@@ -27,7 +27,7 @@ func (d *networkOptimizationModel) AsUnifiModel() (interface{}, diag.Diagnostics
 	return model, diags
 }
 
-func (d *networkOptimizationModel) Merge(other interface{}) diag.Diagnostics {
+func (d *networkOptimizationModel) Merge(_ context.Context, other interface{}) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 
 	model, ok := other.(*unifi.SettingNetworkOptimization)

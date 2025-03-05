@@ -19,7 +19,7 @@ type teleportModel struct {
 	Subnet  types.String `tfsdk:"subnet"`
 }
 
-func (d *teleportModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
+func (d *teleportModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 
 	model := &unifi.SettingTeleport{
@@ -31,7 +31,7 @@ func (d *teleportModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
 	return model, diags
 }
 
-func (d *teleportModel) Merge(other interface{}) diag.Diagnostics {
+func (d *teleportModel) Merge(_ context.Context, other interface{}) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 
 	model, ok := other.(*unifi.SettingTeleport)

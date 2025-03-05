@@ -87,13 +87,14 @@ func (b *BaseSettingResource[T]) Create(ctx context.Context, req resource.Create
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	body, diags := plan.AsUnifiModel()
+	site := b.client.ResolveSite(plan)
+
+	body, diags := plan.AsUnifiModel(ctx)
 
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
 	}
-	site := b.client.ResolveSite(plan)
 
 	res, err := b.updater(ctx, b.client, site, body)
 	if err != nil {
@@ -104,7 +105,7 @@ func (b *BaseSettingResource[T]) Create(ctx context.Context, req resource.Create
 		resp.Diagnostics.AddError("Error creating settings", fmt.Sprintf("No %[1]s settings returned from the UniFi controller. %[1]s might not be supported on this controller", b.typeName))
 		return
 	}
-	plan.Merge(res)
+	plan.Merge(ctx, res)
 	plan.SetSite(site)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
@@ -128,7 +129,7 @@ func (b *BaseSettingResource[T]) read(ctx context.Context, site string, state T,
 		return
 	}
 	if res != nil {
-		state.Merge(res)
+		state.Merge(ctx, res)
 	}
 }
 
@@ -172,7 +173,7 @@ func (b *BaseSettingResource[T]) Update(ctx context.Context, req resource.Update
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	body, diags := plan.AsUnifiModel()
+	body, diags := plan.AsUnifiModel(ctx)
 	if diags.HasError() {
 		resp.Diagnostics.Append(diags...)
 		return
@@ -184,7 +185,7 @@ func (b *BaseSettingResource[T]) Update(ctx context.Context, req resource.Update
 		resp.Diagnostics.AddError("Error updating settings", err.Error())
 		return
 	}
-	state.Merge(res)
+	state.Merge(ctx, res)
 	state.SetSite(site)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

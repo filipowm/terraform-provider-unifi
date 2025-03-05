@@ -18,7 +18,7 @@ type sslInspectionModel struct {
 	State types.String `tfsdk:"state"`
 }
 
-func (d *sslInspectionModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
+func (d *sslInspectionModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 
 	model := &unifi.SettingSslInspection{
@@ -29,7 +29,7 @@ func (d *sslInspectionModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
 	return model, diags
 }
 
-func (d *sslInspectionModel) Merge(other interface{}) diag.Diagnostics {
+func (d *sslInspectionModel) Merge(_ context.Context, other interface{}) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 
 	model, ok := other.(*unifi.SettingSslInspection)

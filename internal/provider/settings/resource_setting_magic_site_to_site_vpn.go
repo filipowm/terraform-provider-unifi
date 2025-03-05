@@ -16,7 +16,7 @@ type magicSiteToSiteVpnModel struct {
 	Enabled types.Bool `tfsdk:"enabled"`
 }
 
-func (d *magicSiteToSiteVpnModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
+func (d *magicSiteToSiteVpnModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 
 	model := &unifi.SettingMagicSiteToSiteVpn{
@@ -27,7 +27,7 @@ func (d *magicSiteToSiteVpnModel) AsUnifiModel() (interface{}, diag.Diagnostics)
 	return model, diags
 }
 
-func (d *magicSiteToSiteVpnModel) Merge(other interface{}) diag.Diagnostics {
+func (d *magicSiteToSiteVpnModel) Merge(_ context.Context, other interface{}) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 
 	model, ok := other.(*unifi.SettingMagicSiteToSiteVpn)

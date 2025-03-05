@@ -1,6 +1,7 @@
 package base
 
 import (
+	"context"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
@@ -22,8 +23,8 @@ type ResourceModel interface {
 	GetID() string
 	GetRawID() types.String
 	SetID(string)
-	AsUnifiModel() (interface{}, diag.Diagnostics)
-	Merge(interface{}) diag.Diagnostics
+	AsUnifiModel(context.Context) (interface{}, diag.Diagnostics)
+	Merge(context.Context, interface{}) diag.Diagnostics
 }
 
 type Model struct {
