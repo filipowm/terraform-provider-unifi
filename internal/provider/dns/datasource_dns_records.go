@@ -16,6 +16,7 @@ var (
 )
 
 type dnsRecordsDatasource struct {
+	base.ControllerVersionValidator
 	client *base.Client
 }
 
@@ -25,6 +26,10 @@ func NewDnsRecordsDatasource() datasource.DataSource {
 
 func (d *dnsRecordsDatasource) SetClient(client *base.Client) {
 	d.client = client
+}
+
+func (d *dnsRecordsDatasource) SetVersionValidator(validator base.ControllerVersionValidator) {
+	d.ControllerVersionValidator = validator
 }
 
 func (d *dnsRecordsDatasource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {

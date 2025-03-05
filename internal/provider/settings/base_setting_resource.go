@@ -13,6 +13,7 @@ import (
 
 // BaseSettingResource provides common functionality for all setting resources
 type BaseSettingResource[T base.ResourceModel] struct {
+	base.ControllerVersionValidator
 	client       *base.Client
 	typeName     string
 	modelFactory func() T
@@ -43,6 +44,10 @@ func (b *BaseSettingResource[T]) GetClient() *base.Client {
 // SetClient sets the UniFi client
 func (b *BaseSettingResource[T]) SetClient(client *base.Client) {
 	b.client = client
+}
+
+func (b *BaseSettingResource[T]) SetVersionValidator(validator base.ControllerVersionValidator) {
+	b.ControllerVersionValidator = validator
 }
 
 func (b *BaseSettingResource[T]) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {

@@ -104,8 +104,8 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 			path.Root("api_url"),
 			"Unknown UniFi Controller API URL",
 			"The provider cannot create the UniFi Controller API client as there is an unknown configuration value "+
-				"for the API endpoint. Either target apply the source of the value first, set the value statically in "+
-				"the configuration, or use the UNIFI_API environment variable.",
+					"for the API endpoint. Either target apply the source of the value first, set the value statically in "+
+					"the configuration, or use the UNIFI_API environment variable.",
 		)
 	}
 
@@ -182,6 +182,7 @@ func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource 
 		settings.NewNtpResource,
 		settings.NewSslInspectionResource,
 		settings.NewTeleportResource,
+		settings.NewUsgResource,
 	}
 }
 

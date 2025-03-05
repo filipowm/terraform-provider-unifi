@@ -22,17 +22,17 @@ func TestAccSettingUsg_mdns_v6(t *testing.T) {
 				Config: testAccSettingUsgConfig_mdns(true),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			pt.ImportStep("unifi_setting_usg.test"),
+			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
 				Config: testAccSettingUsgConfig_mdns(false),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			pt.ImportStep("unifi_setting_usg.test"),
+			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
 				Config: testAccSettingUsgConfig_mdns(true),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			pt.ImportStep("unifi_setting_usg.test"),
+			pt.ImportStepWithSite("unifi_setting_usg.test"),
 		},
 	})
 }
@@ -58,7 +58,7 @@ func TestAccSettingUsg_dhcpRelay(t *testing.T) {
 				Config: testAccSettingUsgConfig_dhcpRelay(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			pt.ImportStep("unifi_setting_usg.test"),
+			pt.ImportStepWithSite("unifi_setting_usg.test"),
 		},
 	})
 }
