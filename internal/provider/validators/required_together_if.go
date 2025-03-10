@@ -42,9 +42,9 @@ func (v RequiredTogetherIfValidator) Description(ctx context.Context) string {
 
 func (v RequiredTogetherIfValidator) MarkdownDescription(_ context.Context) string {
 	if v.CheckOnlyIfSet {
-		return fmt.Sprintf("If %q is set, these attributes must be configured together: %s", v.ConditionPath, v.TargetExpressions)
+		return fmt.Sprintf("If %s is set, these attributes must be configured together: %s", v.ConditionPath, v.TargetExpressions)
 	}
-	return fmt.Sprintf("If %q equals %s, these attributes must be configured together: %s", v.ConditionPath, v.ConditionValue, v.TargetExpressions)
+	return fmt.Sprintf("If %s equals %s, these attributes must be configured together: %s", v.ConditionPath, v.ConditionValue, v.TargetExpressions)
 }
 
 func (v RequiredTogetherIfValidator) ValidateDataSource(ctx context.Context, req datasource.ValidateConfigRequest, resp *datasource.ValidateConfigResponse) {
