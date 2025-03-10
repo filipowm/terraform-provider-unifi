@@ -497,17 +497,23 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_setting_usg` resource manages advanced settings for UniFi Security Gateways (USG) and UniFi Dream Machines (UDM/UDM-Pro).\n\n" +
 			"This resource allows you to configure gateway-specific features including:\n" +
-			"  * Multicast DNS (mDNS) for service discovery\n" +
+			"  * Multicast DNS (mDNS) for cross-VLAN service discovery\n" +
 			"  * DHCP relay for forwarding DHCP requests to external servers\n" +
 			"  * Geo IP filtering for country-based traffic control\n" +
-			"  * UPNP for automatic port forwarding\n\n" +
-			"Note: Some settings may not be available on all controller versions. For example, multicast_dns_enabled is not supported on UniFi OS v7+.",
+			"  * UPNP/NAT-PMP for automatic port forwarding\n" +
+			"  * Protocol helpers for FTP, GRE, H323, PPTP, SIP, and TFTP\n" +
+			"  * TCP/UDP timeout settings for connection tracking\n" +
+			"  * Security features like SYN cookies and ICMP redirect controls\n" +
+			"  * MSS clamping for optimizing MTU issues\n\n" +
+			"Note: Some settings may not be available on all controller versions. For example, multicast_dns_enabled is not supported on UniFi OS v7+. Changes to certain attributes may not be reflected in the plan unless explicitly modified in the configuration.",
 		Attributes: map[string]schema.Attribute{
 			"id":   base.ID(),
 			"site": base.SiteAttribute(),
 			"multicast_dns_enabled": schema.BoolAttribute{
 				MarkdownDescription: "Enable multicast DNS (mDNS/Bonjour/Avahi) forwarding across VLANs. This allows devices to discover services " +
-					"(like printers, Chromecasts, etc.) even when they are on different networks. Note: Not supported on UniFi OS v7+.",
+					"(like printers, Chromecasts, Apple devices, etc.) even when they are on different networks or VLANs. " +
+					"When enabled, the gateway will forward mDNS packets between networks, facilitating cross-VLAN service discovery. " +
+					"Note: This setting is not supported on UniFi OS v7+ as it has been replaced by mDNS settings in the network configuration.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
@@ -516,8 +522,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			},
 			"dhcp_relay_servers": schema.ListAttribute{
 				MarkdownDescription: "List of up to 5 DHCP relay servers (specified by IP address) that will receive forwarded DHCP requests. " +
-					"This is useful when you want to use external DHCP servers instead of the built-in DHCP server. " +
-					"Example: ['192.168.1.5', '192.168.2.5']",
+					"This is useful when you want to use external DHCP servers instead of the built-in DHCP server on the USG/UDM. " +
+					"When configured, the gateway will forward DHCP discovery packets from clients to these external servers, allowing " +
+					"centralized IP address management across multiple networks. " +
+					"Example: `['192.168.1.5', '192.168.2.5']`",
 				DeprecationMessage: "This attribute is deprecated and will be removed in a future release. `dhcp_relay.servers` attribute will be introduced as a replacement.",
 				ElementType:        types.StringType,
 				Optional:           true,
@@ -532,7 +540,8 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"dhcp_relay": schema.SingleNestedAttribute{
-				MarkdownDescription: "DHCP relay configuration. Forwards DHCP requests to external servers.",
+				MarkdownDescription: "Advanced DHCP relay configuration settings. Controls how the gateway forwards DHCP requests to external servers " +
+					"and manages DHCP relay agent behavior. Use this block to fine-tune DHCP relay functionality beyond simply specifying relay servers.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Object{
@@ -540,7 +549,11 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 				Attributes: map[string]schema.Attribute{
 					"agents_packets": schema.StringAttribute{
-						MarkdownDescription: "Specify the DHCP relay agent's packets. Valid values are `append`, `discard`, `forward`, or `replace`. ",
+						MarkdownDescription: "Specifies how to handle DHCP relay agent information in packets. Valid values are:\n" +
+							"  * `append` - Add relay agent information to packets that may already contain it\n" +
+							"  * `discard` - Drop packets that already contain relay agent information\n" +
+							"  * `forward` - Forward packets regardless of relay agent information\n" +
+							"  * `replace` - Replace existing relay agent information with the gateway's information",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.String{
@@ -551,7 +564,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"hop_count": schema.Int64Attribute{
-						MarkdownDescription: "Maximum number of hops for DHCP relay packets.",
+						MarkdownDescription: "Maximum number of relay agents that can forward the DHCP packet before it is discarded. " +
+							"This prevents DHCP packets from being forwarded indefinitely in complex network topologies. " +
+							"Valid values range from 1 to 255, with lower values recommended for simpler networks.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -562,7 +577,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"max_size": schema.Int64Attribute{
-						MarkdownDescription: "Maximum size of DHCP relay packets. Requires value between 64 and 1400.",
+						MarkdownDescription: "Maximum size (in bytes) of DHCP relay packets that will be forwarded. " +
+							"Packets exceeding this size will be truncated or dropped. Valid values range from 64 to 1400 bytes. " +
+							"The default is typically sufficient for most DHCP implementations, but may need adjustment if using " +
+							"extensive DHCP options or vendor-specific information.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -573,7 +591,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"port": schema.Int64Attribute{
-						MarkdownDescription: "Port for DHCP relay to listen on.",
+						MarkdownDescription: "UDP port number for the DHCP relay service to listen on. The standard DHCP server port is 67, " +
+							"but this can be customized if needed for specific network configurations. Valid values range from 1 to 65535. " +
+							"Ensure this doesn't conflict with other services running on the gateway.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -586,7 +606,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"geo_ip_filtering": schema.SingleNestedAttribute{
-				MarkdownDescription: "Geographic IP filtering configuration. Allows blocking or allowing traffic based on country.",
+				MarkdownDescription: "Geographic IP filtering configuration that allows blocking or allowing traffic based on country of origin. " +
+					"This feature uses IP geolocation databases to identify the country associated with IP addresses and apply filtering rules. " +
+					"Useful for implementing country-specific access policies or blocking traffic from high-risk regions.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Object{
@@ -598,13 +620,15 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				Attributes: map[string]schema.Attribute{
 					"enabled": schema.BoolAttribute{
 						MarkdownDescription: "Enable geographic IP filtering. When enabled, traffic from specified countries will be blocked or allowed " +
-							"according to the configured rules.",
+							"according to the configured rules. When set to `true`, you must also specify the `countries` list. " +
+							"Setting this to `false` disables all country-based filtering regardless of other settings.",
 						Required: true,
 					},
 					"block": schema.StringAttribute{
-						MarkdownDescription: "Specifies whether the selected countries should be blocked or allowed. Valid values are `block` (default) or `allow`. " +
-							"When set to `block`, traffic from the specified countries will be blocked. When set to `allow`, only traffic from the " +
-							"specified countries will be allowed.",
+						MarkdownDescription: "Specifies whether the selected countries should be blocked or allowed. Valid values are:\n" +
+							"  * `block` (default) - Traffic from the specified countries will be blocked, while traffic from all other countries will be allowed\n" +
+							"  * `allow` - Only traffic from the specified countries will be allowed, while traffic from all other countries will be blocked\n\n" +
+							"This setting effectively determines whether the `countries` list functions as a blocklist or an allowlist.",
 						Optional: true,
 						Computed: true,
 						Default:  stringdefault.StaticString("block"),
@@ -616,8 +640,13 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"countries": schema.ListAttribute{
-						MarkdownDescription: "List of two-letter following ISO 3166-1 alpha-2 country codes to block or allow. " +
-							"Example: `['US', 'CA', 'MX']` for United States, Canada, and Mexico.",
+						MarkdownDescription: "List of two-letter ISO 3166-1 alpha-2 country codes to block or allow, depending on the `block` setting. " +
+							"Must contain at least one country code when geo IP filtering is enabled. Country codes are case-insensitive but are typically " +
+							"written in uppercase.\n\n" +
+							"Examples:\n" +
+							"  * `['US', 'CA', 'MX']` - United States, Canada, and Mexico\n" +
+							"  * `['CN', 'RU', 'IR']` - China, Russia, and Iran\n" +
+							"  * `['GB', 'DE', 'FR']` - United Kingdom, Germany, and France",
 						Optional:    true,
 						ElementType: types.StringType,
 						PlanModifiers: []planmodifier.List{
@@ -629,8 +658,12 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"traffic_direction": schema.StringAttribute{
-						MarkdownDescription: "Specifies which traffic direction the geo IP filtering applies to. Valid values are `both`, `ingress`, or `egress`. " +
-							"`both` (default) filters traffic in both directions, `ingress` filters only incoming traffic, and `egress` filters only outgoing traffic.",
+						MarkdownDescription: "Specifies which traffic direction the geo IP filtering applies to. Valid values are:\n" +
+							"  * `both` (default) - Filters traffic in both directions (incoming and outgoing)\n" +
+							"  * `ingress` - Filters only incoming traffic (from WAN to LAN)\n" +
+							"  * `egress` - Filters only outgoing traffic (from LAN to WAN)\n\n" +
+							"This setting is useful for creating more granular filtering policies. For example, you might want to block incoming traffic " +
+							"from certain countries while still allowing outgoing connections to those same countries.",
 						Optional: true,
 						Computed: true,
 						Default:  stringdefault.StaticString("both"),
@@ -644,7 +677,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"upnp": schema.SingleNestedAttribute{
-				MarkdownDescription: "UPNP (Universal Plug and Play) configuration. Enables automatic port forwarding for applications that support it.",
+				MarkdownDescription: "UPNP (Universal Plug and Play) configuration settings. UPNP allows compatible applications and devices to automatically " +
+					"configure port forwarding rules on the gateway without manual intervention. This is commonly used by gaming consoles, " +
+					"media servers, VoIP applications, and other network services that require incoming connections.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Object{
@@ -652,27 +687,35 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 				Attributes: map[string]schema.Attribute{
 					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable UPNP functionality. When enabled, applications can automatically " +
-							"request port forwarding rules from the gateway.",
+						MarkdownDescription: "Enable UPNP functionality. When enabled, applications and devices on the local network can automatically " +
+							"request port forwarding rules from the gateway without manual configuration. This simplifies the use of applications " +
+							"that require inbound connections, but may present security risks if not properly configured with `secure_mode`.",
 						Required: true,
 					},
 					"nat_pmp_enabled": schema.BoolAttribute{
 						MarkdownDescription: "Enable NAT-PMP (NAT Port Mapping Protocol) support alongside UPNP. NAT-PMP is " +
-							"Apple's alternative to UPNP, providing similar automatic port mapping capabilities.",
+							"Apple's alternative to UPNP, providing similar automatic port mapping capabilities. When enabled, Apple devices " +
+							"like Macs, iPhones, and iPads can automatically configure port forwarding for services like AirPlay, FaceTime, " +
+							"iMessage, and other Apple services. Defaults to `false`.",
 						Optional: true,
 						Computed: true,
 						Default:  booldefault.StaticBool(false),
 					},
 					"secure_mode": schema.BoolAttribute{
 						MarkdownDescription: "Enable secure mode for UPNP. In secure mode, the gateway only forwards ports " +
-							"to the device that specifically requested them, enhancing security.",
+							"to the device that specifically requested them, enhancing security. This prevents malicious applications from " +
+							"redirecting ports to different devices than intended. It's strongly recommended to enable this setting when using UPNP " +
+							"to minimize security risks. Defaults to `false`.",
 						Optional: true,
 						Computed: true,
 						Default:  booldefault.StaticBool(false),
 					},
 					"wan_interface": schema.StringAttribute{
-						MarkdownDescription: "Specify which WAN interface to use for UPNP service. Valid values are " +
-							"`WAN` (primary interface) or `WAN2` (secondary interface, if available).",
+						MarkdownDescription: "Specify which WAN interface to use for UPNP service. Valid values are:\n" +
+							"  * `WAN` (default) - Use the primary WAN interface for UPNP port forwarding\n" +
+							"  * `WAN2` - Use the secondary WAN interface for UPNP port forwarding (if available)\n\n" +
+							"This setting is particularly relevant for dual-WAN setups where you may want to direct UPNP traffic through " +
+							"a specific WAN connection. If your gateway only has a single WAN interface, use the default `WAN` setting.",
 						Optional: true,
 						Computed: true,
 						Default:  stringdefault.StaticString("WAN"),
@@ -684,7 +727,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			},
 			// ARP Cache Configuration
 			"arp_cache_base_reachable": schema.Int64Attribute{
-				MarkdownDescription: "The base reachable timeout for ARP cache entries in seconds.",
+				MarkdownDescription: "The base reachable timeout (in seconds) for ARP cache entries. This controls how long the gateway considers " +
+					"a MAC-to-IP mapping valid without needing to refresh it. Higher values reduce network traffic but may cause stale " +
+					"entries if devices change IP addresses frequently.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
@@ -692,7 +737,11 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"arp_cache_timeout": schema.StringAttribute{
-				MarkdownDescription: "The timeout strategy for ARP cache. Valid values are 'normal', 'min-dhcp-lease', or 'custom'.",
+				MarkdownDescription: "The timeout strategy for ARP cache entries. Valid values are:\n" +
+					"  * `normal` - Use system default timeouts\n" +
+					"  * `min-dhcp-lease` - Set ARP timeout to match the minimum DHCP lease time\n" +
+					"  * `custom` - Use the custom timeout value specified in `arp_cache_base_reachable`\n\n" +
+					"This setting determines how long MAC-to-IP mappings are stored in the ARP cache before being refreshed.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -702,7 +751,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// DHCP Configuration
 			"broadcast_ping": schema.BoolAttribute{
-				MarkdownDescription: "Enable responding to broadcast ping requests.",
+				MarkdownDescription: "Enable responding to broadcast ping requests (ICMP echo requests sent to the broadcast address). " +
+					"When enabled, the gateway will respond to pings sent to the broadcast address of the network (e.g., 192.168.1.255). " +
+					"This can be useful for network diagnostics but may also be used in certain denial-of-service attacks.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -710,7 +761,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"dhcpd_hostfile_update": schema.BoolAttribute{
-				MarkdownDescription: "Enable updating hostfiles with DHCP client information.",
+				MarkdownDescription: "Enable updating the gateway's host files with DHCP client information. When enabled, the gateway will " +
+					"automatically add entries to its host file for each DHCP client, allowing hostname resolution for devices " +
+					"that receive IP addresses via DHCP. This improves name resolution on the local network.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -718,7 +771,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"dhcpd_use_dnsmasq": schema.BoolAttribute{
-				MarkdownDescription: "Use dnsmasq for DHCP services.",
+				MarkdownDescription: "Use dnsmasq for DHCP services instead of the default DHCP server. Dnsmasq provides integrated DNS and DHCP " +
+					"functionality with additional features like DNS caching, DHCP static leases, and local domain name resolution. " +
+					"This can improve DNS resolution performance and provide more flexible DHCP options.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -726,7 +781,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"dnsmasq_all_servers": schema.BoolAttribute{
-				MarkdownDescription: "Query all DNS servers.",
+				MarkdownDescription: "When enabled, dnsmasq will query all configured DNS servers simultaneously and use the fastest response. " +
+					"This can improve DNS resolution speed but may increase DNS traffic. By default, dnsmasq queries servers " +
+					"sequentially, only trying the next server if the current one fails to respond.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -736,7 +793,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// DNS Verification
 			"dns_verification": schema.SingleNestedAttribute{
-				MarkdownDescription: "DNS verification settings for validating DNS responses.",
+				MarkdownDescription: "DNS verification settings for validating DNS responses. This feature helps detect and prevent DNS spoofing " +
+					"attacks by verifying DNS responses against trusted DNS servers. When configured, the gateway can compare DNS " +
+					"responses with those from known trusted servers to identify potential tampering or poisoning attempts.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Object{
@@ -748,7 +807,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 				Attributes: map[string]schema.Attribute{
 					"domain": schema.StringAttribute{
-						MarkdownDescription: "Domain for DNS verification.",
+						MarkdownDescription: "The domain name to use for DNS verification tests. The gateway will query this domain when testing DNS " +
+							"server responses. This should be a reliable domain that is unlikely to change frequently. " +
+							"Required when `setting_preference` is set to `manual`.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.String{
@@ -756,7 +817,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"primary_dns_server": schema.StringAttribute{
-						MarkdownDescription: "Primary DNS server for verification.",
+						MarkdownDescription: "The IP address of the primary trusted DNS server to use for verification. DNS responses will be compared " +
+							"against responses from this server to detect potential DNS spoofing. Required when `setting_preference` is " +
+							"set to `manual`. Must be a valid IPv4 address.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.String{
@@ -767,7 +830,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"secondary_dns_server": schema.StringAttribute{
-						MarkdownDescription: "Secondary DNS server for verification.",
+						MarkdownDescription: "The IP address of the secondary trusted DNS server to use for verification. This server will be used " +
+							"if the primary server is unavailable. Optional even when `setting_preference` is set to `manual`. " +
+							"Must be a valid IPv4 address if specified.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.String{
@@ -778,7 +843,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"setting_preference": schema.StringAttribute{
-						MarkdownDescription: "Preference setting for DNS verification (auto, manual).",
+						MarkdownDescription: "Determines how DNS verification servers are configured. Valid values are:\n" +
+							"  * `auto` - The gateway will automatically select DNS servers for verification\n" +
+							"  * `manual` - Use the manually specified `primary_dns_server` and optionally `secondary_dns_server`\n\n" +
+							"When set to `manual`, you must also specify `primary_dns_server` and `domain` values.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.String{
@@ -793,7 +861,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// Network Tools
 			"echo_server": schema.StringAttribute{
-				MarkdownDescription: "Server for echo tests.",
+				MarkdownDescription: "The hostname or IP address of a server to use for network echo tests. Echo tests send packets to this server " +
+					"and measure response times to evaluate network connectivity and performance. This can be used for network " +
+					"diagnostics and monitoring.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -803,7 +873,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// Protocol Modules
 			"ftp_module": schema.BoolAttribute{
-				MarkdownDescription: "Enable FTP protocol helper module.",
+				MarkdownDescription: "Enable the FTP (File Transfer Protocol) helper module. This module allows the gateway to properly handle " +
+					"FTP connections through NAT by tracking the control channel and dynamically opening required data ports. " +
+					"Without this helper, passive FTP connections may fail when clients are behind NAT.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -811,7 +883,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"gre_module": schema.BoolAttribute{
-				MarkdownDescription: "Enable GRE protocol helper module.",
+				MarkdownDescription: "Enable the GRE (Generic Routing Encapsulation) protocol helper module. This module allows proper handling " +
+					"of GRE tunneling protocol through the gateway's firewall. GRE is commonly used for VPN tunnels and other " +
+					"encapsulation needs. Required if you plan to use PPTP VPNs (see `pptp_module`).",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -819,7 +893,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"h323_module": schema.BoolAttribute{
-				MarkdownDescription: "Enable H.323 protocol helper module.",
+				MarkdownDescription: "Enable the H.323 protocol helper module. H.323 is a standard for multimedia communications (audio, video, " +
+					"and data) over packet-based networks. This helper allows H.323-based applications like video conferencing " +
+					"systems to work properly through NAT by tracking connection details and opening required ports.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -827,7 +903,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"pptp_module": schema.BoolAttribute{
-				MarkdownDescription: "Enable PPTP protocol helper module. Requires GRE module (`gre_module`) to be enabled.",
+				MarkdownDescription: "Enable the PPTP (Point-to-Point Tunneling Protocol) helper module. This module allows PPTP VPN connections " +
+					"to work properly through the gateway's firewall and NAT. PPTP uses GRE for tunneling, so the `gre_module` " +
+					"must also be enabled for PPTP to function correctly. Note that PPTP has known security vulnerabilities and " +
+					"more secure VPN protocols are generally recommended.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -835,7 +914,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"sip_module": schema.BoolAttribute{
-				MarkdownDescription: "Enable SIP protocol helper module.",
+				MarkdownDescription: "Enable the SIP (Session Initiation Protocol) helper module. SIP is used for initiating, maintaining, and " +
+					"terminating real-time sessions for voice, video, and messaging applications (VoIP, video conferencing). " +
+					"This helper allows SIP-based applications to work correctly through NAT by tracking SIP connections and " +
+					"dynamically opening the necessary ports for media streams.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -843,7 +925,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"tftp_module": schema.BoolAttribute{
-				MarkdownDescription: "Enable TFTP protocol helper module.",
+				MarkdownDescription: "Enable the TFTP (Trivial File Transfer Protocol) helper module. This module allows TFTP connections to work " +
+					"properly through the gateway's firewall and NAT. TFTP is commonly used for firmware updates, configuration " +
+					"file transfers, and network booting of devices. The helper tracks TFTP connections and ensures return traffic " +
+					"is properly handled.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -853,7 +938,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// ICMP Settings
 			"icmp_timeout": schema.Int64Attribute{
-				MarkdownDescription: "ICMP timeout in seconds for connection tracking.",
+				MarkdownDescription: "ICMP timeout in seconds for connection tracking. This controls how long the gateway maintains state " +
+					"information for ICMP (ping) packets in its connection tracking table. Higher values maintain ICMP connection " +
+					"state longer, while lower values reclaim resources more quickly but may affect some diagnostic tools.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
@@ -863,7 +950,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// LLDP Settings
 			"lldp_enable_all": schema.BoolAttribute{
-				MarkdownDescription: "Enable Link Layer Discovery Protocol (LLDP) on all interfaces.",
+				MarkdownDescription: "Enable Link Layer Discovery Protocol (LLDP) on all interfaces. LLDP is a vendor-neutral protocol that " +
+					"allows network devices to advertise their identity, capabilities, and neighbors on a local network. When enabled, " +
+					"the gateway will both send and receive LLDP packets, facilitating network discovery and management tools.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -873,7 +962,12 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// MSS Clamp Settings
 			"mss_clamp": schema.StringAttribute{
-				MarkdownDescription: "TCP Maximum Segment Size clamping mode.",
+				MarkdownDescription: "TCP Maximum Segment Size (MSS) clamping mode. MSS clamping adjusts the maximum segment size of TCP packets " +
+					"to prevent fragmentation issues when packets traverse networks with different MTU sizes. Valid values include:\n" +
+					"  * `auto` - Automatically determine appropriate MSS values based on interface MTUs\n" +
+					"  * `custom` - Use the custom MSS value specified in `mss_clamp_mss`\n" +
+					"  * `disabled` - Do not perform MSS clamping\n\n" +
+					"This setting is particularly important for VPN connections and networks with non-standard MTU sizes.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -881,7 +975,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"mss_clamp_mss": schema.Int64Attribute{
-				MarkdownDescription: "TCP Maximum Segment Size value.",
+				MarkdownDescription: "Custom TCP Maximum Segment Size (MSS) value in bytes. This value is used when `mss_clamp` is set to `custom`. " +
+					"The MSS value should typically be set to the path MTU minus 40 bytes (for IPv4) or minus 60 bytes (for IPv6) to account " +
+					"for TCP/IP header overhead. Valid values range from 100 to 9999, with common values being 1460 (for standard 1500 MTU) " +
+					"or 1400 (for VPN tunnels).",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
@@ -894,7 +991,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// Offload Settings
 			"offload_accounting": schema.BoolAttribute{
-				MarkdownDescription: "Enable accounting offload.",
+				MarkdownDescription: "Enable hardware accounting offload. When enabled, the gateway will use hardware acceleration for traffic " +
+					"accounting functions, reducing CPU load and potentially improving throughput for high-traffic environments. " +
+					"This setting may not be supported on all hardware models.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -902,7 +1001,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"offload_l2_blocking": schema.BoolAttribute{
-				MarkdownDescription: "Enable L2 blocking offload.",
+				MarkdownDescription: "Enable hardware offload for Layer 2 (L2) blocking functions. When enabled, the gateway will use hardware " +
+					"acceleration for blocking traffic at the data link layer (MAC address level), which can improve performance " +
+					"when implementing MAC-based filtering or isolation. This setting may not be supported on all hardware models.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -910,7 +1011,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"offload_sch": schema.BoolAttribute{
-				MarkdownDescription: "Enable scheduling offload.",
+				MarkdownDescription: "Enable hardware scheduling offload. When enabled, the gateway will use hardware acceleration for packet " +
+					"scheduling functions, which can improve QoS (Quality of Service) performance and throughput for prioritized traffic. " +
+					"This setting may not be supported on all hardware models and may affect other hardware offload capabilities.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -920,7 +1023,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// Timeout Settings
 			"other_timeout": schema.Int64Attribute{
-				MarkdownDescription: "Timeout for other protocols in seconds.",
+				MarkdownDescription: "Timeout (in seconds) for connection tracking of protocols other than TCP, UDP, and ICMP. This controls how long " +
+					"the gateway maintains state information for connections using other protocols. Higher values maintain connection state " +
+					"longer, while lower values reclaim resources more quickly but may affect some applications using non-standard protocols.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
@@ -928,7 +1033,11 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"timeout_setting_preference": schema.StringAttribute{
-				MarkdownDescription: "Preference for timeout settings (auto, manual).",
+				MarkdownDescription: "Determines how connection timeout values are configured. Valid values are:\n" +
+					"  * `auto` - The gateway will automatically determine appropriate timeout values based on system defaults\n" +
+					"  * `manual` - Use the manually specified timeout values for various connection types\n\n" +
+					"When set to `manual`, you should specify values for the various timeout settings like `tcp_timeouts`, " +
+					"`udp_stream_timeout`, `udp_other_timeout`, `icmp_timeout`, and `other_timeout`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.String{
@@ -941,7 +1050,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// TCP Settings (nested)
 			"tcp_timeouts": schema.SingleNestedAttribute{
-				MarkdownDescription: "TCP timeouts for various connection states.",
+				MarkdownDescription: "TCP connection timeout settings for various TCP connection states. These settings control how long the gateway " +
+					"maintains state information for TCP connections in different states before removing them from the connection tracking " +
+					"table. Proper timeout values balance resource usage with connection reliability. These settings are particularly " +
+					"relevant when `timeout_setting_preference` is set to `manual`.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Object{
@@ -949,7 +1061,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 				Attributes: map[string]schema.Attribute{
 					"close_timeout": schema.Int64Attribute{
-						MarkdownDescription: "Timeout for TCP connections in CLOSE state.",
+						MarkdownDescription: "Timeout (in seconds) for TCP connections in the CLOSE state. The CLOSE state occurs when a connection is " +
+							"being terminated but may still have packets in transit. Lower values reclaim resources more quickly, while higher " +
+							"values ensure all packets are properly processed during connection termination.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -957,7 +1071,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"close_wait_timeout": schema.Int64Attribute{
-						MarkdownDescription: "Timeout for TCP connections in CLOSE_WAIT state.",
+						MarkdownDescription: "Timeout (in seconds) for TCP connections in the CLOSE_WAIT state. The CLOSE_WAIT state occurs when the remote " +
+							"end has initiated connection termination, but the local application hasn't closed the connection yet. This timeout " +
+							"prevents resources from being held indefinitely if a local application fails to properly close its connection.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -965,7 +1081,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"established_timeout": schema.Int64Attribute{
-						MarkdownDescription: "Timeout for TCP connections in ESTABLISHED state.",
+						MarkdownDescription: "Timeout (in seconds) for TCP connections in the ESTABLISHED state. This is the most important TCP timeout as it " +
+							"determines how long idle but established connections are maintained in the connection tracking table. Higher values " +
+							"(e.g., 86400 = 24 hours) are suitable for long-lived connections, while lower values conserve resources but may cause " +
+							"issues with applications that maintain idle connections.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -973,7 +1092,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"fin_wait_timeout": schema.Int64Attribute{
-						MarkdownDescription: "Timeout for TCP connections in FIN_WAIT state.",
+						MarkdownDescription: "Timeout (in seconds) for TCP connections in the FIN_WAIT state. The FIN_WAIT states occur during the normal " +
+							"TCP connection termination process after a FIN packet has been sent. This timeout prevents resources from being held " +
+							"if the connection termination process doesn't complete properly.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -981,7 +1102,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"last_ack_timeout": schema.Int64Attribute{
-						MarkdownDescription: "Timeout for TCP connections in LAST_ACK state.",
+						MarkdownDescription: "Timeout (in seconds) for TCP connections in the LAST_ACK state. The LAST_ACK state occurs during connection " +
+							"termination when the remote end has sent a FIN, the local end has responded with a FIN and ACK, and is waiting for " +
+							"the final ACK from the remote end to complete the connection termination.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -989,7 +1112,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"syn_recv_timeout": schema.Int64Attribute{
-						MarkdownDescription: "Timeout for TCP connections in SYN_RECV state.",
+						MarkdownDescription: "Timeout (in seconds) for TCP connections in the SYN_RECV state. This state occurs during connection establishment " +
+							"after receiving a SYN packet and sending a SYN-ACK, but before receiving the final ACK to complete the three-way " +
+							"handshake. A lower timeout helps mitigate SYN flood attacks by releasing resources for incomplete connections more quickly.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -997,7 +1122,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"syn_sent_timeout": schema.Int64Attribute{
-						MarkdownDescription: "Timeout for TCP connections in SYN_SENT state.",
+						MarkdownDescription: "Timeout (in seconds) for TCP connections in the SYN_SENT state. This state occurs during connection establishment " +
+							"after sending a SYN packet but before receiving a SYN-ACK response. This timeout determines how long the system will " +
+							"wait for a response to connection attempts before giving up.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -1005,7 +1132,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 						},
 					},
 					"time_wait_timeout": schema.Int64Attribute{
-						MarkdownDescription: "Timeout for TCP connections in TIME_WAIT state.",
+						MarkdownDescription: "Timeout (in seconds) for TCP connections in the TIME_WAIT state. The TIME_WAIT state occurs after a connection " +
+							"has been closed but is maintained to ensure any delayed packets are properly handled. The standard recommendation is " +
+							"2 minutes (120 seconds), but can be reduced in high-connection environments to free resources more quickly at the " +
+							"risk of potential connection issues if delayed packets arrive.",
 						Optional:            true,
 						Computed:            true,
 						PlanModifiers: []planmodifier.Int64{
@@ -1017,7 +1147,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// Redirects
 			"receive_redirects": schema.BoolAttribute{
-				MarkdownDescription: "Accept ICMP redirect messages.",
+				MarkdownDescription: "Enable accepting ICMP redirect messages. ICMP redirects are messages sent by routers to inform hosts of better " +
+					"routes to specific destinations. When enabled, the gateway will update its routing table based on these messages. " +
+					"While useful for route optimization, this can potentially be exploited for man-in-the-middle attacks, so it's often " +
+					"disabled in security-sensitive environments.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -1025,7 +1158,9 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"send_redirects": schema.BoolAttribute{
-				MarkdownDescription: "Allow sending ICMP redirect messages.",
+				MarkdownDescription: "Enable sending ICMP redirect messages. When enabled, the gateway will send ICMP redirect messages to hosts on the " +
+					"local network to inform them of better routes to specific destinations. This can help optimize network traffic but " +
+					"is typically only needed when the gateway has multiple interfaces on the same subnet or in complex routing scenarios.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -1035,7 +1170,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// Security Settings
 			"syn_cookies": schema.BoolAttribute{
-				MarkdownDescription: "Enable SYN cookies to protect against SYN flood attacks.",
+				MarkdownDescription: "Enable SYN cookies to protect against SYN flood attacks. SYN cookies are a technique that helps mitigate TCP SYN " +
+					"flood attacks by avoiding the need to track incomplete connections in a backlog queue. When enabled, the gateway can " +
+					"continue to establish legitimate connections even when under a SYN flood attack. This is a recommended security setting " +
+					"for internet-facing gateways.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
@@ -1045,7 +1183,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// UDP Settings
 			"udp_other_timeout": schema.Int64Attribute{
-				MarkdownDescription: "Timeout for other UDP connections in seconds.",
+				MarkdownDescription: "Timeout (in seconds) for general UDP connections. Since UDP is connectionless, this timeout determines how long the " +
+					"gateway maintains state information for UDP packets that don't match the criteria for stream connections. This applies " +
+					"to most short-lived UDP communications like DNS queries. Lower values free resources more quickly but may affect some " +
+					"applications that expect longer session persistence.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
@@ -1053,7 +1194,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"udp_stream_timeout": schema.Int64Attribute{
-				MarkdownDescription: "Timeout for UDP stream connections in seconds.",
+				MarkdownDescription: "Timeout (in seconds) for UDP stream connections. This applies to UDP traffic patterns that resemble ongoing streams, " +
+					"such as VoIP calls, video streaming, or online gaming. The gateway identifies these based on traffic patterns and " +
+					"maintains state information longer than for regular UDP traffic. Higher values improve reliability for streaming " +
+					"applications but consume more connection tracking resources.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
@@ -1063,7 +1207,10 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 			// WAN Settings
 			"unbind_wan_monitors": schema.BoolAttribute{
-				MarkdownDescription: "Unbind WAN monitors to prevent unnecessary traffic.",
+				MarkdownDescription: "Unbind WAN monitors to prevent unnecessary traffic. When enabled, the gateway will stop certain monitoring processes " +
+					"that periodically check WAN connectivity. This can reduce unnecessary traffic on metered connections or in environments " +
+					"where the monitoring traffic might trigger security alerts. However, disabling these monitors may affect the gateway's " +
+					"ability to detect and respond to WAN connectivity issues.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
