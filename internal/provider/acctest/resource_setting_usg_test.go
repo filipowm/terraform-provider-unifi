@@ -518,24 +518,44 @@ func TestAccSettingUsg_redirectsAndSecurity(t *testing.T) {
 	})
 }
 
-func TestAccSettingUsg_udpAndWan(t *testing.T) {
+func TestAccSettingUsg_udp(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_udpAndWan(),
+				Config: testAccSettingUsgConfig_udp(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_other_timeout", "30"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_stream_timeout", "120"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_usg.test"),
+			{
+				Config: testAccSettingUsgConfig_udpUpdated(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_other_timeout", "60"),
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_stream_timeout", "240"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccSettingUsg_unbindWanMonitor(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: ">= 9",
+		Lock:              &settingUsgLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingUsgConfig_unbindWanMonitor(true),
+				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "unbind_wan_monitors", "true"),
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_udpAndWanUpdated(),
+				Config: testAccSettingUsgConfig_unbindWanMonitor(false),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_other_timeout", "60"),
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_stream_timeout", "240"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "unbind_wan_monitors", "false"),
 				),
 			},
@@ -893,12 +913,11 @@ resource "unifi_setting_usg" "test" {
 `
 }
 
-func testAccSettingUsgConfig_udpAndWan() string {
+func testAccSettingUsgConfig_udp() string {
 	return `
 resource "unifi_setting_usg" "test" {
   udp_other_timeout = 30
   udp_stream_timeout = 120
-  unbind_wan_monitors = true
 }
 `
 }
@@ -972,10 +991,9 @@ resource "unifi_setting_usg" "test" {
   send_redirects = true
   syn_cookies = true
 
-  // UDP & WAN Settings
+  // UDP
   udp_other_timeout = 30
   udp_stream_timeout = 120
-  unbind_wan_monitors = true
 
   // Geo IP Filtering
   geo_ip_filtering = {
@@ -1075,12 +1093,19 @@ resource "unifi_setting_usg" "test" {
 `
 }
 
-func testAccSettingUsgConfig_udpAndWanUpdated() string {
+func testAccSettingUsgConfig_udpUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
   udp_other_timeout = 60
   udp_stream_timeout = 240
-  unbind_wan_monitors = false
 }
 `
+}
+
+func testAccSettingUsgConfig_unbindWanMonitor(enabled bool) string {
+	return fmt.Sprintf(`
+resource "unifi_setting_usg" "test" {
+  unbind_wan_monitors = %t
+}
+`, enabled)
 }
