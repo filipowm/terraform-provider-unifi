@@ -3,9 +3,20 @@ package utils
 import (
 	"context"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+func DefaultEmptyList(elementType attr.Type) defaults.List {
+	return listdefault.StaticValue(EmptyList(elementType))
+}
+
+func EmptyList(elementType attr.Type) types.List {
+	return types.ListValueMust(elementType, []attr.Value{})
+}
 
 func ListElementsAs(list types.List, target interface{}) diag.Diagnostics {
 	diags := diag.Diagnostics{}
