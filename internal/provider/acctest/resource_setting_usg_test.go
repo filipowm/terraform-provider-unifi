@@ -181,7 +181,8 @@ func TestAccSettingUsg_upnp(t *testing.T) {
 
 func TestAccSettingUsg_dnsVerification(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: &settingUsgLock,
+		VersionConstraint: ">= 8.5",
+		Lock:              &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingUsgConfig_dnsVerification(),
@@ -236,35 +237,6 @@ func TestAccSettingUsg_tcpTimeouts(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "tcp_timeouts.time_wait_timeout", "240"),
 				),
 			},
-		},
-	})
-}
-
-func TestAccSettingUsg_combined(t *testing.T) {
-	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: &settingUsgLock,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccSettingUsgConfig_combined(),
-				Check: resource.ComposeTestCheckFunc(
-					// DNS Verification checks
-					resource.TestCheckResourceAttrSet("unifi_setting_usg.test", "dns_verification.domain"),
-					resource.TestCheckResourceAttrSet("unifi_setting_usg.test", "dns_verification.primary_dns_server"),
-					resource.TestCheckResourceAttrSet("unifi_setting_usg.test", "dns_verification.secondary_dns_server"),
-
-					// TCP Timeouts checks
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "tcp_timeouts.close_timeout", "10"),
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "tcp_timeouts.established_timeout", "3600"),
-
-					// GeoIP Filtering checks
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.enabled", "true"),
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.block", "block"),
-
-					// UPNP checks
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "upnp.enabled", "true"),
-				),
-			},
-			pt.ImportStepWithSite("unifi_setting_usg.test"),
 		},
 	})
 }
@@ -582,10 +554,6 @@ func TestAccSettingUsg_comprehensive(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "ftp_module", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "tftp_module", "true"),
 
-					// DNS Verification
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dns_verification.domain", "example.com"),
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dns_verification.primary_dns_server", "8.8.8.8"),
-
 					// Timeouts
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "other_timeout", "600"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_stream_timeout", "120"),
@@ -765,38 +733,6 @@ resource "unifi_setting_usg" "test" {
 `
 }
 
-func testAccSettingUsgConfig_combined() string {
-	return `
-resource "unifi_setting_usg" "test" {
-  dns_verification = {
-    setting_preference  = "auto"
-  }
-  
-  tcp_timeouts = {
-    close_timeout       = 10
-    established_timeout = 3600
-    close_wait_timeout  = 20
-    fin_wait_timeout    = 30
-    last_ack_timeout    = 30
-    syn_recv_timeout    = 60
-    syn_sent_timeout    = 120
-    time_wait_timeout   = 120
-  }
-  
-  geo_ip_filtering = {
-    enabled          = true
-    block            = "block"
-    countries        = ["RU", "CN", "KP"]
-    traffic_direction = "both"
-  }
-  
-  upnp = {
-    enabled = true
-  }
-}
-`
-}
-
 func testAccSettingUsgConfig_arpCache() string {
 	return `
 resource "unifi_setting_usg" "test" {
@@ -941,14 +877,6 @@ resource "unifi_setting_usg" "test" {
 	hop_count = 5
   }
   dhcp_relay_servers = ["10.1.2.3", "10.1.2.4"]
-
-  // DNS Verification
-  dns_verification = {
-    domain = "example.com"
-    primary_dns_server = "8.8.8.8"
-    secondary_dns_server = "8.8.4.4"
-    setting_preference = "manual"
-  }
 
   // Network Tools
   echo_server = "echo.example.com"

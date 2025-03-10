@@ -1254,5 +1254,6 @@ func (r *usgResource) ConfigValidators(ctx context.Context) []resource.ConfigVal
 
 func (r *usgResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	resp.Diagnostics.Append(r.RequireMaxVersionForPath("7.0", path.Root("multicast_dns_enabled"), req.Config)...)
-	resp.Diagnostics.Append(r.RequireMaxVersionForPath("9.0", path.Root("unbind_wan_monitors"), req.Config)...)
+	resp.Diagnostics.Append(r.RequireMinVersionForPath("8.5", path.Root("dns_verification"), req.Config)...)
+	resp.Diagnostics.Append(r.RequireMinVersionForPath("9.0", path.Root("unbind_wan_monitors"), req.Config)...)
 }
