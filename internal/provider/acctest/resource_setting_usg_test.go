@@ -144,6 +144,7 @@ func TestAccSettingUsg_geoIpFiltering(t *testing.T) {
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
+			cleanupStep(),
 		},
 	})
 }
@@ -176,6 +177,7 @@ func TestAccSettingUsg_upnp(t *testing.T) {
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
+			cleanupStep(),
 		},
 	})
 }
@@ -204,6 +206,7 @@ func TestAccSettingUsg_dnsVerification(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dns_verification.setting_preference", "manual"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -238,6 +241,7 @@ func TestAccSettingUsg_tcpTimeouts(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "tcp_timeouts.time_wait_timeout", "240"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -261,6 +265,7 @@ func TestAccSettingUsg_arpCache(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "arp_cache_timeout", "normal"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -288,6 +293,7 @@ func TestAccSettingUsg_dhcpConfig(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dnsmasq_all_servers", "false"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -322,6 +328,7 @@ func TestAccSettingUsg_dhcpRelayConfig(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr("unifi_setting_usg.test", "dhcp_relay_servers.*", "10.1.2.7"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -337,6 +344,7 @@ func TestAccSettingUsg_networkTools(t *testing.T) {
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
+			cleanupStep(),
 		},
 	})
 }
@@ -368,6 +376,7 @@ func TestAccSettingUsg_protocolModules(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "tftp_module", "false"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -391,6 +400,7 @@ func TestAccSettingUsg_icmpAndLldp(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "lldp_enable_all", "false"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -414,6 +424,7 @@ func TestAccSettingUsg_mssClamp(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "mss_clamp_mss", "1400"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -439,6 +450,7 @@ func TestAccSettingUsg_offloadSettings(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "offload_sch", "false"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -463,6 +475,7 @@ func TestAccSettingUsg_timeoutSettings(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "timeout_setting_preference", "manual"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -488,6 +501,7 @@ func TestAccSettingUsg_redirectsAndSecurity(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "syn_cookies", "false"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -511,6 +525,7 @@ func TestAccSettingUsg_udp(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_stream_timeout", "240"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -533,6 +548,7 @@ func TestAccSettingUsg_unbindWanMonitor(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "unbind_wan_monitors", "false"),
 				),
 			},
+			cleanupStep(),
 		},
 	})
 }
@@ -566,6 +582,7 @@ func TestAccSettingUsg_comprehensive(t *testing.T) {
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
+			cleanupStep(),
 		},
 	})
 }
@@ -1039,4 +1056,93 @@ resource "unifi_setting_usg" "test" {
   unbind_wan_monitors = %t
 }
 `, enabled)
+}
+
+func cleanupStep() resource.TestStep {
+	return resource.TestStep{
+		Config: testAccSettingUsgConfig_cleanup(),
+	}
+}
+
+func testAccSettingUsgConfig_cleanup() string {
+	return `
+resource "unifi_setting_usg" "test" {
+  // ARP Cache Configuration
+  arp_cache_timeout = "normal"
+
+  // DHCP Configuration
+  broadcast_ping = false
+  dhcpd_hostfile_update = false
+  dhcpd_use_dnsmasq = false
+  dnsmasq_all_servers = false
+
+  // DHCP Relay
+  dhcp_relay = {
+	agents_packets = "forward"
+	hop_count = 5
+  }
+  dhcp_relay_servers = []
+
+  // Network Tools
+  echo_server = "ui.unifi.com"
+
+  // Protocol Modules
+  ftp_module = true
+  gre_module = true
+  h323_module = true
+  pptp_module = true
+  tftp_module = true
+  sip_module = false
+
+  // ICMP & LLDP
+  icmp_timeout = 30
+  lldp_enable_all = true
+
+  // MSS Clamp
+  mss_clamp = "auto"
+  mss_clamp_mss = 1460
+
+  // Offload Settings
+  offload_sch = true
+  offload_accounting = true
+  offload_l2_blocking = true
+
+  // Timeout Settings
+  other_timeout = 600
+  timeout_setting_preference = "auto"
+
+  // TCP Settings
+  tcp_timeouts = {
+    close_timeout = 10
+    established_timeout = 7440
+    close_wait_timeout = 60
+    fin_wait_timeout = 120
+    last_ack_timeout = 30
+    syn_recv_timeout = 60
+    syn_sent_timeout = 120
+    time_wait_timeout = 120
+  }
+
+  // Redirects & Security
+  receive_redirects = false
+  send_redirects = true
+  syn_cookies = true
+
+  // UDP
+  udp_other_timeout = 30
+  udp_stream_timeout = 180
+
+  // Geo IP Filtering
+  geo_ip_filtering = {
+    enabled = false
+  }
+
+  // UPNP Settings
+  upnp = {
+    enabled = false
+    nat_pmp_enabled = true
+    secure_mode = true
+  }
+}
+`
 }
