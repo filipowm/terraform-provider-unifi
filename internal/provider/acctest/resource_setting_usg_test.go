@@ -444,7 +444,8 @@ func TestAccSettingUsg_offloadSettings(t *testing.T) {
 
 func TestAccSettingUsg_timeoutSettings(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: &settingUsgLock,
+		VersionConstraint: ">= 7",
+		Lock:              &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingUsgConfig_timeoutSettings(),
@@ -537,7 +538,8 @@ func TestAccSettingUsg_unbindWanMonitor(t *testing.T) {
 
 func TestAccSettingUsg_comprehensive(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: &settingUsgLock,
+		VersionConstraint: ">= 7",
+		Lock:              &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingUsgConfig_comprehensive(),

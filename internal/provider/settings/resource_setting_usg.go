@@ -791,7 +791,7 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			"dns_verification": schema.SingleNestedAttribute{
 				MarkdownDescription: "DNS verification settings for validating DNS responses. This feature helps detect and prevent DNS spoofing " +
 					"attacks by verifying DNS responses against trusted DNS servers. When configured, the gateway can compare DNS " +
-					"responses with those from known trusted servers to identify potential tampering or poisoning attempts.",
+					"responses with those from known trusted servers to identify potential tampering or poisoning attempts. Requires controller version 8.5 or later.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Object{
@@ -1033,7 +1033,7 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					"  * `auto` - The gateway will automatically determine appropriate timeout values based on system defaults\n" +
 					"  * `manual` - Use the manually specified timeout values for various connection types\n\n" +
 					"When set to `manual`, you should specify values for the various timeout settings like `tcp_timeouts`, " +
-					"`udp_stream_timeout`, `udp_other_timeout`, `icmp_timeout`, and `other_timeout`.",
+					"`udp_stream_timeout`, `udp_other_timeout`, `icmp_timeout`, and `other_timeout`. Requires controller version 7.0 or later.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
@@ -1206,7 +1206,7 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				MarkdownDescription: "Unbind WAN monitors to prevent unnecessary traffic. When enabled, the gateway will stop certain monitoring processes " +
 					"that periodically check WAN connectivity. This can reduce unnecessary traffic on metered connections or in environments " +
 					"where the monitoring traffic might trigger security alerts. However, disabling these monitors may affect the gateway's " +
-					"ability to detect and respond to WAN connectivity issues.",
+					"ability to detect and respond to WAN connectivity issues. Requires controller version 9.0 or later.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
@@ -1254,6 +1254,8 @@ func (r *usgResource) ConfigValidators(ctx context.Context) []resource.ConfigVal
 
 func (r *usgResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	resp.Diagnostics.Append(r.RequireMaxVersionForPath("7.0", path.Root("multicast_dns_enabled"), req.Config)...)
+	resp.Diagnostics.Append(r.RequireMinVersionForPath("7.0", path.Root("timeout_setting_preference"), req.Config)...)
+	resp.Diagnostics.Append(r.RequireMinVersionForPath("7.0", path.Root("other_timeout"), req.Config)...)
 	resp.Diagnostics.Append(r.RequireMinVersionForPath("8.5", path.Root("dns_verification"), req.Config)...)
 	resp.Diagnostics.Append(r.RequireMinVersionForPath("9.0", path.Root("unbind_wan_monitors"), req.Config)...)
 }
