@@ -176,7 +176,7 @@ func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource 
 		dns.NewDnsRecordResource,
 		settings.NewAutoSpeedtestResource,
 		settings.NewCountryResource,
-		//settings.NewDpiResource,
+		settings.NewDpiResource,
 		//settings.NewIpsResource,
 		settings.NewLcmResource,
 		settings.NewLocaleResource,
