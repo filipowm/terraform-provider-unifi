@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"context"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +27,7 @@ func TestSettingCountry_ProperCountryCodeMappingFromModel(t *testing.T) {
 			model := countryModel{
 				Code: types.StringValue(tc.code),
 			}
-			unifiModel, _ := model.AsUnifiModel()
+			unifiModel, _ := model.AsUnifiModel(context.Background())
 			typed, ok := unifiModel.(*unifi.SettingCountry)
 			assert.True(t, ok)
 			assert.Equal(t, tc.expectedNumericCode, typed.Code)
@@ -54,7 +55,7 @@ func TestSettingCountry_ProperCountryCodeMappingToModel(t *testing.T) {
 				Code: tc.numericCode,
 			}
 			model := countryModel{}
-			model.Merge(unifiModel)
+			model.Merge(context.Background(), unifiModel)
 			assert.Equal(t, tc.expectedCode, model.Code.ValueString())
 		})
 	}

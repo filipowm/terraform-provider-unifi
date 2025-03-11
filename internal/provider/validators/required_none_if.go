@@ -20,11 +20,16 @@ var (
 	_ datasource.ConfigValidator = &RequiredNoneIfValidator{}
 	_ provider.ConfigValidator   = &RequiredNoneIfValidator{}
 	_ resource.ConfigValidator   = &RequiredNoneIfValidator{}
+	_ validator.Object           = &RequiredNoneIfValidator{}
 )
 
 type RequiredNoneIfValidator struct {
 	ifValidatorBase
 	TargetExpressions path.Expressions
+}
+
+func (v RequiredNoneIfValidator) ValidateObject(ctx context.Context, req validator.ObjectRequest, resp *validator.ObjectResponse) {
+	resp.Diagnostics = v.Validate(ctx, req.Config)
 }
 
 func (v RequiredNoneIfValidator) Description(ctx context.Context) string {

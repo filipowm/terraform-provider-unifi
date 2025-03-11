@@ -26,7 +26,7 @@ type ntpModel struct {
 	Mode       types.String `tfsdk:"mode"`
 }
 
-func (d *ntpModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
+func (d *ntpModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 
 	model := &unifi.SettingNtp{
@@ -56,7 +56,7 @@ func (d *ntpModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
 	return model, diags
 }
 
-func (d *ntpModel) Merge(other interface{}) diag.Diagnostics {
+func (d *ntpModel) Merge(_ context.Context, other interface{}) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 
 	model, ok := other.(*unifi.SettingNtp)

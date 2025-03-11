@@ -24,7 +24,7 @@ type autoSpeedtestModel struct {
 	Enabled        types.Bool   `tfsdk:"enabled"`
 }
 
-func (d *autoSpeedtestModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
+func (d *autoSpeedtestModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
 	return &unifi.SettingAutoSpeedtest{
 		ID:       d.ID.ValueString(),
 		CronExpr: d.CronExpression.ValueString(),
@@ -32,7 +32,7 @@ func (d *autoSpeedtestModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
 	}, diag.Diagnostics{}
 }
 
-func (d *autoSpeedtestModel) Merge(other interface{}) diag.Diagnostics {
+func (d *autoSpeedtestModel) Merge(_ context.Context, other interface{}) diag.Diagnostics {
 	if typed, ok := other.(*unifi.SettingAutoSpeedtest); ok {
 		d.ID = types.StringValue(typed.ID)
 		d.CronExpression = types.StringValue(typed.CronExpr)

@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"context"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +22,7 @@ func TestNtpModel_AsUnifiModel_Auto(t *testing.T) {
 	model.ID = types.StringValue("test-id")
 
 	// Convert to UnifiModel
-	unifiModel, diags := model.AsUnifiModel()
+	unifiModel, diags := model.AsUnifiModel(context.Background())
 
 	// Verify no diagnostics errors
 	assert.False(t, diags.HasError())
@@ -138,7 +139,7 @@ func TestNtpModel_AsUnifiModel_Manual(t *testing.T) {
 			model.ID = types.StringValue("test-id")
 
 			// Convert to UnifiModel
-			unifiModel, diags := model.AsUnifiModel()
+			unifiModel, diags := model.AsUnifiModel(context.Background())
 
 			// Verify no diagnostics errors
 			assert.False(t, diags.HasError())

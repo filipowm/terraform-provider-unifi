@@ -18,7 +18,7 @@ type localeModel struct {
 	Timezone types.String `tfsdk:"timezone"`
 }
 
-func (d *localeModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
+func (d *localeModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 
 	model := &unifi.SettingLocale{
@@ -29,7 +29,7 @@ func (d *localeModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
 	return model, diags
 }
 
-func (d *localeModel) Merge(other interface{}) diag.Diagnostics {
+func (d *localeModel) Merge(_ context.Context, other interface{}) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 
 	model, ok := other.(*unifi.SettingLocale)

@@ -26,7 +26,7 @@ type countryModel struct {
 	CodeNumeric types.Int32  `tfsdk:"code_numeric"`
 }
 
-func (d *countryModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
+func (d *countryModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
 	code := countries.ByName(d.Code.ValueString())
 	return &unifi.SettingCountry{
 		ID:   d.ID.ValueString(),
@@ -34,7 +34,7 @@ func (d *countryModel) AsUnifiModel() (interface{}, diag.Diagnostics) {
 	}, diag.Diagnostics{}
 }
 
-func (d *countryModel) Merge(other interface{}) diag.Diagnostics {
+func (d *countryModel) Merge(_ context.Context, other interface{}) diag.Diagnostics {
 	if typed, ok := other.(*unifi.SettingCountry); ok {
 		d.ID = types.StringValue(typed.ID)
 		code := countries.ByNumeric(typed.Code)
