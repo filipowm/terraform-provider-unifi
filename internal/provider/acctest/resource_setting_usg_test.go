@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
+// using dedicated site for each test, because USG settings might interfere with parallel tests of other resources
+
 // using an additional lock to the one around the resource to avoid deadlocking accidentally
 var settingUsgLock = sync.Mutex{}
 
@@ -19,17 +21,17 @@ func TestAccSettingUsg_mdns_v6(t *testing.T) {
 		Lock:              &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_mdns(true),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_mdns(true),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_mdns(false),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_mdns(false),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_mdns(true),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_mdns(true),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
@@ -43,7 +45,7 @@ func TestAccSettingUsg_mdns_v7(t *testing.T) {
 		Lock:              &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccSettingUsgConfig_mdns(true),
+				Config:      testAccSettingUsgSite() + testAccSettingUsgConfig_mdns(true),
 				ExpectError: regexp.MustCompile("multicast_dns_enabled is not supported"),
 			},
 		},
@@ -55,28 +57,10 @@ func TestAccSettingUsg_dhcpRelayServers(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_dhcpRelay(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_dhcpRelay(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
-		},
-	})
-}
-
-func TestAccSettingUsg_site(t *testing.T) {
-	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: &settingUsgLock,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccSettingUsgConfig_site(),
-				Check:  resource.ComposeTestCheckFunc(),
-			},
-			{
-				ResourceName:      "unifi_setting_usg.test",
-				ImportState:       true,
-				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_setting_usg.test"),
-				ImportStateVerify: true,
-			},
 		},
 	})
 }
@@ -87,7 +71,7 @@ func TestAccSettingUsg_geoIpFiltering(t *testing.T) {
 		Lock:              &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_geoIpFilteringBasic(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_geoIpFilteringBasic(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.block", "block"),
@@ -100,7 +84,7 @@ func TestAccSettingUsg_geoIpFiltering(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_geoIpFilteringAllow(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_geoIpFilteringAllow(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.block", "allow"),
@@ -113,7 +97,7 @@ func TestAccSettingUsg_geoIpFiltering(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_geoIpFilteringDirections(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_geoIpFilteringDirections(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.block", "block"),
@@ -125,14 +109,14 @@ func TestAccSettingUsg_geoIpFiltering(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_geoIpFilteringDisabled(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_geoIpFilteringDisabled(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.enabled", "false"),
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_geoIpFilteringBasic(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_geoIpFilteringBasic(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.block", "block"),
@@ -153,14 +137,14 @@ func TestAccSettingUsg_upnp(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_upnpBasic(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_upnpBasic(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "upnp.enabled", "true"),
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_upnpAdvanced(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_upnpAdvanced(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "upnp.enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "upnp.nat_pmp_enabled", "true"),
@@ -170,7 +154,7 @@ func TestAccSettingUsg_upnp(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_upnpDisabled(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_upnpDisabled(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "upnp.enabled", "false"),
 				),
@@ -186,7 +170,7 @@ func TestAccSettingUsg_dnsVerification(t *testing.T) {
 		Lock:              &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_dnsVerification(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_dnsVerification(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_usg.test", "dns_verification.domain"),
 					resource.TestCheckResourceAttrSet("unifi_setting_usg.test", "dns_verification.primary_dns_server"),
@@ -196,7 +180,7 @@ func TestAccSettingUsg_dnsVerification(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_dnsVerificationUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_dnsVerificationUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dns_verification.domain", "example.com"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dns_verification.primary_dns_server", "1.1.1.1"),
@@ -212,7 +196,7 @@ func TestAccSettingUsg_tcpTimeouts(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_tcpTimeouts(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_tcpTimeouts(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "tcp_timeouts.close_timeout", "10"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "tcp_timeouts.established_timeout", "3600"),
@@ -226,7 +210,7 @@ func TestAccSettingUsg_tcpTimeouts(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_tcpTimeoutsUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_tcpTimeoutsUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "tcp_timeouts.close_timeout", "20"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "tcp_timeouts.established_timeout", "7200"),
@@ -247,7 +231,7 @@ func TestAccSettingUsg_arpCache(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_arpCache(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_arpCache(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "arp_cache_base_reachable", "60"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "arp_cache_timeout", "custom"),
@@ -255,7 +239,7 @@ func TestAccSettingUsg_arpCache(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_arpCacheUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_arpCacheUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "arp_cache_base_reachable", "120"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "arp_cache_timeout", "normal"),
@@ -270,7 +254,7 @@ func TestAccSettingUsg_dhcpConfig(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_dhcpConfig(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_dhcpConfig(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "broadcast_ping", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dhcpd_hostfile_update", "true"),
@@ -280,7 +264,7 @@ func TestAccSettingUsg_dhcpConfig(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_dhcpConfigUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_dhcpConfigUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "broadcast_ping", "false"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dhcpd_hostfile_update", "false"),
@@ -297,7 +281,7 @@ func TestAccSettingUsg_dhcpRelayConfig(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_dhcpRelayConfig(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_dhcpRelayConfig(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dhcp_relay.agents_packets", "forward"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dhcp_relay.hop_count", "5"),
@@ -310,7 +294,7 @@ func TestAccSettingUsg_dhcpRelayConfig(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_dhcpRelayConfigUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_dhcpRelayConfigUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dhcp_relay.agents_packets", "replace"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "dhcp_relay.hop_count", "10"),
@@ -331,7 +315,7 @@ func TestAccSettingUsg_networkTools(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_networkTools(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_networkTools(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "echo_server", "echo.example.com"),
 				),
@@ -346,7 +330,7 @@ func TestAccSettingUsg_protocolModules(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_protocolModules(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_protocolModules(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "ftp_module", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "gre_module", "true"),
@@ -358,7 +342,7 @@ func TestAccSettingUsg_protocolModules(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_protocolModulesUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_protocolModulesUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "ftp_module", "false"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "gre_module", "true"),
@@ -377,7 +361,7 @@ func TestAccSettingUsg_icmpAndLldp(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_icmpAndLldp(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_icmpAndLldp(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "icmp_timeout", "60"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "lldp_enable_all", "true"),
@@ -385,7 +369,7 @@ func TestAccSettingUsg_icmpAndLldp(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_icmpAndLldpUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_icmpAndLldpUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "icmp_timeout", "120"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "lldp_enable_all", "false"),
@@ -400,7 +384,7 @@ func TestAccSettingUsg_mssClamp(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_mssClamp(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_mssClamp(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "mss_clamp", "auto"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "mss_clamp_mss", "1452"),
@@ -408,7 +392,7 @@ func TestAccSettingUsg_mssClamp(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_mssClampUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_mssClampUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "mss_clamp", "custom"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "mss_clamp_mss", "1400"),
@@ -423,7 +407,7 @@ func TestAccSettingUsg_offloadSettings(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_offloadSettings(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_offloadSettings(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "offload_accounting", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "offload_l2_blocking", "true"),
@@ -432,7 +416,7 @@ func TestAccSettingUsg_offloadSettings(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_offloadSettingsUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_offloadSettingsUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "offload_accounting", "false"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "offload_l2_blocking", "false"),
@@ -449,7 +433,7 @@ func TestAccSettingUsg_timeoutSettings(t *testing.T) {
 		Lock:              &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_timeoutSettings(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_timeoutSettings(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "other_timeout", "600"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "timeout_setting_preference", "auto"),
@@ -457,7 +441,7 @@ func TestAccSettingUsg_timeoutSettings(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_timeoutSettingsUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_timeoutSettingsUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "other_timeout", "1200"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "timeout_setting_preference", "manual"),
@@ -472,7 +456,7 @@ func TestAccSettingUsg_redirectsAndSecurity(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_redirectsAndSecurity(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_redirectsAndSecurity(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "receive_redirects", "false"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "send_redirects", "true"),
@@ -481,7 +465,7 @@ func TestAccSettingUsg_redirectsAndSecurity(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_redirectsAndSecurityUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_redirectsAndSecurityUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "receive_redirects", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "send_redirects", "false"),
@@ -497,7 +481,7 @@ func TestAccSettingUsg_udp(t *testing.T) {
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_udp(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_udp(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_other_timeout", "30"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_stream_timeout", "120"),
@@ -505,7 +489,7 @@ func TestAccSettingUsg_udp(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_udpUpdated(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_udpUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_other_timeout", "60"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "udp_stream_timeout", "240"),
@@ -521,14 +505,14 @@ func TestAccSettingUsg_unbindWanMonitor(t *testing.T) {
 		Lock:              &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_unbindWanMonitor(true),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_unbindWanMonitor(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "unbind_wan_monitors", "true"),
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
-				Config: testAccSettingUsgConfig_unbindWanMonitor(false),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_unbindWanMonitor(false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "unbind_wan_monitors", "false"),
 				),
@@ -543,8 +527,9 @@ func TestAccSettingUsg_comprehensive(t *testing.T) {
 		Lock:              &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingUsgConfig_comprehensive(),
+				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_comprehensive(),
 				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_site.test", "id"),
 					// ARP Cache
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "arp_cache_base_reachable", "60"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "arp_cache_timeout", "custom"),
@@ -569,11 +554,19 @@ func TestAccSettingUsg_comprehensive(t *testing.T) {
 		},
 	})
 }
+func testAccSettingUsgSite() string {
+	return `
+resource "unifi_site" "test" {
+	description = "tfacc-setting-usg"
+}
+`
+}
 
 func testAccSettingUsgConfig_mdns(mdns bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_usg" "test" {
 	multicast_dns_enabled = %t
+	site = unifi_site.test.name
 }
 `, mdns)
 }
@@ -585,25 +578,14 @@ resource "unifi_setting_usg" "test" {
 		"10.1.2.3",
 		"10.1.2.4",
 	]
-}
-`
-}
-
-func testAccSettingUsgConfig_site() string {
-	return `
-resource "unifi_site" "test" {
-	description = "test"
-}
-
-resource "unifi_setting_usg" "test" {
 	site = unifi_site.test.name
 }
 `
 }
-
 func testAccSettingUsgConfig_geoIpFilteringBasic() string {
 	return `
 resource "unifi_setting_usg" "test" {
+	site = unifi_site.test.name
 	geo_ip_filtering = {
 		enabled = true
 		countries = ["RU", "CN", "KP"]
@@ -615,6 +597,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_geoIpFilteringAllow() string {
 	return `
 resource "unifi_setting_usg" "test" {
+	site = unifi_site.test.name
 	geo_ip_filtering = {
 		enabled = true
 		block = "allow"
@@ -627,6 +610,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_geoIpFilteringDirections() string {
 	return `
 resource "unifi_setting_usg" "test" {
+	site = unifi_site.test.name
 	geo_ip_filtering = {
 		enabled = true
 		traffic_direction = "ingress"
@@ -639,6 +623,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_geoIpFilteringDisabled() string {
 	return `
 resource "unifi_setting_usg" "test" {
+	site = unifi_site.test.name
 	geo_ip_filtering = {
 		enabled = false
 	}
@@ -649,6 +634,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_upnpBasic() string {
 	return `
 resource "unifi_setting_usg" "test" {
+	site = unifi_site.test.name
 	upnp = {
 		enabled = true
 	}
@@ -659,6 +645,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_upnpAdvanced() string {
 	return `
 resource "unifi_setting_usg" "test" {
+	site = unifi_site.test.name
 	upnp = {
 		enabled = true
 		nat_pmp_enabled = true
@@ -672,6 +659,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_upnpDisabled() string {
 	return `
 resource "unifi_setting_usg" "test" {
+	site = unifi_site.test.name
 	upnp = {
 		enabled = false
 	}
@@ -682,9 +670,10 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_dnsVerification() string {
 	return `
 resource "unifi_setting_usg" "test" {
-  dns_verification = {
-    setting_preference  = "auto"
-  }
+	site = unifi_site.test.name
+  	dns_verification = {
+    	setting_preference  = "auto"
+  	}
 }
 `
 }
@@ -692,6 +681,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_dnsVerificationUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   dns_verification = {
     domain              = "example.com"
     primary_dns_server  = "1.1.1.1"
@@ -705,6 +695,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_tcpTimeouts() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   tcp_timeouts = {
     close_timeout       = 10
     established_timeout = 3600
@@ -722,6 +713,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_tcpTimeoutsUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   tcp_timeouts = {
     close_timeout       = 20
     established_timeout = 7200
@@ -739,6 +731,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_arpCache() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   arp_cache_base_reachable = 60
   arp_cache_timeout = "custom"
 }
@@ -748,6 +741,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_dhcpConfig() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   broadcast_ping = true
   dhcpd_hostfile_update = true
   dhcpd_use_dnsmasq = true
@@ -759,6 +753,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_dhcpRelayConfig() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   dhcp_relay = {
 	agents_packets = "forward"
 	hop_count = 5
@@ -773,6 +768,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_dhcpRelayConfigUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   dhcp_relay = {
 	agents_packets = "replace"
 	hop_count = 10
@@ -787,6 +783,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_networkTools() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   echo_server = "echo.example.com"
 }
 `
@@ -795,6 +792,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_protocolModules() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   ftp_module = true
   gre_module = true
   h323_module = true
@@ -808,6 +806,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_icmpAndLldp() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   icmp_timeout = 60
   lldp_enable_all = true
 }
@@ -817,6 +816,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_mssClamp() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   mss_clamp = "auto"
   mss_clamp_mss = 1452
 }
@@ -826,6 +826,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_offloadSettings() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   offload_accounting = true
   offload_l2_blocking = true
   offload_sch = true
@@ -836,6 +837,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_timeoutSettings() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   other_timeout = 600
   timeout_setting_preference = "auto"
 }
@@ -845,6 +847,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_redirectsAndSecurity() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   receive_redirects = false
   send_redirects = true
   syn_cookies = true
@@ -855,6 +858,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_udp() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   udp_other_timeout = 30
   udp_stream_timeout = 120
 }
@@ -864,6 +868,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_comprehensive() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   // ARP Cache Configuration
   arp_cache_base_reachable = 60
   arp_cache_timeout = "custom"
@@ -947,6 +952,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_arpCacheUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   arp_cache_base_reachable = 120
   arp_cache_timeout = "normal"
 }
@@ -956,6 +962,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_dhcpConfigUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   broadcast_ping = false
   dhcpd_hostfile_update = false
   dhcpd_use_dnsmasq = false
@@ -967,6 +974,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_protocolModulesUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   ftp_module = false
   gre_module = true
   h323_module = false
@@ -980,6 +988,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_icmpAndLldpUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   icmp_timeout = 120
   lldp_enable_all = false
 }
@@ -989,6 +998,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_mssClampUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   mss_clamp = "custom"
   mss_clamp_mss = 1400
 }
@@ -998,6 +1008,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_offloadSettingsUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   offload_accounting = false
   offload_l2_blocking = false
   offload_sch = false
@@ -1008,6 +1019,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_timeoutSettingsUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   other_timeout = 1200
   timeout_setting_preference = "manual"
 }
@@ -1017,6 +1029,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_redirectsAndSecurityUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   receive_redirects = true
   send_redirects = false
   syn_cookies = false
@@ -1027,6 +1040,7 @@ resource "unifi_setting_usg" "test" {
 func testAccSettingUsgConfig_udpUpdated() string {
 	return `
 resource "unifi_setting_usg" "test" {
+  site = unifi_site.test.name
   udp_other_timeout = 60
   udp_stream_timeout = 240
 }
