@@ -60,7 +60,7 @@ type teleportResource struct {
 }
 
 func (r *teleportResource) ModifyPlan(_ context.Context, _ resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	resp.Diagnostics.Append(r.RequireMinVersion("7.1")...)
+	resp.Diagnostics.Append(r.RequireMinVersion("7.2")...)
 }
 
 func (r *teleportResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {

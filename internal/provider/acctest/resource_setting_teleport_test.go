@@ -13,7 +13,7 @@ var settingTeleportLock = &sync.Mutex{}
 
 func TestAccSettingTeleport(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: ">= 7.1",
+		VersionConstraint: ">= 7.2",
 		Lock:              settingTeleportLock,
 		Steps: []resource.TestStep{
 			{
