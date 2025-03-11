@@ -83,7 +83,8 @@ func TestAccSettingUsg_site(t *testing.T) {
 
 func TestAccSettingUsg_geoIpFiltering(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: &settingUsgLock,
+		VersionConstraint: ">= 7",
+		Lock:              &settingUsgLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingUsgConfig_geoIpFilteringBasic(),

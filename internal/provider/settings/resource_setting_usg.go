@@ -604,7 +604,7 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			"geo_ip_filtering": schema.SingleNestedAttribute{
 				MarkdownDescription: "Geographic IP filtering configuration that allows blocking or allowing traffic based on country of origin. " +
 					"This feature uses IP geolocation databases to identify the country associated with IP addresses and apply filtering rules. " +
-					"Useful for implementing country-specific access policies or blocking traffic from high-risk regions.",
+					"Useful for implementing country-specific access policies or blocking traffic from high-risk regions. Requires controller version 7.0 or later.",
 				Optional: true,
 				Computed: true,
 				PlanModifiers: []planmodifier.Object{
@@ -1255,6 +1255,7 @@ func (r *usgResource) ConfigValidators(ctx context.Context) []resource.ConfigVal
 func (r *usgResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	resp.Diagnostics.Append(r.RequireMaxVersionForPath("7.0", path.Root("multicast_dns_enabled"), req.Config)...)
 	resp.Diagnostics.Append(r.RequireMinVersionForPath("7.0", path.Root("timeout_setting_preference"), req.Config)...)
+	resp.Diagnostics.Append(r.RequireMinVersionForPath("7.0", path.Root("geo_ip_filtering"), req.Config)...)
 	resp.Diagnostics.Append(r.RequireMinVersionForPath("7.0", path.Root("other_timeout"), req.Config)...)
 	resp.Diagnostics.Append(r.RequireMinVersionForPath("8.5", path.Root("dns_verification"), req.Config)...)
 	resp.Diagnostics.Append(r.RequireMinVersionForPath("9.0", path.Root("unbind_wan_monitors"), req.Config)...)
