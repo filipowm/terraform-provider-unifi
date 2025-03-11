@@ -145,10 +145,15 @@ var (
 	_ resource.ResourceWithConfigure        = &rsyslogdResource{}
 	_ resource.ResourceWithImportState      = &rsyslogdResource{}
 	_ resource.ResourceWithConfigValidators = &rsyslogdResource{}
+	_ resource.ResourceWithModifyPlan       = &rsyslogdResource{}
 )
 
 type rsyslogdResource struct {
 	*BaseSettingResource[*rsyslogdModel]
+}
+
+func (r *rsyslogdResource) ModifyPlan(_ context.Context, _ resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	resp.Diagnostics.Append(r.RequireMinVersion("8.5")...)
 }
 
 func (r *rsyslogdResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
@@ -171,7 +176,7 @@ func (r *rsyslogdResource) ConfigValidators(_ context.Context) []resource.Config
 
 func (r *rsyslogdResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages Remote Syslog (rsyslogd) settings for UniFi devices.",
+		MarkdownDescription: "Manages Remote Syslog (rsyslogd) settings for UniFi devices. Controller version 8.5 or later is required.",
 		Attributes: map[string]schema.Attribute{
 			"id":   base.ID(),
 			"site": base.SiteAttribute(),

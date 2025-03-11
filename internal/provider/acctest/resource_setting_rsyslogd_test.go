@@ -14,7 +14,8 @@ var settingRsyslogdLock = &sync.Mutex{}
 // TestAccSettingRsyslogdBasic tests the basic creation and import of the rsyslogd settings
 func TestAccSettingRsyslogdBasic(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingRsyslogdLock,
+		VersionConstraint: ">= 8.5",
+		Lock:              settingRsyslogdLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRsyslogdConfigBasic(),
@@ -38,7 +39,8 @@ func TestAccSettingRsyslogdBasic(t *testing.T) {
 // TestAccSettingRsyslogdUpdate tests updating the rsyslogd settings with different values
 func TestAccSettingRsyslogdUpdate(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingRsyslogdLock,
+		VersionConstraint: ">= 8.5",
+		Lock:              settingRsyslogdLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRsyslogdConfigBasic(),
@@ -66,7 +68,8 @@ func TestAccSettingRsyslogdUpdate(t *testing.T) {
 // TestAccSettingRsyslogdDisable tests disabling the rsyslogd settings
 func TestAccSettingRsyslogdDisable(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingRsyslogdLock,
+		VersionConstraint: ">= 8.5",
+		Lock:              settingRsyslogdLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRsyslogdConfigBasic(),
@@ -91,7 +94,8 @@ func TestAccSettingRsyslogdDisable(t *testing.T) {
 // TestAccSettingRsyslogdReEnable tests re-enabling the rsyslogd settings with different values
 func TestAccSettingRsyslogdReEnable(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingRsyslogdLock,
+		VersionConstraint: ">= 8.5",
+		Lock:              settingRsyslogdLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingRsyslogdConfigDisabled(),
@@ -115,7 +119,8 @@ func TestAccSettingRsyslogdReEnable(t *testing.T) {
 // TestAccSettingRsyslogdValidation tests validation errors when trying to set fields with rsyslogd disabled
 func TestAccSettingRsyslogdValidation(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingRsyslogdLock,
+		VersionConstraint: ">= 8.5",
+		Lock:              settingRsyslogdLock,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccSettingRsyslogdConfigInvalid(),
@@ -128,7 +133,8 @@ func TestAccSettingRsyslogdValidation(t *testing.T) {
 // TestAccSettingRsyslogdPortValidation tests validation errors for invalid port numbers
 func TestAccSettingRsyslogdPortValidation(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingRsyslogdLock,
+		VersionConstraint: ">= 8.5",
+		Lock:              settingRsyslogdLock,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccSettingRsyslogdConfigInvalidPort(),
