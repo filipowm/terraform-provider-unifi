@@ -42,7 +42,7 @@ func (d *autoSpeedtestModel) Merge(_ context.Context, other interface{}) diag.Di
 }
 
 type autoSpeedtestResource struct {
-	*BaseSettingResource[*autoSpeedtestModel]
+	*base.GenericResource[*autoSpeedtestModel]
 }
 
 func checkAutoSpeedtestUnsupportedError(err error) error {
@@ -54,7 +54,7 @@ func checkAutoSpeedtestUnsupportedError(err error) error {
 
 func NewAutoSpeedtestResource() resource.Resource {
 	r := &autoSpeedtestResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_auto_speedtest",
 		func() *autoSpeedtestModel { return &autoSpeedtestModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {

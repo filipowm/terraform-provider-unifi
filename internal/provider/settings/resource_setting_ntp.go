@@ -92,7 +92,7 @@ var (
 )
 
 type ntpResource struct {
-	*BaseSettingResource[*ntpModel]
+	*base.GenericResource[*ntpModel]
 }
 
 func (r *ntpResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
@@ -164,7 +164,7 @@ func (r *ntpResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 // NewNtpResource creates a new instance of the NTP resource.
 func NewNtpResource() resource.Resource {
 	r := &ntpResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_ntp",
 		func() *ntpModel { return &ntpModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {

@@ -56,7 +56,7 @@ var (
 )
 
 type teleportResource struct {
-	*BaseSettingResource[*teleportModel]
+	*base.GenericResource[*teleportModel]
 }
 
 func (r *teleportResource) ModifyPlan(_ context.Context, _ resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
@@ -87,7 +87,7 @@ func (r *teleportResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 
 func NewTeleportResource() resource.Resource {
 	r := &teleportResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_teleport",
 		func() *teleportModel { return &teleportModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {
