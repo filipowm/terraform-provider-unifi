@@ -45,12 +45,12 @@ func (d *countryModel) Merge(_ context.Context, other interface{}) diag.Diagnost
 }
 
 type countryResource struct {
-	*BaseSettingResource[*countryModel]
+	*base.GenericResource[*countryModel]
 }
 
 func NewCountryResource() resource.Resource {
 	r := &countryResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_country",
 		func() *countryModel { return &countryModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {

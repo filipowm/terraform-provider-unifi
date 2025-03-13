@@ -50,7 +50,7 @@ var (
 )
 
 type networkOptimizationResource struct {
-	*BaseSettingResource[*networkOptimizationModel]
+	*base.GenericResource[*networkOptimizationModel]
 }
 
 func (r *networkOptimizationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -70,7 +70,7 @@ func (r *networkOptimizationResource) Schema(_ context.Context, _ resource.Schem
 
 func NewNetworkOptimizationResource() resource.Resource {
 	r := &networkOptimizationResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_network_optimization",
 		func() *networkOptimizationModel { return &networkOptimizationModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {

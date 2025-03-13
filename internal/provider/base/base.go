@@ -10,6 +10,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+type SiteAware interface {
+	GetSite() string
+	SetSite(string)
+	GetRawSite() types.String
+}
+
+type Identifiable interface {
+	GetID() string
+	SetID(string)
+	GetRawID() types.String
+}
+
 type Resource interface {
 	SetClient(client *Client)
 	SetVersionValidator(validator ControllerVersionValidator)
@@ -17,14 +29,10 @@ type Resource interface {
 
 // ResourceModel defines the interface that all setting models must implement
 type ResourceModel interface {
-	GetSite() string
-	GetRawSite() types.String
-	SetSite(string)
-	GetID() string
-	GetRawID() types.String
-	SetID(string)
-	AsUnifiModel(context.Context) (interface{}, diag.Diagnostics)
+	Identifiable
+	SiteAware
 	Merge(context.Context, interface{}) diag.Diagnostics
+	AsUnifiModel(context.Context) (interface{}, diag.Diagnostics)
 }
 
 type Model struct {

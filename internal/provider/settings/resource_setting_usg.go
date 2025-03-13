@@ -1220,7 +1220,7 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 // NewUsgResource creates a new instance of the USG resource.
 func NewUsgResource() resource.Resource {
 	r := &usgResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_usg",
 		func() *usgModel { return &usgModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {
@@ -1243,7 +1243,7 @@ var (
 )
 
 type usgResource struct {
-	*BaseSettingResource[*usgModel]
+	*base.GenericResource[*usgModel]
 }
 
 func (r *usgResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {

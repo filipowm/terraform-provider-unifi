@@ -52,7 +52,7 @@ var (
 )
 
 type localeResource struct {
-	*BaseSettingResource[*localeModel]
+	*base.GenericResource[*localeModel]
 }
 
 func (r *localeResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -74,7 +74,7 @@ func (r *localeResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 
 func NewLocaleResource() resource.Resource {
 	r := &localeResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_locale",
 		func() *localeModel { return &localeModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {

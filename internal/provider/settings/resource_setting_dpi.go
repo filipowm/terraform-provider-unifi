@@ -53,7 +53,7 @@ var (
 )
 
 type dpiResource struct {
-	*BaseSettingResource[*dpiModel]
+	*base.GenericResource[*dpiModel]
 }
 
 func (r *dpiResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -76,7 +76,7 @@ func (r *dpiResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 func NewDpiResource() resource.Resource {
 	r := &dpiResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_dpi",
 		func() *dpiModel { return &dpiModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {

@@ -50,7 +50,7 @@ var (
 )
 
 type magicSiteToSiteVpnResource struct {
-	*BaseSettingResource[*magicSiteToSiteVpnModel]
+	*base.GenericResource[*magicSiteToSiteVpnModel]
 }
 
 func (r *magicSiteToSiteVpnResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -69,7 +69,7 @@ func (r *magicSiteToSiteVpnResource) Schema(_ context.Context, _ resource.Schema
 
 func NewMagicSiteToSiteVpnResource() resource.Resource {
 	r := &magicSiteToSiteVpnResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_magic_site_to_site_vpn",
 		func() *magicSiteToSiteVpnModel { return &magicSiteToSiteVpnModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {

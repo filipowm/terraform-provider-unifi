@@ -2,37 +2,15 @@ package base
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/go-version"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"log"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 )
-
-func IsServerErrorContains(err error, messageContains string) bool {
-	if err == nil {
-		return false
-	}
-	var se *unifi.ServerError
-	if errors.As(err, &se) {
-		if strings.Contains(se.Message, messageContains) {
-			return true
-		}
-		// check details
-		if se.Details != nil {
-			for _, m := range se.Details {
-				if strings.Contains(m.Message, messageContains) {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
 
 type ClientConfig struct {
 	Username       string
@@ -80,7 +58,7 @@ type Client struct {
 	Version *version.Version
 }
 
-func (c *Client) ResolveSite(res ResourceModel) string {
+func (c *Client) ResolveSite(res SiteAware) string {
 	if res == nil || IsEmptyString(res.GetRawSite()) {
 		return c.Site
 	}
@@ -103,4 +81,15 @@ func CreateHttpTransport(insecure bool) http.RoundTripper {
 			InsecureSkipVerify: insecure,
 		},
 	}
+}
+
+func checkClientConfigured(client *Client) diag.Diagnostics {
+	diags := diag.Diagnostics{}
+	if client == nil {
+		diags.AddError(
+			"Client Not Configured",
+			"Expected configured client. Please report this issue to the provider developers.",
+		)
+	}
+	return diags
 }

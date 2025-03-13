@@ -89,7 +89,7 @@ var (
 )
 
 type lcmResource struct {
-	*BaseSettingResource[*lcmModel]
+	*base.GenericResource[*lcmModel]
 }
 
 func (r *lcmResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
@@ -136,7 +136,7 @@ func (r *lcmResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 
 func NewLcmResource() resource.Resource {
 	r := &lcmResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_lcd_monitor",
 		func() *lcmModel { return &lcmModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {

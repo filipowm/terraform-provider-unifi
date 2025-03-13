@@ -52,7 +52,7 @@ var (
 )
 
 type sslInspectionResource struct {
-	*BaseSettingResource[*sslInspectionModel]
+	*base.GenericResource[*sslInspectionModel]
 }
 
 func (r *sslInspectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -74,7 +74,7 @@ func (r *sslInspectionResource) Schema(_ context.Context, _ resource.SchemaReque
 
 func NewSslInspectionResource() resource.Resource {
 	r := &sslInspectionResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_ssl_inspection",
 		func() *sslInspectionModel { return &sslInspectionModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {

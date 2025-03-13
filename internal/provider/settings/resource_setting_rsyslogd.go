@@ -149,7 +149,7 @@ var (
 )
 
 type rsyslogdResource struct {
-	*BaseSettingResource[*rsyslogdModel]
+	*base.GenericResource[*rsyslogdModel]
 }
 
 func (r *rsyslogdResource) ModifyPlan(_ context.Context, _ resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
@@ -260,7 +260,7 @@ func (r *rsyslogdResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 
 func NewRsyslogdResource() resource.Resource {
 	r := &rsyslogdResource{}
-	r.BaseSettingResource = NewBaseSettingResource(
+	r.GenericResource = NewSettingResource(
 		"unifi_setting_rsyslogd",
 		func() *rsyslogdModel { return &rsyslogdModel{} },
 		func(ctx context.Context, client *base.Client, site string) (interface{}, error) {
