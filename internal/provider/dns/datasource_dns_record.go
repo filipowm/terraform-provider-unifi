@@ -100,7 +100,8 @@ func (d *dnsRecordDatasource) Read(ctx context.Context, req datasource.ReadReque
 		resp.Diagnostics.AddError("Filter is required", "Filter is required. Validation should prevent this from happening.")
 		return
 	}
-	list, err := d.client.ListDNSRecord(ctx, d.client.Site)
+	site := d.client.ResolveSite(&state)
+	list, err := d.client.ListDNSRecord(ctx, site)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to list DNS records", err.Error())
 		return
@@ -136,6 +137,8 @@ func (d *dnsRecordDatasource) Read(ctx context.Context, req datasource.ReadReque
 		resp.Diagnostics.AddError("DNS record not found", "No DNS record found")
 		return
 	}
-	(&state.dnsRecordModel).merge(found)
+	(&state.dnsRecordModel).Merge(ctx, found)
+	state.SetID(found.ID)
+	state.SetSite(site)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }

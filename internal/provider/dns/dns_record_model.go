@@ -1,17 +1,20 @@
 package dns
 
 import (
+	"context"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 const resourceName = "dns_record"
 
+var _ base.ResourceModel = &dnsRecordModel{}
+
 type dnsRecordModel struct {
-	ID       types.String `tfsdk:"id"`
-	SiteID   types.String `tfsdk:"site_id"`
+	base.Model
 	Name     types.String `tfsdk:"name"`
 	Record   types.String `tfsdk:"record"`
 	Enabled  types.Bool   `tfsdk:"enabled"`
@@ -28,12 +31,25 @@ type dnsRecordDatasourceModel struct {
 }
 
 type dnsRecordsDatasourceModel struct {
+	Site    types.String      `tfsdk:"site"`
 	Records []*dnsRecordModel `tfsdk:"result"`
 }
 
+func (b *dnsRecordsDatasourceModel) GetSite() string {
+	return b.Site.ValueString()
+}
+
+func (b *dnsRecordsDatasourceModel) GetRawSite() types.String {
+	return b.Site
+}
+
+func (b *dnsRecordsDatasourceModel) SetSite(site string) {
+	b.Site = types.StringValue(site)
+}
+
 var dnsRecordDatasourceAttributes = map[string]schema.Attribute{
-	"id":      base.ID(),
-	"site_id": base.ID("The site ID where the DNS record is located."),
+	"id":   base.ID(),
+	"site": base.SiteAttribute(),
 	"name": schema.StringAttribute{
 		Description: "DNS record name.",
 		Computed:    true,
@@ -73,10 +89,9 @@ type dnsRecordFilterModel struct {
 	Record types.String `tfsdk:"record"`
 }
 
-func (d *dnsRecordModel) asUnifiModel() *unifi.DNSRecord {
+func (d *dnsRecordModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnostics) {
 	return &unifi.DNSRecord{
 		ID:         d.ID.ValueString(),
-		SiteID:     d.SiteID.ValueString(),
 		Key:        d.Name.ValueString(),
 		Value:      d.Record.ValueString(),
 		Enabled:    d.Enabled.ValueBool(),
@@ -85,12 +100,17 @@ func (d *dnsRecordModel) asUnifiModel() *unifi.DNSRecord {
 		RecordType: d.Type.ValueString(),
 		Ttl:        int(d.TTL.ValueInt32()),
 		Weight:     int(d.Weight.ValueInt32()),
-	}
+	}, diag.Diagnostics{}
 }
 
-func (d *dnsRecordModel) merge(other *unifi.DNSRecord) {
+func (d *dnsRecordModel) Merge(ctx context.Context, i interface{}) diag.Diagnostics {
+	diags := diag.Diagnostics{}
+	other, ok := i.(*unifi.DNSRecord)
+	if !ok {
+		diags.AddError("Invalid model type", "Expected *unifi.DNSRecord")
+		return diags
+	}
 	d.ID = types.StringValue(other.ID)
-	d.SiteID = types.StringValue(other.SiteID)
 	d.Name = types.StringValue(other.Key)
 	d.Record = types.StringValue(other.Value)
 	d.Enabled = types.BoolValue(other.Enabled)
@@ -99,4 +119,5 @@ func (d *dnsRecordModel) merge(other *unifi.DNSRecord) {
 	d.Type = types.StringValue(other.RecordType)
 	d.TTL = types.Int32Value(int32(other.Ttl))
 	d.Weight = types.Int32Value(int32(other.Weight))
+	return diags
 }
