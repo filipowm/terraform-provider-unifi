@@ -115,7 +115,6 @@ func New(version string) func() *schema.Provider {
 				"unifi_site":           site.ResourceSite(),
 				"unifi_account":        radius.ResourceAccount(),
 				"unifi_radius_profile": radius.ResourceRadiusProfile(),
-				"unifi_setting_mgmt":   settings.ResourceSettingMgmt(),
 				"unifi_setting_radius": settings.ResourceSettingRadius(),
 				"unifi_user_group":     user.ResourceUserGroup(),
 				"unifi_user":           user.ResourceUser(),

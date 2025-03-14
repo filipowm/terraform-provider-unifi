@@ -18,7 +18,7 @@ func TestAccSettingMgmt_basic(t *testing.T) {
 				Config: testAccSettingMgmtConfig_basic(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			pt.ImportStep("unifi_setting_mgmt.test"),
+			pt.ImportStepWithSite("unifi_setting_mgmt.test"),
 		},
 	})
 }
@@ -31,12 +31,7 @@ func TestAccSettingMgmt_site(t *testing.T) {
 				Config: testAccSettingMgmtConfig_site(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			{
-				ResourceName:      "unifi_setting_mgmt.test",
-				ImportState:       true,
-				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_setting_mgmt.test"),
-				ImportStateVerify: true,
-			},
+			pt.ImportStepWithSite("unifi_setting_mgmt.test"),
 		},
 	})
 }
@@ -49,12 +44,7 @@ func TestAccSettingMgmt_sshKeys(t *testing.T) {
 				Config: testAccSettingMgmtConfig_sshKeys(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			{
-				ResourceName:      "unifi_setting_mgmt.test",
-				ImportState:       true,
-				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_setting_mgmt.test"),
-				ImportStateVerify: true,
-			},
+			pt.ImportStepWithSite("unifi_setting_mgmt.test"),
 		},
 	})
 }

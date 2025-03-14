@@ -186,6 +186,7 @@ func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource 
 		settings.NewRsyslogdResource,
 		settings.NewSslInspectionResource,
 		settings.NewTeleportResource,
+		settings.NewMgmtResource,
 		settings.NewUsgResource,
 		settings.NewUswResource,
 	}
