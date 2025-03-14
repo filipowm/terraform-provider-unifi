@@ -85,7 +85,7 @@ func TestDNSRecord_basic(t *testing.T) {
 					Config: testAccDnsRecordConfig(tc),
 					Check:  testAccDnsRecordCheckAttrs(tc),
 				},
-				pt.ImportStep(testDnsRecordResourceName),
+				pt.ImportStepWithSite(testDnsRecordResourceName),
 			}
 
 			AcceptanceTest(t, AcceptanceTestCase{

@@ -44,6 +44,7 @@ func (d *dnsRecordsDatasource) Schema(_ context.Context, _ datasource.SchemaRequ
 	resp.Schema = schema.Schema{
 		Description: "Retrieves information about a all DNS records.",
 		Attributes: map[string]schema.Attribute{
+			"site": base.SiteAttribute(),
 			"result": schema.ListNestedAttribute{
 				Description: "The list of DNS records.",
 				Computed:    true,
@@ -63,15 +64,18 @@ func (d *dnsRecordsDatasource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	records, err := d.client.ListDNSRecord(ctx, d.client.Site)
+	site := d.client.ResolveSite(&state)
+	records, err := d.client.ListDNSRecord(ctx, site)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to list DNS records", err.Error())
 		return
 	}
 	for _, record := range records {
 		state.Records = append(state.Records, &dnsRecordModel{
-			ID:       types.StringValue(record.ID),
-			SiteID:   types.StringValue(record.SiteID),
+			Model: base.Model{
+				ID:   types.StringValue(record.ID),
+				Site: types.StringValue(site),
+			},
 			Name:     types.StringValue(record.Key),
 			Record:   types.StringValue(record.Value),
 			Enabled:  types.BoolValue(record.Enabled),
