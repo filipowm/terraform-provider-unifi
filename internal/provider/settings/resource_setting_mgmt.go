@@ -3,6 +3,9 @@ package settings
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+
+	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
@@ -12,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -37,9 +41,23 @@ func (m *SshKeyModel) AttributeTypes() map[string]attr.Type {
 // mgmtModel represents the data model for management settings.
 type mgmtModel struct {
 	base.Model
-	AutoUpgrade types.Bool `tfsdk:"auto_upgrade"`
-	SshEnabled  types.Bool `tfsdk:"ssh_enabled"`
-	SshKeys     types.List `tfsdk:"ssh_key"`
+	AdvancedFeatureEnabled types.Bool   `tfsdk:"advanced_feature_enabled"`
+	AlertEnabled           types.Bool   `tfsdk:"alert_enabled"`
+	AutoUpgrade            types.Bool   `tfsdk:"auto_upgrade"`
+	AutoUpgradeHour        types.Int32  `tfsdk:"auto_upgrade_hour"`
+	BootSound              types.Bool   `tfsdk:"boot_sound"`
+	DebugToolsEnabled      types.Bool   `tfsdk:"debug_tools_enabled"`
+	DirectConnectEnabled   types.Bool   `tfsdk:"direct_connect_enabled"`
+	LedEnabled             types.Bool   `tfsdk:"led_enabled"`
+	OutdoorModeEnabled     types.Bool   `tfsdk:"outdoor_mode_enabled"`
+	UnifiIdpEnabled        types.Bool   `tfsdk:"unifi_idp_enabled"`
+	WifimanEnabled         types.Bool   `tfsdk:"wifiman_enabled"`
+	SshAuthPasswordEnabled types.Bool   `tfsdk:"ssh_auth_password_enabled"`
+	SshBindWildcard        types.Bool   `tfsdk:"ssh_bind_wildcard"`
+	SshKeys                types.List   `tfsdk:"ssh_key"`
+	SshPassword            types.String `tfsdk:"ssh_password"`
+	SshEnabled             types.Bool   `tfsdk:"ssh_enabled"`
+	SshUsername            types.String `tfsdk:"ssh_username"`
 }
 
 func (m *mgmtModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnostics) {
@@ -52,11 +70,25 @@ func (m *mgmtModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnos
 	}
 
 	return &unifi.SettingMgmt{
-		ID:          m.ID.ValueString(),
-		Key:         unifi.SettingMgmtKey,
-		AutoUpgrade: m.AutoUpgrade.ValueBool(),
-		XSshEnabled: m.SshEnabled.ValueBool(),
-		XSshKeys:    sshKeys,
+		ID:                      m.ID.ValueString(),
+		Key:                     unifi.SettingMgmtKey,
+		AutoUpgrade:             m.AutoUpgrade.ValueBool(),
+		AutoUpgradeHour:         int(m.AutoUpgradeHour.ValueInt32()),
+		AdvancedFeatureEnabled:  m.AdvancedFeatureEnabled.ValueBool(),
+		AlertEnabled:            m.AlertEnabled.ValueBool(),
+		BootSound:               m.BootSound.ValueBool(),
+		DebugToolsEnabled:       m.DebugToolsEnabled.ValueBool(),
+		DirectConnectEnabled:    m.DirectConnectEnabled.ValueBool(),
+		LedEnabled:              m.LedEnabled.ValueBool(),
+		OutdoorModeEnabled:      m.OutdoorModeEnabled.ValueBool(),
+		UnifiIDpEnabled:         m.UnifiIdpEnabled.ValueBool(),
+		WifimanEnabled:          m.WifimanEnabled.ValueBool(),
+		XSshEnabled:             m.SshEnabled.ValueBool(),
+		XSshAuthPasswordEnabled: m.SshAuthPasswordEnabled.ValueBool(),
+		XSshBindWildcard:        m.SshBindWildcard.ValueBool(),
+		XSshUsername:            m.SshUsername.ValueString(),
+		XSshPassword:            m.SshPassword.ValueString(),
+		XSshKeys:                sshKeys,
 	}, diags
 }
 
@@ -96,7 +128,21 @@ func (m *mgmtModel) Merge(ctx context.Context, other interface{}) diag.Diagnosti
 
 	m.ID = types.StringValue(resp.ID)
 	m.AutoUpgrade = types.BoolValue(resp.AutoUpgrade)
+	m.AutoUpgradeHour = types.Int32Value(int32(resp.AutoUpgradeHour))
+	m.AdvancedFeatureEnabled = types.BoolValue(resp.AdvancedFeatureEnabled)
+	m.AlertEnabled = types.BoolValue(resp.AlertEnabled)
+	m.BootSound = types.BoolValue(resp.BootSound)
+	m.DebugToolsEnabled = types.BoolValue(resp.DebugToolsEnabled)
+	m.DirectConnectEnabled = types.BoolValue(resp.DirectConnectEnabled)
+	m.LedEnabled = types.BoolValue(resp.LedEnabled)
+	m.OutdoorModeEnabled = types.BoolValue(resp.OutdoorModeEnabled)
+	m.UnifiIdpEnabled = types.BoolValue(resp.UnifiIDpEnabled)
+	m.WifimanEnabled = types.BoolValue(resp.WifimanEnabled)
 	m.SshEnabled = types.BoolValue(resp.XSshEnabled)
+	m.SshAuthPasswordEnabled = types.BoolValue(resp.XSshAuthPasswordEnabled)
+	m.SshBindWildcard = types.BoolValue(resp.XSshBindWildcard)
+	m.SshUsername = types.StringValue(resp.XSshUsername)
+	m.SshPassword = types.StringValue(resp.XSshPassword)
 
 	// Convert SSH keys
 	if len(resp.XSshKeys) > 0 {
@@ -138,13 +184,18 @@ func NewMgmtResource() resource.Resource {
 }
 
 var (
-	_ base.ResourceModel             = &mgmtModel{}
-	_ resource.Resource              = &mgmtResource{}
-	_ resource.ResourceWithConfigure = &mgmtResource{}
+	_ base.ResourceModel              = &mgmtModel{}
+	_ resource.Resource               = &mgmtResource{}
+	_ resource.ResourceWithConfigure  = &mgmtResource{}
+	_ resource.ResourceWithModifyPlan = &mgmtResource{}
 )
 
 type mgmtResource struct {
 	*base.GenericResource[*mgmtModel]
+}
+
+func (r *mgmtResource) ModifyPlan(_ context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	resp.Diagnostics.Append(r.RequireMinVersionForPath("7.3", path.Root("debug_tools_enabled"), req.Config)...)
 }
 
 func (r *mgmtResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -166,6 +217,90 @@ func (r *mgmtResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				MarkdownDescription: "Enable automatic firmware upgrades for all UniFi devices at this site. When enabled, devices will automatically " +
 					"update to the latest stable firmware version approved for your controller version.",
 				Optional: true,
+				Computed: true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"auto_upgrade_hour": schema.Int32Attribute{
+				MarkdownDescription: "The hour of the day (0-23) when automatic firmware upgrades will occur.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Int32{
+					int32planmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.Int32{
+					int32validator.Between(0, 23),
+				},
+			},
+			"advanced_feature_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable advanced features for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"alert_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable alerts for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"boot_sound": schema.BoolAttribute{
+				MarkdownDescription: "Enable the boot sound for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"debug_tools_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable debug tools for UniFi devices at this site. Requires controller version 7.3 or later.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"direct_connect_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable direct connect for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"led_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable the LED light for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"outdoor_mode_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable outdoor mode for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"unifi_idp_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable UniFi IDP for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"wifiman_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable WiFiman for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
 				},
@@ -174,8 +309,42 @@ func (r *mgmtResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				MarkdownDescription: "Enable SSH access to UniFi devices at this site. When enabled, you can connect to devices using SSH for advanced " +
 					"configuration and troubleshooting. It's recommended to only enable this temporarily when needed.",
 				Optional: true,
+				Computed: true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"ssh_auth_password_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Enable SSH password authentication for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"ssh_bind_wildcard": schema.BoolAttribute{
+				MarkdownDescription: "Enable SSH bind wildcard for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"ssh_username": schema.StringAttribute{
+				MarkdownDescription: "The SSH username for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+				},
+			},
+			"ssh_password": schema.StringAttribute{
+				MarkdownDescription: "The SSH password for UniFi devices at this site.",
+				Optional:            true,
+				Computed:            true,
+				Sensitive:           true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
 				},
 			},
 		},
