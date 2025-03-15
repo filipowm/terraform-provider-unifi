@@ -3,8 +3,7 @@ package validators
 import (
 	"context"
 	"fmt"
-	"net"
-
+	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
@@ -17,15 +16,15 @@ var _ validator.String = ipv4Validator{}
 
 type ipv4Validator struct{}
 
-func (v ipv4Validator) Description(ctx context.Context) string {
+func (v ipv4Validator) Description(_ context.Context) string {
 	return "value must be a valid IPv4 address"
 }
 
-func (v ipv4Validator) MarkdownDescription(ctx context.Context) string {
+func (v ipv4Validator) MarkdownDescription(_ context.Context) string {
 	return "value must be a valid IPv4 address"
 }
 
-func (v ipv4Validator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+func (v ipv4Validator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		return
 	}
@@ -35,8 +34,7 @@ func (v ipv4Validator) ValidateString(ctx context.Context, req validator.StringR
 		return
 	}
 
-	ip := net.ParseIP(value)
-	if ip == nil || ip.To4() == nil {
+	if !utils.IsIPv4(value) {
 		resp.Diagnostics.AddAttributeError(
 			req.Path,
 			"Invalid IPv4 Address",
