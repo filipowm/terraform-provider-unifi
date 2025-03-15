@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 
@@ -183,13 +184,18 @@ func NewMgmtResource() resource.Resource {
 }
 
 var (
-	_ base.ResourceModel             = &mgmtModel{}
-	_ resource.Resource              = &mgmtResource{}
-	_ resource.ResourceWithConfigure = &mgmtResource{}
+	_ base.ResourceModel              = &mgmtModel{}
+	_ resource.Resource               = &mgmtResource{}
+	_ resource.ResourceWithConfigure  = &mgmtResource{}
+	_ resource.ResourceWithModifyPlan = &mgmtResource{}
 )
 
 type mgmtResource struct {
 	*base.GenericResource[*mgmtModel]
+}
+
+func (r *mgmtResource) ModifyPlan(_ context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	resp.Diagnostics.Append(r.RequireMaxVersionForPath("7.3", path.Root("debug_tools_enabled"), req.Config)...)
 }
 
 func (r *mgmtResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -252,7 +258,7 @@ func (r *mgmtResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				},
 			},
 			"debug_tools_enabled": schema.BoolAttribute{
-				MarkdownDescription: "Enable debug tools for UniFi devices at this site.",
+				MarkdownDescription: "Enable debug tools for UniFi devices at this site. Requires controller version 7.3 or later.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers: []planmodifier.Bool{

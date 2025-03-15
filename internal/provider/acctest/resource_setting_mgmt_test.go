@@ -74,7 +74,8 @@ func TestAccSettingMgmt_sshKeys(t *testing.T) {
 
 func TestAccSettingMgmt_fullConfig(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: &settingMgmtLock,
+		VersionConstraint: ">= 7.3",
+		Lock:              &settingMgmtLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingMgmtConfig_fullConfig(),
@@ -166,7 +167,6 @@ func TestAccSettingMgmt_cornerCases(t *testing.T) {
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "auto_upgrade", "true"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "alert_enabled", "true"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "boot_sound", "true"),
-					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "debug_tools_enabled", "true"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "direct_connect_enabled", "false"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "led_enabled", "true"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "outdoor_mode_enabled", "true"),
@@ -189,7 +189,6 @@ func TestAccSettingMgmt_cornerCases(t *testing.T) {
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "auto_upgrade", "false"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "alert_enabled", "false"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "boot_sound", "false"),
-					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "debug_tools_enabled", "false"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "direct_connect_enabled", "false"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "led_enabled", "false"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "outdoor_mode_enabled", "false"),
@@ -212,7 +211,6 @@ func TestAccSettingMgmt_cornerCases(t *testing.T) {
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "auto_upgrade", "true"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "alert_enabled", "true"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "boot_sound", "false"),
-					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "debug_tools_enabled", "true"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "direct_connect_enabled", "false"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "led_enabled", "true"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "outdoor_mode_enabled", "false"),
@@ -456,7 +454,6 @@ resource "unifi_setting_mgmt" "test" {
 	auto_upgrade_hour = 3
 	alert_enabled = true
 	boot_sound = true
-	debug_tools_enabled = true
 	direct_connect_enabled = false
 	led_enabled = true
 	outdoor_mode_enabled = true
@@ -476,7 +473,6 @@ resource "unifi_setting_mgmt" "test" {
 	auto_upgrade_hour = 23
 	alert_enabled = false
 	boot_sound = false
-	debug_tools_enabled = false
 	direct_connect_enabled = false
 	led_enabled = false
 	outdoor_mode_enabled = false
@@ -496,7 +492,6 @@ resource "unifi_setting_mgmt" "test" {
 	auto_upgrade_hour = 0
 	alert_enabled = true
 	boot_sound = false
-	debug_tools_enabled = true
 	direct_connect_enabled = false
 	led_enabled = true
 	outdoor_mode_enabled = false
