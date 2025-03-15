@@ -195,7 +195,7 @@ type mgmtResource struct {
 }
 
 func (r *mgmtResource) ModifyPlan(_ context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	resp.Diagnostics.Append(r.RequireMaxVersionForPath("7.3", path.Root("debug_tools_enabled"), req.Config)...)
+	resp.Diagnostics.Append(r.RequireMinVersionForPath("7.3", path.Root("debug_tools_enabled"), req.Config)...)
 }
 
 func (r *mgmtResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
