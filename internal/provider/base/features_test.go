@@ -38,19 +38,19 @@ func TestFeaturesIsEnabled(t *testing.T) {
 	}{
 		{
 			name:     "feature is enabled",
-			features: Features{"feature1": true, "feature2": false},
+			features: Features{"feature1": featureEnabled, "feature2": featureDisabled},
 			feature:  "feature1",
 			expected: true,
 		},
 		{
 			name:     "feature is disabled",
-			features: Features{"feature1": true, "feature2": false},
+			features: Features{"feature1": featureEnabled, "feature2": featureDisabled},
 			feature:  "feature2",
 			expected: false,
 		},
 		{
 			name:     "feature does not exist",
-			features: Features{"feature1": true},
+			features: Features{"feature1": featureEnabled},
 			feature:  "feature2",
 			expected: false,
 		},
@@ -80,33 +80,69 @@ func TestFeaturesIsDisabled(t *testing.T) {
 	}{
 		{
 			name:     "feature is enabled",
-			features: Features{"feature1": true, "feature2": false},
+			features: Features{"feature1": featureEnabled, "feature2": featureDisabled},
 			feature:  "feature1",
 			expected: false,
 		},
 		{
 			name:     "feature is disabled",
-			features: Features{"feature1": true, "feature2": false},
+			features: Features{"feature1": featureEnabled, "feature2": featureDisabled},
 			feature:  "feature2",
 			expected: true,
 		},
 		{
 			name:     "feature does not exist",
-			features: Features{"feature1": true},
+			features: Features{"feature1": featureEnabled},
 			feature:  "feature2",
-			expected: true,
+			expected: false,
 		},
 		{
 			name:     "empty features map",
 			features: Features{},
 			feature:  "feature1",
-			expected: true,
+			expected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.features.IsDisabled(tt.feature)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// TestFeaturesIsUnavailable tests the IsUnavailable method of Features
+func TestFeaturesIsUnavailable(t *testing.T) {
+	tests := []struct {
+		name     string
+		features Features
+		feature  string
+		expected bool
+	}{
+		{
+			name:     "feature is enabled",
+			features: Features{"feature1": featureEnabled, "feature2": featureDisabled},
+			feature:  "feature2",
+			expected: false,
+		},
+		{
+			name:     "feature is disabled",
+			features: Features{"feature1": featureEnabled},
+			feature:  "feature2",
+			expected: true,
+		},
+		{
+			name:     "feature does not exist",
+			features: Features{},
+			feature:  "feature2",
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.features.IsUnavailable(tt.feature)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -156,8 +192,8 @@ func TestGetFeatures(t *testing.T) {
 			},
 			site: "site1",
 			expected: Features{
-				"feature1": true,
-				"feature2": false,
+				"feature1": featureEnabled,
+				"feature2": featureDisabled,
 			},
 		},
 		{
@@ -272,7 +308,7 @@ func TestRequireFeatures(t *testing.T) {
 	}{
 		{
 			name:              "all features enabled",
-			features:          Features{"feature1": true, "feature2": true},
+			features:          Features{"feature1": featureEnabled, "feature2": featureEnabled},
 			site:              "site1",
 			attrPath:          nil,
 			requiredFeatures:  []string{"feature1", "feature2"},
@@ -280,7 +316,7 @@ func TestRequireFeatures(t *testing.T) {
 		},
 		{
 			name:              "one feature disabled",
-			features:          Features{"feature1": true, "feature2": false},
+			features:          Features{"feature1": featureEnabled, "feature2": featureDisabled},
 			site:              "site1",
 			attrPath:          nil,
 			requiredFeatures:  []string{"feature1", "feature2"},
@@ -288,7 +324,7 @@ func TestRequireFeatures(t *testing.T) {
 		},
 		{
 			name:              "all features disabled",
-			features:          Features{"feature1": false, "feature2": false},
+			features:          Features{"feature1": featureDisabled, "feature2": featureDisabled},
 			site:              "site1",
 			attrPath:          nil,
 			requiredFeatures:  []string{"feature1", "feature2"},
@@ -296,7 +332,7 @@ func TestRequireFeatures(t *testing.T) {
 		},
 		{
 			name:              "empty required features",
-			features:          Features{"feature1": true, "feature2": true},
+			features:          Features{"feature1": featureEnabled, "feature2": featureEnabled},
 			site:              "site1",
 			attrPath:          nil,
 			requiredFeatures:  []string{},
@@ -304,7 +340,7 @@ func TestRequireFeatures(t *testing.T) {
 		},
 		{
 			name:              "nil required features",
-			features:          Features{"feature1": true, "feature2": true},
+			features:          Features{"feature1": featureEnabled, "feature2": featureEnabled},
 			site:              "site1",
 			attrPath:          nil,
 			requiredFeatures:  nil,
@@ -312,7 +348,7 @@ func TestRequireFeatures(t *testing.T) {
 		},
 		{
 			name:              "with attribute path",
-			features:          Features{"feature1": false},
+			features:          Features{"feature1": featureDisabled},
 			site:              "site1",
 			attrPath:          &path.Path{},
 			requiredFeatures:  []string{"feature1"},
@@ -320,7 +356,7 @@ func TestRequireFeatures(t *testing.T) {
 		},
 		{
 			name:              "feature not in map",
-			features:          Features{"feature1": true},
+			features:          Features{"feature1": featureEnabled},
 			site:              "site1",
 			attrPath:          nil,
 			requiredFeatures:  []string{"feature2"},

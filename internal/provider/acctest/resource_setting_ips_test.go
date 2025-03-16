@@ -14,7 +14,8 @@ var settingIpsLock = &sync.Mutex{}
 
 func TestAccSettingIps_basic(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingIpsLock,
+		VersionConstraint: ">= 7.4",
+		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingIpsConfig_basic(),
@@ -44,7 +45,8 @@ func TestAccSettingIps_basic(t *testing.T) {
 
 func TestAccSettingIps_enabledCategories(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingIpsLock,
+		VersionConstraint: ">= 7.4",
+		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingIpsConfig_enabledCategories(),
@@ -73,7 +75,8 @@ func TestAccSettingIps_enabledCategories(t *testing.T) {
 
 func TestAccSettingIps_adBlocking(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingIpsLock,
+		VersionConstraint: ">= 7.4",
+		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingIpsConfig_adBlocking(),
@@ -100,7 +103,8 @@ func TestAccSettingIps_adBlocking(t *testing.T) {
 
 func TestAccSettingIps_honeypot(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingIpsLock,
+		VersionConstraint: ">= 7.4",
+		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingIpsConfig_honeypot(),
@@ -136,7 +140,8 @@ func TestAccSettingIps_honeypot(t *testing.T) {
 
 func TestAccSettingIps_dnsFilters(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingIpsLock,
+		VersionConstraint: ">= 7.4",
+		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingIpsConfig_dnsFilters(t),
@@ -170,7 +175,8 @@ func TestAccSettingIps_dnsFilters(t *testing.T) {
 
 func TestAccSettingIps_suppression(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingIpsLock,
+		VersionConstraint: ">= 7.4",
+		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingIpsConfig_suppression(),
@@ -207,7 +213,8 @@ func TestAccSettingIps_suppression(t *testing.T) {
 
 func TestAccSettingIps_comprehensive(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingIpsLock,
+		VersionConstraint: ">= 7.4",
+		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingIpsConfig_comprehensive(t),
@@ -232,7 +239,8 @@ func TestAccSettingIps_comprehensive(t *testing.T) {
 
 func TestAccSettingIps_restrictTorrents(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingIpsLock,
+		VersionConstraint: ">= 7.4",
+		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingIpsConfig_restrictTorrents(true),
@@ -256,8 +264,8 @@ func TestAccSettingIps_restrictTorrents(t *testing.T) {
 
 func TestAccSettingIps_memoryOptimized(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock:              settingIpsLock,
 		VersionConstraint: ">= 9.0",
+		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingIpsConfig_memoryOptimized(true),

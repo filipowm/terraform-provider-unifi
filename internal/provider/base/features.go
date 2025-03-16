@@ -12,19 +12,33 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
 
+const (
+	featureEnabled featureStatus = iota
+	featureDisabled
+)
+
+type featureStatus int
+
 type FeatureValidator interface {
 	RequireFeaturesEnabled(ctx context.Context, site string, features ...string) diag.Diagnostics
 	RequireFeaturesEnabledForPath(ctx context.Context, site string, attrPath path.Path, config tfsdk.Config, features ...string) diag.Diagnostics
 }
 
-type Features map[string]bool
+type Features map[string]featureStatus
 
 func (v Features) IsEnabled(feature string) bool {
-	return v[feature]
+	return !v.IsUnavailable(feature) && v[feature] == featureEnabled
 }
 
 func (v Features) IsDisabled(feature string) bool {
-	return !v[feature]
+	return !v.IsUnavailable(feature) && v[feature] == featureDisabled
+}
+
+func (v Features) IsUnavailable(feature string) bool {
+	if _, ok := v[feature]; ok {
+		return false
+	}
+	return true
 }
 
 type featureEnabledValidator struct {
@@ -47,14 +61,18 @@ func (v *featureEnabledValidator) getFeatures(ctx context.Context, site string) 
 	if v.cache[site] != nil {
 		return v.cache[site]
 	}
-	cache := make(map[string]bool)
+	cache := make(map[string]featureStatus)
 	features, err := v.client.ListFeatures(ctx, site)
 	if err != nil {
 		// Return an empty Features map instead of nil to avoid potential nil pointer dereference
 		return Features{}
 	}
 	for _, feature := range features {
-		cache[feature.Name] = feature.FeatureExists
+		if feature.FeatureExists {
+			cache[feature.Name] = featureEnabled
+		} else {
+			cache[feature.Name] = featureDisabled
+		}
 	}
 	v.cache[site] = cache
 	return v.cache[site]
@@ -66,22 +84,26 @@ func (v *featureEnabledValidator) requireFeatures(ctx context.Context, site stri
 		return diags
 	}
 
-	errorBuilder := strings.Builder{}
 	f := v.getFeatures(ctx, site)
-	disabledFeatures := make([]string, 0)
+	var unavailableFeatures, disabledFeatures []string
 	for _, feature := range features {
-		if !f.IsEnabled(feature) {
+		if f.IsUnavailable(feature) {
+			unavailableFeatures = append(unavailableFeatures, feature)
+		}
+		if f.IsDisabled(feature) {
 			disabledFeatures = append(disabledFeatures, feature)
 		}
 	}
-	if len(disabledFeatures) > 0 {
-		if attrPath != nil {
-			errorBuilder.WriteString(fmt.Sprintf("%s is not supported. ", attrPath.String()))
-		}
-		errorBuilder.WriteString(fmt.Sprintf("Features %s must be enabled, but %s are disabled", strings.Join(features, ", "), strings.Join(disabledFeatures, ", ")))
-		diags.AddError("Features not enabled", errorBuilder.String())
+	pathInfo := ""
+	if attrPath != nil {
+		pathInfo = fmt.Sprintf("%s is not supported. ", attrPath.String())
 	}
-
+	if len(unavailableFeatures) > 0 {
+		diags.AddError("Controller features not available", fmt.Sprintf("%sFeatures %s must be available on controller, but %s are not", pathInfo, strings.Join(features, ", "), strings.Join(unavailableFeatures, ", ")))
+	}
+	if len(disabledFeatures) > 0 {
+		diags.AddError("Controller features not disabled", fmt.Sprintf("%sFeatures %s must be enabled on controller, but %s are disabled", pathInfo, strings.Join(features, ", "), strings.Join(disabledFeatures, ", ")))
+	}
 	return diags
 
 }

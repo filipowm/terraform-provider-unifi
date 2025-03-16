@@ -522,6 +522,7 @@ type ipsResource struct {
 }
 
 func (r *ipsResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	resp.Diagnostics.Append(r.RequireMinVersion("7.4")...)
 	resp.Diagnostics.Append(r.RequireMinVersionForPath("9.0", path.Root("memory_optimized"), req.Config)...)
 	site, diags := r.GetClient().ResolveSiteFromConfig(ctx, req.Config)
 	if diags.HasError() {
@@ -542,7 +543,7 @@ func (r *ipsResource) ConfigValidators(_ context.Context) []resource.ConfigValid
 
 func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "The `unifi_setting_ips` resource allows you to configure the Intrusion Prevention System (IPS) settings for your UniFi network. IPS provides network threat protection by monitoring, detecting, and preventing malicious traffic based on configured rules and policies.",
+		MarkdownDescription: "The `unifi_setting_ips` resource allows you to configure the Intrusion Prevention System (IPS) settings for your UniFi network. IPS provides network threat protection by monitoring, detecting, and preventing malicious traffic based on configured rules and policies. Requires controller version 7.4 or later",
 		Attributes: map[string]schema.Attribute{
 			"id":   base.ID(),
 			"site": base.SiteAttribute(),
