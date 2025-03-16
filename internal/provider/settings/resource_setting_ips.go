@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/unifi/features"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
@@ -370,14 +371,22 @@ func (d *ipsModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	if diags.HasError() {
 		return diags
 	}
-	d.EnabledCategories = enabledCategoriesList
+	if base.IsDefined(enabledCategoriesList) {
+		d.EnabledCategories = enabledCategoriesList
+	} else {
+		d.EnabledCategories = utils.EmptyList(types.StringType)
+	}
 
 	// Handle enabled networks
 	enabledNetworksList, diags := types.ListValueFrom(ctx, types.StringType, model.EnabledNetworks)
 	if diags.HasError() {
 		return diags
 	}
-	d.EnabledNetworks = enabledNetworksList
+	if base.IsDefined(enabledNetworksList) {
+		d.EnabledNetworks = enabledNetworksList
+	} else {
+		d.EnabledNetworks = utils.EmptyList(types.StringType)
+	}
 
 	//Handle AdBlockedNetworks - extract network IDs from AdBlockingConfigurations
 	adBlockedNetworks := make([]string, 0, len(model.AdBlockingConfigurations))
@@ -512,6 +521,17 @@ type ipsResource struct {
 	*base.GenericResource[*ipsModel]
 }
 
+func (r *ipsResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	resp.Diagnostics.Append(r.RequireMinVersionForPath("9.0", path.Root("memory_optimized"), req.Config)...)
+	site, diags := r.GetClient().ResolveSiteFromConfig(ctx, req.Config)
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
+		return
+	}
+	resp.Diagnostics.Append(r.RequireFeaturesEnabled(ctx, site, features.Ips)...)
+	//resp.Diagnostics.Append(r.RequireFeaturesEnabledForPath(ctx, site, path.Root("enabled_categories"), req.Config, features.LimitIpsCategories)...)
+}
+
 func (r *ipsResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
 		validators.RequiredTogetherIf(path.MatchRoot("ips_mode"), types.StringValue("ips"), path.MatchRoot("enabled_networks")),
@@ -610,6 +630,7 @@ func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.UseStateForUnknown(),
 				},
+				//Default: utils.DefaultEmptyList(types.StringType),
 				Validators: []validator.List{
 					listvalidator.ValueStringsAre(stringvalidator.OneOf("emerging-activex", "emerging-attackresponse", "botcc", "emerging-chat", "ciarmy", "compromised", "emerging-dns", "emerging-dos", "dshield", "emerging-exploit", "emerging-ftp", "emerging-games", "emerging-icmp", "emerging-icmpinfo", "emerging-imap", "emerging-inappropriate", "emerging-info", "emerging-malware", "emerging-misc", "emerging-mobile", "emerging-netbios", "emerging-p2p", "emerging-policy", "emerging-pop3", "emerging-rpc", "emerging-scada", "emerging-scan", "emerging-shellcode", "emerging-smtp", "emerging-snmp", "emerging-sql", "emerging-telnet", "emerging-tftp", "tor", "emerging-useragent", "emerging-voip", "emerging-webapps", "emerging-webclient", "emerging-webserver", "emerging-worm", "exploit-kit", "adware-pup", "botcc-portgrouped", "phishing", "threatview-cs-c2", "3coresec", "chat", "coinminer", "current-events", "drop", "hunting", "icmp-info", "inappropriate", "info", "ja3", "policy", "scada", "dark-web-blocker-list", "malicious-hosts")),
 				},
@@ -662,7 +683,7 @@ func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 			},
 			"memory_optimized": schema.BoolAttribute{
-				MarkdownDescription: "Whether memory optimization is enabled for IPS. When set to `true`, the system will use less memory at the cost of potentially reduced detection capabilities. Useful for devices with limited resources. Defaults to `false`.",
+				MarkdownDescription: "Whether memory optimization is enabled for IPS. When set to `true`, the system will use less memory at the cost of potentially reduced detection capabilities. Useful for devices with limited resources. Defaults to `false`. Requires controller version 9.0 or later.",
 				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(false),
@@ -824,4 +845,5 @@ var (
 	_ resource.Resource                     = &ipsResource{}
 	_ resource.ResourceWithConfigure        = &ipsResource{}
 	_ resource.ResourceWithConfigValidators = &ipsResource{}
+	_ resource.ResourceWithModifyPlan       = &ipsResource{}
 )

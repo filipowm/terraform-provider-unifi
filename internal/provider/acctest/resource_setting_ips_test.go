@@ -214,7 +214,6 @@ func TestAccSettingIps_comprehensive(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ips_mode", "ids"),
-					resource.TestCheckResourceAttr("unifi_setting_ips.test", "memory_optimized", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "restrict_torrents", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "advanced_filtering_preference", "manual"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "2"),
@@ -231,25 +230,48 @@ func TestAccSettingIps_comprehensive(t *testing.T) {
 	})
 }
 
-func TestAccSettingIps_toggleFeatures(t *testing.T) {
+func TestAccSettingIps_restrictTorrents(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		Lock: settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_toggleFeaturesInitial(),
+				Config: testAccSettingIpsConfig_restrictTorrents(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
-					resource.TestCheckResourceAttr("unifi_setting_ips.test", "memory_optimized", "false"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "restrict_torrents", "true"),
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config: testAccSettingIpsConfig_toggleFeaturesUpdated(),
+				Config: testAccSettingIpsConfig_restrictTorrents(false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "restrict_torrents", "false"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_ips.test"),
+		},
+	})
+}
+
+func TestAccSettingIps_memoryOptimized(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		Lock:              settingIpsLock,
+		VersionConstraint: ">= 9.0",
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingIpsConfig_memoryOptimized(true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "memory_optimized", "true"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_ips.test"),
+			{
+				Config: testAccSettingIpsConfig_memoryOptimized(false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "memory_optimized", "false"),
-					resource.TestCheckResourceAttr("unifi_setting_ips.test", "restrict_torrents", "false"),
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
@@ -527,7 +549,6 @@ resource "unifi_network" "test" {
 
 resource "unifi_setting_ips" "test" {
   ips_mode = "ids"
-  memory_optimized = true
   restrict_torrents = true
   advanced_filtering_preference = "manual"
   
@@ -575,24 +596,22 @@ resource "unifi_setting_ips" "test" {
 `, subnet.String(), vlanId)
 }
 
-func testAccSettingIpsConfig_toggleFeaturesInitial() string {
-	return `
+func testAccSettingIpsConfig_restrictTorrents(enabled bool) string {
+	return fmt.Sprintf(`
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
   enabled_networks = ["network1"]
-  memory_optimized = false
-  restrict_torrents = true
+  restrict_torrents = %t
 }
-`
+`, enabled)
 }
 
-func testAccSettingIpsConfig_toggleFeaturesUpdated() string {
-	return `
+func testAccSettingIpsConfig_memoryOptimized(enabled bool) string {
+	return fmt.Sprintf(`
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
   enabled_networks = ["network1"]
-  memory_optimized = false
-  restrict_torrents = false
+  memory_optimized = %t
 }
-`
+`, enabled)
 }

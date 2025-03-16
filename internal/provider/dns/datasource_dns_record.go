@@ -24,7 +24,12 @@ var (
 
 type dnsRecordDatasource struct {
 	base.ControllerVersionValidator
+	base.FeatureValidator
 	client *base.Client
+}
+
+func (d *dnsRecordDatasource) SetFeatureValidator(validator base.FeatureValidator) {
+	d.FeatureValidator = validator
 }
 
 func NewDnsRecordDatasource() datasource.DataSource {
