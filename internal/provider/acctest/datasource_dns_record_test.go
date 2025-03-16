@@ -63,7 +63,7 @@ func TestDNSRecordDataSource_basic(t *testing.T) {
 }
 
 var (
-	dnsDataSourceFilterErrorRegex = regexp.MustCompile(`[filter.name,filter.record]`)
+	dnsDataSourceFilterErrorRegex = regexp.MustCompile(`[name,record]`)
 )
 
 func TestDNSRecordDataSource_errorWithoutFilter(t *testing.T) {
@@ -89,9 +89,7 @@ func testAccDnsRecordDataSourceConfig(tc dnsRecordTestCase, filterByName bool) s
 
 	return fmt.Sprintf(`
 data "unifi_dns_record" "test" {
-	filter {
-		%s
-	}
+	%s
 	depends_on = [unifi_dns_record.test]
 }`, filter)
 }
@@ -99,8 +97,5 @@ data "unifi_dns_record" "test" {
 func testAccDnsRecordDataSourceWithoutFilter() string {
 	return `
 data "unifi_dns_record" "test" {
-	filter {
-
- 	}
 }`
 }
