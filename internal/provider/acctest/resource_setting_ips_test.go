@@ -3,6 +3,7 @@ package acctest
 import (
 	"fmt"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
+	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"sync"
@@ -14,7 +15,7 @@ var settingIpsLock = &sync.Mutex{}
 
 func TestAccSettingIps_basic(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: ">= 7.4",
+		VersionConstraint: ">= 8.0",
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
@@ -45,7 +46,7 @@ func TestAccSettingIps_basic(t *testing.T) {
 
 func TestAccSettingIps_enabledCategories(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: ">= 7.4",
+		VersionConstraint: ">= 8.0",
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
@@ -75,7 +76,7 @@ func TestAccSettingIps_enabledCategories(t *testing.T) {
 
 func TestAccSettingIps_adBlocking(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: ">= 7.4",
+		VersionConstraint: ">= 8.0",
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
@@ -103,7 +104,7 @@ func TestAccSettingIps_adBlocking(t *testing.T) {
 
 func TestAccSettingIps_honeypot(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: ">= 7.4",
+		VersionConstraint: ">= 8.0",
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
@@ -140,7 +141,7 @@ func TestAccSettingIps_honeypot(t *testing.T) {
 
 func TestAccSettingIps_dnsFilters(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: ">= 7.4",
+		VersionConstraint: ">= 8.0",
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
@@ -175,7 +176,7 @@ func TestAccSettingIps_dnsFilters(t *testing.T) {
 
 func TestAccSettingIps_suppression(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: ">= 7.4",
+		VersionConstraint: ">= 8.0",
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
@@ -213,7 +214,7 @@ func TestAccSettingIps_suppression(t *testing.T) {
 
 func TestAccSettingIps_comprehensive(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: ">= 7.4",
+		VersionConstraint: ">= 8.0",
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
@@ -237,9 +238,34 @@ func TestAccSettingIps_comprehensive(t *testing.T) {
 	})
 }
 
+func TestAccSettingIps_comprehensiveBefore8(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: "< 8.0",
+		MinVersion:        version.Must(version.NewVersion("7.4")),
+		Lock:              settingIpsLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingIpsConfig_comprehensiveBefore8(t),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ips_mode", "ids"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "restrict_torrents", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "2"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ad_blocked_networks.#", "1"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "honeypots.#", "1"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "dns_filters.#", "1"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.alerts.#", "1"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.whitelist.#", "1"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_ips.test"),
+		},
+	})
+}
+
 func TestAccSettingIps_restrictTorrents(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: ">= 7.4",
+		VersionConstraint: ">= 8.0",
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
@@ -568,6 +594,59 @@ resource "unifi_setting_ips" "test" {
   enabled_networks = [
     "network1",
     "network2"
+  ]
+  
+  ad_blocked_networks = [
+    "network1"
+  ]
+  
+  honeypots = [{
+    ip_address = "192.168.1.10"
+    network_id = "network1"
+  }]
+  
+  dns_filters = [{
+    name = "Comprehensive Filter"
+    filter = "work"
+    description = "Comprehensive test filter"
+    network_id = unifi_network.test.id
+    allowed_sites = ["allowed.com"]
+    blocked_sites = ["blocked.com"]
+  }]
+  
+  suppression = {
+    alerts = [{
+      category = "emerging-dos"
+      signature = "Test Signature"
+      type = "all"
+    }]
+    whitelist = [{
+      direction = "src"
+      mode = "ip"
+      value = "192.168.1.100"
+    }]
+  }
+}
+`, subnet.String(), vlanId)
+}
+
+func testAccSettingIpsConfig_comprehensiveBefore8(t *testing.T) string {
+	subnet, vlanId := pt.GetTestVLAN(t)
+	return fmt.Sprintf(`
+resource "unifi_network" "test" {
+	name = "Test"
+	purpose = "corporate"
+	subnet = %q
+	vlan_id = %d
+}
+
+resource "unifi_setting_ips" "test" {
+  ips_mode = "ids"
+  restrict_torrents = true
+  
+  enabled_categories = [
+    "emerging-dos",
+    "emerging-exploit"
   ]
   
   ad_blocked_networks = [

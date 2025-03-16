@@ -19,9 +19,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
@@ -174,6 +174,14 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 			Alerts:    []unifi.SettingIpsAlerts{},
 			Whitelist: []unifi.SettingIpsWhitelist{},
 		},
+	}
+
+	if model.AdvancedFilteringPreference == "" {
+		if model.IPsMode != "disabled" {
+			model.AdvancedFilteringPreference = "manual"
+		} else {
+			model.AdvancedFilteringPreference = "disabled"
+		}
 	}
 
 	var enabledCategories []string
@@ -521,8 +529,15 @@ type ipsResource struct {
 	*base.GenericResource[*ipsModel]
 }
 
+func requiredTogetherIfString(ctx context.Context, config tfsdk.Config, attr, value, reqAttribute string) diag.Diagnostics {
+	v := validators.RequiredTogetherIf(path.MatchRoot(attr), types.StringValue(value), path.MatchRoot(reqAttribute))
+	return v.Validate(ctx, config)
+}
+
 func (r *ipsResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	resp.Diagnostics.Append(r.RequireMinVersion("7.4")...)
+	resp.Diagnostics.Append(r.RequireMinVersionForPath("7.5", path.Root("advanced_filtering_preference"), req.Config)...)
+	resp.Diagnostics.Append(r.RequireMinVersionForPath("8.0", path.Root("enabled_networks"), req.Config)...)
 	resp.Diagnostics.Append(r.RequireMinVersionForPath("9.0", path.Root("memory_optimized"), req.Config)...)
 	site, diags := r.GetClient().ResolveSiteFromConfig(ctx, req.Config)
 	if diags.HasError() {
@@ -530,15 +545,16 @@ func (r *ipsResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanReq
 		return
 	}
 	resp.Diagnostics.Append(r.RequireFeaturesEnabled(ctx, site, features.Ips)...)
-	//resp.Diagnostics.Append(r.RequireFeaturesEnabledForPath(ctx, site, path.Root("enabled_categories"), req.Config, features.LimitIpsCategories)...)
+
+	if r.GetClient().Version.GreaterThan(base.ControllerV8) {
+		diags.Append(requiredTogetherIfString(ctx, req.Config, "ips_mode", "ips", "enabled_networks")...)
+		diags.Append(requiredTogetherIfString(ctx, req.Config, "ips_mode", "ids", "enabled_networks")...)
+		diags.Append(requiredTogetherIfString(ctx, req.Config, "ips_mode", "ipsInline", "enabled_networks")...)
+	}
 }
 
 func (r *ipsResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
-	return []resource.ConfigValidator{
-		validators.RequiredTogetherIf(path.MatchRoot("ips_mode"), types.StringValue("ips"), path.MatchRoot("enabled_networks")),
-		validators.RequiredTogetherIf(path.MatchRoot("ips_mode"), types.StringValue("ids"), path.MatchRoot("enabled_networks")),
-		validators.RequiredTogetherIf(path.MatchRoot("ips_mode"), types.StringValue("ipsInline"), path.MatchRoot("enabled_networks")),
-	}
+	return []resource.ConfigValidator{}
 }
 
 func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -562,7 +578,6 @@ func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					"  * `manual` - Advanced filtering is enabled and manually configured",
 				Optional: true,
 				Computed: true,
-				Default:  stringdefault.StaticString("manual"),
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
