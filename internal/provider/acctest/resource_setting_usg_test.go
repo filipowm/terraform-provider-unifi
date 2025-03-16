@@ -73,7 +73,8 @@ func TestAccSettingUsg_geoIpFiltering(t *testing.T) {
 			{
 				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_geoIpFilteringBasic(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.block", "block"),
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.mode", "block"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.traffic_direction", "both"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.countries.#", "3"),
 					resource.TestCheckTypeSetElemAttr("unifi_setting_usg.test", "geo_ip_filtering.countries.*", "RU"),
@@ -85,7 +86,8 @@ func TestAccSettingUsg_geoIpFiltering(t *testing.T) {
 			{
 				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_geoIpFilteringAllow(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.block", "allow"),
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.mode", "allow"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.traffic_direction", "both"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.countries.#", "3"),
 					resource.TestCheckTypeSetElemAttr("unifi_setting_usg.test", "geo_ip_filtering.countries.*", "US"),
@@ -97,7 +99,8 @@ func TestAccSettingUsg_geoIpFiltering(t *testing.T) {
 			{
 				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_geoIpFilteringDirections(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.block", "block"),
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.mode", "block"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.traffic_direction", "ingress"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.countries.#", "2"),
 					resource.TestCheckTypeSetElemAttr("unifi_setting_usg.test", "geo_ip_filtering.countries.*", "RU"),
@@ -107,13 +110,16 @@ func TestAccSettingUsg_geoIpFiltering(t *testing.T) {
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
 				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_geoIpFilteringDisabled(),
-				Check:  resource.ComposeTestCheckFunc(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering_enabled", "false"),
+				),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
 				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_geoIpFilteringBasic(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.block", "block"),
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.mode", "block"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.traffic_direction", "both"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "geo_ip_filtering.countries.#", "3"),
 					resource.TestCheckTypeSetElemAttr("unifi_setting_usg.test", "geo_ip_filtering.countries.*", "RU"),
@@ -132,12 +138,15 @@ func TestAccSettingUsg_upnp(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_upnpBasic(),
-				Check:  resource.ComposeTestCheckFunc(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "upnp_enabled", "true"),
+				),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
 				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_upnpAdvanced(),
 				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "upnp_enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "upnp.nat_pmp_enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "upnp.secure_mode", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "upnp.wan_interface", "WAN"),
@@ -146,7 +155,9 @@ func TestAccSettingUsg_upnp(t *testing.T) {
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 			{
 				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_upnpDisabled(),
-				Check:  resource.ComposeTestCheckFunc(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_usg.test", "upnp_enabled", "false"),
+				),
 			},
 			pt.ImportStepWithSite("unifi_setting_usg.test"),
 		},
@@ -587,7 +598,7 @@ func testAccSettingUsgConfig_geoIpFilteringAllow() string {
 resource "unifi_setting_usg" "test" {
 	site = unifi_site.test.name
 	geo_ip_filtering = {
-		block = "allow"
+		mode = "allow"
 		countries = ["US", "CA", "GB"]
 	}
 }
@@ -911,7 +922,7 @@ resource "unifi_setting_usg" "test" {
 
   // Geo IP Filtering
   geo_ip_filtering = {
-    block = "block"
+    mode = "block"
     countries = ["RU", "CN"]
     traffic_direction = "both"
   }

@@ -30,15 +30,14 @@ import (
 
 // GeoIPFilteringModel represents the GeoIP filtering configuration
 type GeoIPFilteringModel struct {
-	Block            types.String `tfsdk:"block"`
+	Mode             types.String `tfsdk:"mode"`
 	Countries        types.List   `tfsdk:"countries"`
 	TrafficDirection types.String `tfsdk:"traffic_direction"`
 }
 
 func (m *GeoIPFilteringModel) AttributeTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		"enabled": types.BoolType,
-		"block":   types.StringType,
+		"mode": types.StringType,
 		"countries": types.ListType{
 			ElemType: types.StringType,
 		},
@@ -127,10 +126,12 @@ type usgModel struct {
 	MulticastDnsEnabled types.Bool `tfsdk:"multicast_dns_enabled"`
 
 	// Geo IP filtering
-	GeoIPFiltering types.Object `tfsdk:"geo_ip_filtering"`
+	GeoIPFilteringEnabled types.Bool   `tfsdk:"geo_ip_filtering_enabled"`
+	GeoIPFiltering        types.Object `tfsdk:"geo_ip_filtering"`
 
 	// UPNP configuration
-	Upnp types.Object `tfsdk:"upnp"`
+	UpnpEnabled types.Bool   `tfsdk:"upnp_enabled"`
+	Upnp        types.Object `tfsdk:"upnp"`
 
 	// ARP Cache Configuration
 	ArpCacheBaseReachable types.Int64  `tfsdk:"arp_cache_base_reachable"`
@@ -239,13 +240,13 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 			return nil, diags
 		}
 
-		model.GeoIPFilteringEnabled = true
-		model.GeoIPFilteringBlock = geoIPFiltering.Block.ValueString()
+		model.GeoIPFilteringBlock = geoIPFiltering.Mode.ValueString()
 		model.GeoIPFilteringTrafficDirection = geoIPFiltering.TrafficDirection.ValueString()
 		countries, diags := utils.ListElementsToString(ctx, geoIPFiltering.Countries)
 		if diags.HasError() {
 			return nil, diags
 		}
+		model.GeoIPFilteringEnabled = true
 		model.GeoIPFilteringCountries = countries
 	} else {
 		model.GeoIPFilteringEnabled = false
@@ -357,37 +358,45 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	d.MulticastDnsEnabled = types.BoolValue(model.MdnsEnabled)
 
 	// Set Geo IP filtering attributes
-	geoIPFiltering := &GeoIPFilteringModel{
-		Block:            types.StringValue(model.GeoIPFilteringBlock),
-		TrafficDirection: types.StringValue(model.GeoIPFilteringTrafficDirection),
+	d.GeoIPFilteringEnabled = types.BoolValue(model.GeoIPFilteringEnabled)
+	if model.GeoIPFilteringEnabled {
+		geoIPFiltering := &GeoIPFilteringModel{
+			Mode:             types.StringValue(model.GeoIPFilteringBlock),
+			TrafficDirection: types.StringValue(model.GeoIPFilteringTrafficDirection),
+		}
+
+		countries, diags := utils.StringToListElements(ctx, model.GeoIPFilteringCountries)
+		if diags.HasError() {
+			return diags
+		}
+		geoIPFiltering.Countries = countries
+
+		geoIPObject, diags := types.ObjectValueFrom(ctx, geoIPFiltering.AttributeTypes(), geoIPFiltering)
+		if diags.HasError() {
+			return diags
+		}
+		d.GeoIPFiltering = geoIPObject
+	} else {
+		d.GeoIPFiltering = types.ObjectNull((&GeoIPFilteringModel{}).AttributeTypes())
 	}
 
-	countries, diags := utils.StringToListElements(ctx, model.GeoIPFilteringCountries)
-	if diags.HasError() {
-		return diags
-	}
-	geoIPFiltering.Countries = countries
-
-	// Create object value from attributes
-	geoIPObject, diags := types.ObjectValueFrom(ctx, geoIPFiltering.AttributeTypes(), geoIPFiltering)
-	if diags.HasError() {
-		return diags
-	}
-	d.GeoIPFiltering = geoIPObject
-
+	d.UpnpEnabled = types.BoolValue(model.UpnpEnabled)
 	// Set UPNP attributes
-	upnp := &UpnpModel{
-		NatPmpEnabled: types.BoolValue(model.UpnpNATPmpEnabled),
-		SecureMode:    types.BoolValue(model.UpnpSecureMode),
-		WANInterface:  types.StringValue(model.UpnpWANInterface),
-	}
+	if model.UpnpEnabled {
+		upnp := &UpnpModel{
+			NatPmpEnabled: types.BoolValue(model.UpnpNATPmpEnabled),
+			SecureMode:    types.BoolValue(model.UpnpSecureMode),
+			WANInterface:  types.StringValue(model.UpnpWANInterface),
+		}
 
-	// Create object value from attributes
-	upnpObject, diags := types.ObjectValueFrom(ctx, upnp.AttributeTypes(), upnp)
-	if diags.HasError() {
-		return diags
+		upnpObject, diags := types.ObjectValueFrom(ctx, upnp.AttributeTypes(), upnp)
+		if diags.HasError() {
+			return diags
+		}
+		d.Upnp = upnpObject
+	} else {
+		d.Upnp = types.ObjectNull((&UpnpModel{}).AttributeTypes())
 	}
-	d.Upnp = upnpObject
 
 	// Convert DNS Verification settings
 	dnsVerificationModel := DNSVerificationModel{
@@ -596,20 +605,17 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					},
 				},
 			},
+			"geo_ip_filtering_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether Geo IP Filtering is enabled. When enabled, the gateway will apply the specified country-based ",
+				Computed:            true,
+			},
 			"geo_ip_filtering": schema.SingleNestedAttribute{
 				MarkdownDescription: "Geographic IP filtering configuration that allows blocking or allowing traffic based on country of origin. " +
 					"This feature uses IP geolocation databases to identify the country associated with IP addresses and apply filtering rules. " +
 					"Useful for implementing country-specific access policies or blocking traffic from high-risk regions. Requires controller version 7.0 or later.",
 				Optional: true,
-				Computed: true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
-				Validators: []validator.Object{
-					validators.RequiredTogetherIf(path.MatchRoot("enabled"), types.BoolValue(true), path.MatchRoot("countries")),
-				},
 				Attributes: map[string]schema.Attribute{
-					"block": schema.StringAttribute{
+					"mode": schema.StringAttribute{
 						MarkdownDescription: "Specifies whether the selected countries should be blocked or allowed. Valid values are:\n" +
 							"  * `block` (default) - Traffic from the specified countries will be blocked, while traffic from all other countries will be allowed\n" +
 							"  * `allow` - Only traffic from the specified countries will be allowed, while traffic from all other countries will be blocked\n\n" +
@@ -632,11 +638,8 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 							"  * `['US', 'CA', 'MX']` - United States, Canada, and Mexico\n" +
 							"  * `['CN', 'RU', 'IR']` - China, Russia, and Iran\n" +
 							"  * `['GB', 'DE', 'FR']` - United Kingdom, Germany, and France",
-						Optional:    true,
+						Required:    true,
 						ElementType: types.StringType,
-						PlanModifiers: []planmodifier.List{
-							listplanmodifier.UseStateForUnknown(),
-						},
 						Validators: []validator.List{
 							listvalidator.SizeAtLeast(1),
 							listvalidator.ValueStringsAre(validators.CountryCodeAlpha2()),
@@ -661,15 +664,15 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					},
 				},
 			},
+			"upnp_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether UPNP is enabled. When enabled, the gateway will automatically forward ports for UPNP-compatible devices ",
+				Computed:            true,
+			},
 			"upnp": schema.SingleNestedAttribute{
 				MarkdownDescription: "UPNP (Universal Plug and Play) configuration settings. UPNP allows compatible applications and devices to automatically " +
 					"configure port forwarding rules on the gateway without manual intervention. This is commonly used by gaming consoles, " +
 					"media servers, VoIP applications, and other network services that require incoming connections.",
 				Optional: true,
-				Computed: true,
-				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.UseStateForUnknown(),
-				},
 				Attributes: map[string]schema.Attribute{
 					"nat_pmp_enabled": schema.BoolAttribute{
 						MarkdownDescription: "Enable NAT-PMP (NAT Port Mapping Protocol) support alongside UPNP. NAT-PMP is " +
