@@ -54,7 +54,7 @@ func DataUser() *schema.Resource {
 				Computed:    true,
 			},
 			"fixed_ip": {
-				Description: "fixed IPv4 address set for this user.",
+				Description: "Fixed IPv4 address set for this user.",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
@@ -123,18 +123,18 @@ func dataUserRead(ctx context.Context, d *schema.ResourceData, meta interface{})
 		localDnsRecord = resp.LocalDNSRecord
 	}
 	d.SetId(resp.ID)
-	d.Set("site", site)
-	d.Set("mac", resp.MAC)
-	d.Set("name", resp.Name)
-	d.Set("user_group_id", resp.UserGroupID)
-	d.Set("note", resp.Note)
-	d.Set("fixed_ip", fixedIP)
-	d.Set("network_id", resp.NetworkID)
 	d.Set("blocked", resp.Blocked)
 	d.Set("dev_id_override", resp.DevIdOverride)
+	d.Set("fixed_ip", fixedIP)
 	d.Set("hostname", resp.Hostname)
 	d.Set("ip", resp.IP)
-	d.Set("ip", localDnsRecord)
+	d.Set("local_dns_record", localDnsRecord)
+	d.Set("mac", resp.MAC)
+	d.Set("name", resp.Name)
+	d.Set("network_id", resp.NetworkID)
+	d.Set("note", resp.Note)
+	d.Set("site", site)
+	d.Set("user_group_id", resp.UserGroupID)
 
 	return nil
 }

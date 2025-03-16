@@ -66,7 +66,7 @@ var (
 	dnsDataSourceFilterErrorRegex = regexp.MustCompile(`[filter.name,filter.record]`)
 )
 
-func TestDNSRecordDataSource_failWithoutFilter(t *testing.T) {
+func TestDNSRecordDataSource_errorWithoutFilter(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		MinVersion: base.ControllerVersionDnsRecords,
 
