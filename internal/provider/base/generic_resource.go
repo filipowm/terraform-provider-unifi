@@ -19,6 +19,7 @@ type ResourceFunctions struct {
 // GenericResource provides common functionality for all resources
 type GenericResource[T ResourceModel] struct {
 	ControllerVersionValidator
+	FeatureValidator
 	client       *Client
 	typeName     string
 	modelFactory func() T
@@ -50,6 +51,10 @@ func (b *GenericResource[T]) SetClient(client *Client) {
 
 func (b *GenericResource[T]) SetVersionValidator(validator ControllerVersionValidator) {
 	b.ControllerVersionValidator = validator
+}
+
+func (b *GenericResource[T]) SetFeatureValidator(validator FeatureValidator) {
+	b.FeatureValidator = validator
 }
 
 func (b *GenericResource[T]) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {

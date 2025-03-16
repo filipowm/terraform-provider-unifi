@@ -107,7 +107,8 @@ func TestAccSettingMgmt_fullConfig(t *testing.T) {
 
 func TestAccSettingMgmt_update(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: &settingMgmtLock,
+		VersionConstraint: ">= 7.0",
+		Lock:              &settingMgmtLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingMgmtConfig_initialConfig(),
@@ -155,7 +156,8 @@ func TestAccSettingMgmt_sshCredentials(t *testing.T) {
 
 func TestAccSettingMgmt_cornerCases(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: &settingMgmtLock,
+		VersionConstraint: ">= 7.0",
+		Lock:              &settingMgmtLock,
 		Steps: []resource.TestStep{
 			{
 				// Initial configuration with specific values

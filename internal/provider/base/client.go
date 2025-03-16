@@ -1,11 +1,15 @@
 package base
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"log"
 	"net"
 	"net/http"
@@ -23,7 +27,7 @@ type ClientConfig struct {
 }
 
 func NewClient(cfg *ClientConfig) (*Client, error) {
-	unifiClient, err := unifi.NewClient(&unifi.ClientConfig{
+	config := &unifi.ClientConfig{
 		URL:                      cfg.Url,
 		User:                     cfg.Username,
 		Password:                 cfg.Password,
@@ -31,7 +35,15 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		HttpRoundTripperProvider: cfg.HttpConfigurer,
 		ValidationMode:           unifi.DisableValidation,
 		Logger:                   unifi.NewDefaultLogger(unifi.WarnLevel),
-	})
+	}
+	if cfg.Username != "" && cfg.Password != "" {
+		config.User = cfg.Username
+		config.Password = cfg.Password
+		config.RememberMe = true
+	} else {
+		config.APIKey = cfg.ApiKey
+	}
+	unifiClient, err := unifi.NewClient(config)
 
 	if err != nil {
 		return nil, err
@@ -63,6 +75,18 @@ func (c *Client) ResolveSite(res SiteAware) string {
 		return c.Site
 	}
 	return res.GetSite()
+}
+
+func (c *Client) ResolveSiteFromConfig(ctx context.Context, config tfsdk.Config) (string, diag.Diagnostics) {
+	var site types.String
+	diags := config.GetAttribute(ctx, path.Root("site"), &site)
+	if diags.HasError() {
+		return "", diags
+	}
+	if IsEmptyString(site) {
+		return c.Site, diags
+	}
+	return site.ValueString(), diags
 }
 
 func CreateHttpTransport(insecure bool) http.RoundTripper {

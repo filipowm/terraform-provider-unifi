@@ -19,6 +19,7 @@ func AsVersion(versionString string) *version.Version {
 var (
 	ControllerV6                = AsVersion("6.0.0")
 	ControllerV7                = AsVersion("7.0.0")
+	ControllerV8                = AsVersion("8.0.0")
 	ControllerV9                = AsVersion("9.0.0")
 	ControllerVersionApiKeyAuth = AsVersion("9.0.108")
 	// https://community.ui.com/releases/UniFi-Network-Application-8-2-93/fce86dc6-897a-4944-9c53-1eec7e37e738

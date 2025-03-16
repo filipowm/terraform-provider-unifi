@@ -25,6 +25,7 @@ type Identifiable interface {
 type Resource interface {
 	SetClient(client *Client)
 	SetVersionValidator(validator ControllerVersionValidator)
+	SetFeatureValidator(validator FeatureValidator)
 }
 
 // ResourceModel defines the interface that all setting models must implement
@@ -33,6 +34,12 @@ type ResourceModel interface {
 	SiteAware
 	Merge(context.Context, interface{}) diag.Diagnostics
 	AsUnifiModel(context.Context) (interface{}, diag.Diagnostics)
+}
+
+// ResourceModel defines the interface that all setting models must implement
+type DatasourceModel interface {
+	SiteAware
+	Merge(context.Context, interface{}) diag.Diagnostics
 }
 
 type Model struct {
@@ -80,6 +87,7 @@ func ConfigureDatasource(base Resource, req datasource.ConfigureRequest, resp *d
 	}
 	base.SetClient(cfg)
 	base.SetVersionValidator(NewControllerVersionValidator(cfg))
+	base.SetFeatureValidator(NewFeatureValidator(cfg))
 }
 
 func ConfigureResource(base Resource, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -98,4 +106,5 @@ func ConfigureResource(base Resource, req resource.ConfigureRequest, resp *resou
 	}
 	base.SetClient(cfg)
 	base.SetVersionValidator(NewControllerVersionValidator(cfg))
+	base.SetFeatureValidator(NewFeatureValidator(cfg))
 }
