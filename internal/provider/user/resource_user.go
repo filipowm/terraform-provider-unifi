@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
+// TODO add validation: api.err.LocalDnsRecordRequiresFixedIp
 func ResourceUser() *schema.Resource {
 	return &schema.Resource{
 		Description: "The `unifi_user` resource manages network clients in the UniFi controller, which are identified by their unique MAC addresses.\n\n" +
