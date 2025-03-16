@@ -282,6 +282,8 @@ github.com/filipowm/go-unifi v1.5.3 h1:9e+V5xzgDtQ6ZmQvIiz8sCuwcDyM06nzbhBQxzvPB
 github.com/filipowm/go-unifi v1.5.3/go.mod h1:NQgqx3ylLVDqxVgY3uJ3ZMIecSl46fvqCCXzwHRuVDc=
 github.com/filipowm/go-unifi v1.5.4 h1:kc1jWx0Rht+tiEyFsDjPAYJ6h2EV+Atq7eIoTA6fH0Y=
 github.com/filipowm/go-unifi v1.5.4/go.mod h1:NQgqx3ylLVDqxVgY3uJ3ZMIecSl46fvqCCXzwHRuVDc=
+github.com/filipowm/go-unifi v1.6.0 h1:0oLOrsLWcaU8sUsyMyjyGwaAWNC9Ee4YZ1ehtijXahg=
+github.com/filipowm/go-unifi v1.6.0/go.mod h1:hB5XyhjtnnU9GC6lYPYxuNmYq4J/SyjmElRVazCKT0U=
 github.com/firefart/nonamedreturns v1.0.5 h1:tM+Me2ZaXs8tfdDw3X6DOX++wMCOqzYUho6tUTYIdRA=
 github.com/firefart/nonamedreturns v1.0.5/go.mod h1:gHJjDqhGM4WyPt639SOZs+G89Ko7QKH5R5BhnO6xJhw=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=

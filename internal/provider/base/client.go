@@ -27,7 +27,7 @@ type ClientConfig struct {
 }
 
 func NewClient(cfg *ClientConfig) (*Client, error) {
-	unifiClient, err := unifi.NewClient(&unifi.ClientConfig{
+	config := &unifi.ClientConfig{
 		URL:                      cfg.Url,
 		User:                     cfg.Username,
 		Password:                 cfg.Password,
@@ -35,7 +35,15 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		HttpRoundTripperProvider: cfg.HttpConfigurer,
 		ValidationMode:           unifi.DisableValidation,
 		Logger:                   unifi.NewDefaultLogger(unifi.WarnLevel),
-	})
+	}
+	if cfg.Username != "" && cfg.Password != "" {
+		config.User = cfg.Username
+		config.Password = cfg.Password
+		config.RememberMe = true
+	} else {
+		config.APIKey = cfg.ApiKey
+	}
+	unifiClient, err := unifi.NewClient(config)
 
 	if err != nil {
 		return nil, err
