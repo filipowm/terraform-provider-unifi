@@ -195,6 +195,7 @@ type mgmtResource struct {
 }
 
 func (r *mgmtResource) ModifyPlan(_ context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	resp.Diagnostics.Append(r.RequireMinVersionForPath("7.0", path.Root("auto_upgrade_hour"), req.Config)...)
 	resp.Diagnostics.Append(r.RequireMinVersionForPath("7.3", path.Root("debug_tools_enabled"), req.Config)...)
 }
 
