@@ -4,8 +4,11 @@ import (
 	"context"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -23,11 +26,6 @@ type dnsRecordModel struct {
 	Type     types.String `tfsdk:"type"`
 	TTL      types.Int32  `tfsdk:"ttl"`
 	Weight   types.Int32  `tfsdk:"weight"`
-}
-
-type dnsRecordDatasourceModel struct {
-	dnsRecordModel
-	Filter *dnsRecordFilterModel `tfsdk:"filter"`
 }
 
 type dnsRecordsDatasourceModel struct {
@@ -52,11 +50,19 @@ var dnsRecordDatasourceAttributes = map[string]schema.Attribute{
 	"site": base.SiteAttribute(),
 	"name": schema.StringAttribute{
 		Description: "DNS record name.",
+		Optional:    true,
 		Computed:    true,
+		Validators: []validator.String{
+			stringvalidator.ConflictsWith(path.MatchRoot("record")),
+		},
 	},
 	"record": schema.StringAttribute{
 		Description: "DNS record content.",
+		Optional:    true,
 		Computed:    true,
+		Validators: []validator.String{
+			stringvalidator.ConflictsWith(path.MatchRoot("name")),
+		},
 	},
 	"enabled": schema.BoolAttribute{
 		Description: "Whether the DNS record is enabled.",
@@ -84,12 +90,7 @@ var dnsRecordDatasourceAttributes = map[string]schema.Attribute{
 	},
 }
 
-type dnsRecordFilterModel struct {
-	Name   types.String `tfsdk:"name"`
-	Record types.String `tfsdk:"record"`
-}
-
-func (d *dnsRecordModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnostics) {
+func (d *dnsRecordModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
 	return &unifi.DNSRecord{
 		ID:         d.ID.ValueString(),
 		Key:        d.Name.ValueString(),
@@ -103,7 +104,7 @@ func (d *dnsRecordModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Di
 	}, diag.Diagnostics{}
 }
 
-func (d *dnsRecordModel) Merge(ctx context.Context, i interface{}) diag.Diagnostics {
+func (d *dnsRecordModel) Merge(_ context.Context, i interface{}) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 	other, ok := i.(*unifi.DNSRecord)
 	if !ok {
