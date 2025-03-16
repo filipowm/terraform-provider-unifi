@@ -30,7 +30,6 @@ import (
 
 // GeoIPFilteringModel represents the GeoIP filtering configuration
 type GeoIPFilteringModel struct {
-	Enabled          types.Bool   `tfsdk:"enabled"`
 	Block            types.String `tfsdk:"block"`
 	Countries        types.List   `tfsdk:"countries"`
 	TrafficDirection types.String `tfsdk:"traffic_direction"`
@@ -49,7 +48,6 @@ func (m *GeoIPFilteringModel) AttributeTypes() map[string]attr.Type {
 
 // UpnpModel represents the UPNP configuration
 type UpnpModel struct {
-	Enabled       types.Bool   `tfsdk:"enabled"`
 	NatPmpEnabled types.Bool   `tfsdk:"nat_pmp_enabled"`
 	SecureMode    types.Bool   `tfsdk:"secure_mode"`
 	WANInterface  types.String `tfsdk:"wan_interface"`
@@ -57,7 +55,6 @@ type UpnpModel struct {
 
 func (m *UpnpModel) AttributeTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		"enabled":         types.BoolType,
 		"nat_pmp_enabled": types.BoolType,
 		"secure_mode":     types.BoolType,
 		"wan_interface":   types.StringType,
@@ -242,7 +239,7 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 			return nil, diags
 		}
 
-		model.GeoIPFilteringEnabled = geoIPFiltering.Enabled.ValueBool()
+		model.GeoIPFilteringEnabled = true
 		model.GeoIPFilteringBlock = geoIPFiltering.Block.ValueString()
 		model.GeoIPFilteringTrafficDirection = geoIPFiltering.TrafficDirection.ValueString()
 		countries, diags := utils.ListElementsToString(ctx, geoIPFiltering.Countries)
@@ -262,7 +259,7 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 			return nil, diags
 		}
 
-		model.UpnpEnabled = upnp.Enabled.ValueBool()
+		model.UpnpEnabled = true
 		model.UpnpNATPmpEnabled = upnp.NatPmpEnabled.ValueBool()
 		model.UpnpSecureMode = upnp.SecureMode.ValueBool()
 		model.UpnpWANInterface = upnp.WANInterface.ValueString()
@@ -361,7 +358,6 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 
 	// Set Geo IP filtering attributes
 	geoIPFiltering := &GeoIPFilteringModel{
-		Enabled:          types.BoolValue(model.GeoIPFilteringEnabled),
 		Block:            types.StringValue(model.GeoIPFilteringBlock),
 		TrafficDirection: types.StringValue(model.GeoIPFilteringTrafficDirection),
 	}
@@ -381,7 +377,6 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 
 	// Set UPNP attributes
 	upnp := &UpnpModel{
-		Enabled:       types.BoolValue(model.UpnpEnabled),
 		NatPmpEnabled: types.BoolValue(model.UpnpNATPmpEnabled),
 		SecureMode:    types.BoolValue(model.UpnpSecureMode),
 		WANInterface:  types.StringValue(model.UpnpWANInterface),
@@ -614,12 +609,6 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					validators.RequiredTogetherIf(path.MatchRoot("enabled"), types.BoolValue(true), path.MatchRoot("countries")),
 				},
 				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable geographic IP filtering. When enabled, traffic from specified countries will be blocked or allowed " +
-							"according to the configured rules. When set to `true`, you must also specify the `countries` list. " +
-							"Setting this to `false` disables all country-based filtering regardless of other settings.",
-						Required: true,
-					},
 					"block": schema.StringAttribute{
 						MarkdownDescription: "Specifies whether the selected countries should be blocked or allowed. Valid values are:\n" +
 							"  * `block` (default) - Traffic from the specified countries will be blocked, while traffic from all other countries will be allowed\n" +
@@ -682,12 +671,6 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					objectplanmodifier.UseStateForUnknown(),
 				},
 				Attributes: map[string]schema.Attribute{
-					"enabled": schema.BoolAttribute{
-						MarkdownDescription: "Enable UPNP functionality. When enabled, applications and devices on the local network can automatically " +
-							"request port forwarding rules from the gateway without manual configuration. This simplifies the use of applications " +
-							"that require inbound connections, but may present security risks if not properly configured with `secure_mode`.",
-						Required: true,
-					},
 					"nat_pmp_enabled": schema.BoolAttribute{
 						MarkdownDescription: "Enable NAT-PMP (NAT Port Mapping Protocol) support alongside UPNP. NAT-PMP is " +
 							"Apple's alternative to UPNP, providing similar automatic port mapping capabilities. When enabled, Apple devices " +
