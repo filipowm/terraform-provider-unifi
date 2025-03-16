@@ -13,6 +13,7 @@ import (
 )
 
 // TODO add validation: api.err.LocalDnsRecordRequiresFixedIp
+// TODO require v7.3+ for local dns record
 func ResourceUser() *schema.Resource {
 	return &schema.Resource{
 		Description: "The `unifi_user` resource manages network clients in the UniFi controller, which are identified by their unique MAC addresses.\n\n" +

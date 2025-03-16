@@ -63,6 +63,7 @@ func TestAccDataUser_localDnsRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: ">= 7.3",
 		PreCheck: func() {
 			_, err = testClient.CreateUser(ctx, "default", &unifi.User{
 				MAC:                   mac,
@@ -70,7 +71,7 @@ func TestAccDataUser_localDnsRecord(t *testing.T) {
 				UseFixedIP:            true,
 				NetworkID:             n[0].ID,
 				FixedIP:               ip.String(),
-				LocalDNSRecord:        "myuser.local",
+				LocalDNSRecord:        "myuser.example.com",
 				LocalDNSRecordEnabled: true,
 				Note:                  name,
 			})
@@ -85,7 +86,7 @@ func TestAccDataUser_localDnsRecord(t *testing.T) {
 					resource.TestCheckResourceAttrSet("data.unifi_user.test", "id"),
 					resource.TestCheckResourceAttr("data.unifi_user.test", "mac", mac),
 					resource.TestCheckResourceAttr("data.unifi_user.test", "name", name),
-					resource.TestCheckResourceAttr("data.unifi_user.test", "local_dns_record", "myuser.local"),
+					resource.TestCheckResourceAttr("data.unifi_user.test", "local_dns_record", "myuser.example.com"),
 					resource.TestCheckResourceAttr("data.unifi_user.test", "fixed_ip", ip.String()),
 				),
 			},
