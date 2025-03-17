@@ -84,8 +84,8 @@ type guestAccessModel struct {
 	VoucherCustomized types.Bool `tfsdk:"voucher_customized"`
 	VoucherEnabled    types.Bool `tfsdk:"voucher_enabled"`
 
-	//WechatEnabled types.Bool   `tfsdk:"wechat_enabled"`
-	//Wechat        types.Object `tfsdk:"wechat"`
+	WechatEnabled types.Bool   `tfsdk:"wechat_enabled"`
+	Wechat        types.Object `tfsdk:"wechat"`
 }
 
 type portalCustomizationModel struct {
@@ -416,6 +416,21 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.RADIUSEnabled = false
 	}
 
+	if base.IsDefined(d.Wechat) {
+		var wechat *wechatModel
+		diags.Append(d.Wechat.As(ctx, &wechat, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		model.WechatEnabled = true
+		model.WechatAppID = wechat.AppID.ValueString()
+		model.XWechatAppSecret = wechat.AppSecret.ValueString()
+		model.WechatShopID = wechat.ShopID.ValueString()
+		model.XWechatSecretKey = wechat.SecretKey.ValueString()
+	} else {
+		model.WechatEnabled = false
+	}
+
 	return model, diags
 }
 
@@ -649,7 +664,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 			ClientID:     types.StringValue(model.GoogleClientID),
 			ClientSecret: types.StringValue(model.XGoogleClientSecret),
 			Domain:       types.StringValue(model.GoogleDomain),
-			ScopeEmail:   types.BoolValue(model.FacebookScopeEmail),
+			ScopeEmail:   types.BoolValue(model.GoogleScopeEmail),
 		}
 		d.Google, diags = types.ObjectValueFrom(ctx, google.AttributeTypes(), google)
 		if diags.HasError() {
@@ -670,6 +685,24 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 			ProfileID:         types.StringValue(model.RADIUSProfileID),
 		}
 		d.Radius, diags = types.ObjectValueFrom(ctx, radius.AttributeTypes(), radius)
+		if diags.HasError() {
+			return diags
+		}
+	}
+
+	d.WechatEnabled = types.BoolValue(model.WechatEnabled)
+	d.Wechat, diags = base.ObjectNull(&wechatModel{})
+	if diags.HasError() {
+		return diags
+	}
+	if model.WechatEnabled {
+		wechat := &wechatModel{
+			AppID:     types.StringValue(model.WechatAppID),
+			AppSecret: types.StringValue(model.XWechatAppSecret),
+			ShopID:    types.StringValue(model.WechatShopID),
+			SecretKey: types.StringValue(model.XWechatSecretKey),
+		}
+		d.Wechat, diags = types.ObjectValueFrom(ctx, wechat.AttributeTypes(), wechat)
 		if diags.HasError() {
 			return diags
 		}
@@ -1381,34 +1414,34 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Computed:            true,
 				Default:             booldefault.StaticBool(false),
 			},
-			//"wechat_enabled": schema.BoolAttribute{
-			//	MarkdownDescription: "Whether WeChat authentication for guest access is enabled.",
-			//	Computed:            true,
-			//},
-			//"wechat": schema.SingleNestedAttribute{
-			//	MarkdownDescription: "WeChat authentication settings.",
-			//	Optional:            true,
-			//	Attributes: map[string]schema.Attribute{
-			//		"app_id": schema.StringAttribute{
-			//			MarkdownDescription: "WeChat App ID for social authentication.",
-			//			Required:            true,
-			//		},
-			//		"app_secret": schema.StringAttribute{
-			//			MarkdownDescription: "WeChat App secret.",
-			//			Required:            true,
-			//			Sensitive:           true,
-			//		},
-			//		"secret_key": schema.StringAttribute{
-			//			MarkdownDescription: "WeChat secret key.",
-			//			Required:            true,
-			//			Sensitive:           true,
-			//		},
-			//		"shop_id": schema.StringAttribute{
-			//			MarkdownDescription: "WeChat Shop ID for payments.",
-			//			Optional:            true,
-			//		},
-			//	},
-			//},
+			"wechat_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether WeChat authentication for guest access is enabled.",
+				Computed:            true,
+			},
+			"wechat": schema.SingleNestedAttribute{
+				MarkdownDescription: "WeChat authentication settings.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"app_id": schema.StringAttribute{
+						MarkdownDescription: "WeChat App ID for social authentication.",
+						Required:            true,
+					},
+					"app_secret": schema.StringAttribute{
+						MarkdownDescription: "WeChat App secret.",
+						Required:            true,
+						Sensitive:           true,
+					},
+					"secret_key": schema.StringAttribute{
+						MarkdownDescription: "WeChat secret key.",
+						Required:            true,
+						Sensitive:           true,
+					},
+					"shop_id": schema.StringAttribute{
+						MarkdownDescription: "WeChat Shop ID for payments.",
+						Optional:            true,
+					},
+				},
+			},
 		},
 	}
 }

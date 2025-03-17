@@ -726,6 +726,45 @@ func TestAccSettingGuestAccess_radius(t *testing.T) {
 	})
 }
 
+func TestAccSettingGuestAccess_wechat(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		Lock: settingGuestAccessLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingGuestAccessConfig_wechat("wechat-app-id", "wechat-app-secret", "wechat-secret-key", "wechat-shop-id"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.app_id", "wechat-app-id"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.app_secret", "wechat-app-secret"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.secret_key", "wechat-secret-key"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.shop_id", "wechat-shop-id"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
+			{
+				Config: testAccSettingGuestAccessConfig_wechat("updated-app-id", "updated-app-secret", "updated-secret-key", ""),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.app_id", "updated-app-id"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.app_secret", "updated-app-secret"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.secret_key", "updated-secret-key"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.shop_id", ""),
+				),
+			},
+			{
+				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat_enabled", "false"),
+					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "wechat"),
+				),
+			},
+		},
+	})
+}
+
 func testAccSettingGuestAccessConfig_basic() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
@@ -1025,4 +1064,23 @@ resource "unifi_setting_guest_access" "test" {
   }
 }
 `, authType, profileId, disconnectEnabled, disconnectPort)
+}
+
+func testAccSettingGuestAccessConfig_wechat(appId, appSecret, secretKey, shopId string) string {
+	shopIdConfig := ""
+	if shopId != "" {
+		shopIdConfig = fmt.Sprintf("    shop_id      = %q", shopId)
+	}
+
+	return fmt.Sprintf(`
+resource "unifi_setting_guest_access" "test" {
+  auth = "hotspot"
+  wechat = {
+    app_id       = %q
+    app_secret   = %q
+    secret_key   = %q
+%s
+  }
+}
+`, appId, appSecret, secretKey, shopIdConfig)
 }
