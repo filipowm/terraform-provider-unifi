@@ -549,6 +549,67 @@ func TestAccSettingGuestAccess_paymentSwitchGateways(t *testing.T) {
 	})
 }
 
+func TestAccSettingGuestAccess_redirectToggleOptions(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		Lock: settingGuestAccessLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingGuestAccessConfig_redirect("https://example.com", true, true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.use_https", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.to_https", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.url", "https://example.com"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
+			{
+				Config: testAccSettingGuestAccessConfig_redirect("https://updated-example.com", true, true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.use_https", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.to_https", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.url", "https://updated-example.com"),
+				),
+			},
+			{
+				Config: testAccSettingGuestAccessConfig_redirect("https://example.com", false, true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.use_https", "false"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.to_https", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.url", "https://example.com"),
+				),
+			},
+			{
+				Config: testAccSettingGuestAccessConfig_redirect("https://example.com", true, false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.use_https", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.to_https", "false"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.url", "https://example.com"),
+				),
+			},
+			{
+				Config: testAccSettingGuestAccessConfig_redirect("https://example.com", false, false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.use_https", "false"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.to_https", "false"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.url", "https://example.com"),
+				),
+			},
+			{
+				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect_enabled", "false"),
+					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "redirect"),
+				),
+			},
+		},
+	})
+}
+
 func testAccSettingGuestAccessConfig_basic() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
@@ -801,4 +862,17 @@ resource "unifi_setting_guest_access" "test" {
   }
 }
 `, useSandbox)
+}
+
+func testAccSettingGuestAccessConfig_redirect(url string, useHttps bool, toHttps bool) string {
+	return fmt.Sprintf(`
+resource "unifi_setting_guest_access" "test" {
+  auth = "hotspot"
+  redirect = {
+    url       = %q
+    use_https = %t
+    to_https  = %t
+  }
+}
+`, url, useHttps, toHttps)
 }

@@ -70,8 +70,8 @@ type guestAccessModel struct {
 	//RadiusEnabled types.Bool   `tfsdk:"radius_enabled"`
 	//Radius        types.Object `tfsdk:"radius"`
 
-	//RedirectEnabled types.Bool   `tfsdk:"redirect_enabled"`
-	//Redirect        types.Object `tfsdk:"redirect"`
+	RedirectEnabled types.Bool   `tfsdk:"redirect_enabled"`
+	Redirect        types.Object `tfsdk:"redirect"`
 
 	//RestrictedDNSEnabled types.Bool   `tfsdk:"restricted_dns_enabled"`
 	//RestrictedDNSServers types.List   `tfsdk:"restricted_dns_servers"`
@@ -259,16 +259,16 @@ func (m *radiusModel) AttributeTypes() map[string]attr.Type {
 }
 
 type redirectModel struct {
-	Https   types.Bool   `tfsdk:"https"`
-	ToHttps types.Bool   `tfsdk:"to_https"`
-	Url     types.String `tfsdk:"url"`
+	UseHttps types.Bool   `tfsdk:"use_https"`
+	ToHttps  types.Bool   `tfsdk:"to_https"`
+	Url      types.String `tfsdk:"url"`
 }
 
 func (m *redirectModel) AttributeTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		"https":    types.BoolType,
-		"to_https": types.BoolType,
-		"url":      types.StringType,
+		"use_https": types.BoolType,
+		"to_https":  types.BoolType,
+		"url":       types.StringType,
 	}
 }
 
@@ -354,7 +354,23 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.PasswordEnabled = true
 		model.XPassword = d.Password.ValueString()
 	}
-	d.paymentAsUnifiModel(ctx, model)
+	diags = d.paymentAsUnifiModel(ctx, model)
+	if diags.HasError() {
+		return nil, diags
+	}
+	if base.IsDefined(d.Redirect) {
+		var redirect *redirectModel
+		diags.Append(d.Redirect.As(ctx, &redirect, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		model.RedirectEnabled = true
+		model.RedirectUrl = redirect.Url.ValueString()
+		model.RedirectToHttps = redirect.ToHttps.ValueBool()
+		model.RedirectHttps = redirect.UseHttps.ValueBool()
+	} else {
+		model.RedirectEnabled = false
+	}
 
 	return model, diags
 }
@@ -491,7 +507,7 @@ func (d *guestAccessModel) mergePaymentModel(ctx context.Context, model *unifi.S
 }
 
 func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
+	diags := diag.Diagnostics{}
 
 	model, ok := unifiModel.(*unifi.SettingGuestAccess)
 	if !ok {
@@ -543,6 +559,23 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 		d.Password = types.StringValue(model.XPassword)
 	} else {
 		d.Password = types.StringNull()
+	}
+
+	d.RedirectEnabled = types.BoolValue(model.RedirectEnabled)
+	d.Redirect, diags = base.ObjectNull(&redirectModel{})
+	if diags.HasError() {
+		return diags
+	}
+	if model.RedirectEnabled {
+		redirect := &redirectModel{
+			UseHttps: types.BoolValue(model.RedirectHttps),
+			ToHttps:  types.BoolValue(model.RedirectToHttps),
+			Url:      types.StringValue(model.RedirectUrl),
+		}
+		d.Redirect, diags = types.ObjectValueFrom(ctx, redirect.AttributeTypes(), redirect)
+		if diags.HasError() {
+			return diags
+		}
 	}
 
 	d.PortalEnabled = types.BoolValue(model.PortalEnabled)
@@ -1174,29 +1207,35 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 			//	Optional:            true,
 			//	Computed:            true,
 			//},
-			//"redirect_enabled": schema.BoolAttribute{
-			//	MarkdownDescription: "Enable redirect after authentication.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//},
-			//"redirect_https": schema.BoolAttribute{
-			//	MarkdownDescription: "Use HTTPS for the redirect URL.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//},
-			//"redirect_to_https": schema.BoolAttribute{
-			//	MarkdownDescription: "Redirect HTTP requests to HTTPS.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//},
-			//"redirect_url": schema.StringAttribute{
-			//	MarkdownDescription: "URL to redirect to after authentication. Must be a valid URL.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//	Validators: []validator.String{
-			//		validators.URL(),
-			//	},
-			//},
+			"redirect_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether redirect after authentication is enabled.",
+				Computed:            true,
+			},
+			"redirect": schema.SingleNestedAttribute{
+				MarkdownDescription: "Redirect after authentication settings.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"use_https": schema.BoolAttribute{
+						MarkdownDescription: "Use HTTPS for the redirect URL.",
+						Optional:            true,
+						Computed:            true,
+						Default:             booldefault.StaticBool(true),
+					},
+					"to_https": schema.BoolAttribute{
+						MarkdownDescription: "Redirect HTTP requests to HTTPS.",
+						Optional:            true,
+						Computed:            true,
+						Default:             booldefault.StaticBool(true),
+					},
+					"url": schema.StringAttribute{
+						MarkdownDescription: "URL to redirect to after authentication. Must be a valid URL.",
+						Required:            true,
+						Validators: []validator.String{
+							validators.URL(),
+						},
+					},
+				},
+			},
 			//"restricted_dns_enabled": schema.BoolAttribute{
 			//	MarkdownDescription: "Enable restricted DNS servers for guest networks.",
 			//	Optional:            true,
