@@ -12,7 +12,6 @@ import (
 
 var settingGuestAccessLock = &sync.Mutex{}
 
-// TODO move to here
 func TestAccSettingGuestAccess_basic(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		Lock: settingGuestAccessLock,
@@ -22,10 +21,32 @@ func TestAccSettingGuestAccess_basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_use_hostname", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_hostname", "guest.example.com"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "template_engine", "angular"),
+
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire", "60"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_number", "1"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_unit", "60"),
+
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "ec_enabled", "true"),
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
+			{
+				Config: testAccSettingGuestAccessConfig_basicUpdated(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_enabled", "false"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "template_engine", "jsp"),
+
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire", "1440"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_number", "1"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_unit", "1440"),
+
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "ec_enabled", "false"),
+				),
+			},
 		},
 	})
 }
@@ -59,54 +80,6 @@ func TestAccSettingGuestAccess_customAuth(t *testing.T) {
 	})
 }
 
-// TODO move
-func TestAccSettingGuestAccess_ecEnabled(t *testing.T) {
-	t.Skip()
-	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGuestAccessLock,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccSettingGuestAccessConfig_ecEnabled(true),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "ec_enabled", "true"),
-				),
-			},
-			{
-				Config: testAccSettingGuestAccessConfig_ecEnabled(false),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "ec_enabled", "false"),
-				),
-			},
-		},
-	})
-}
-
-// TODO move
-func TestAccSettingGuestAccess_expiration(t *testing.T) {
-	t.Skip()
-	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGuestAccessLock,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccSettingGuestAccessConfig_expiration(60, 1, 60),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire", "60"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_number", "1"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_unit", "60"),
-				),
-			},
-			{
-				Config: testAccSettingGuestAccessConfig_expiration(1440, 1, 1440),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire", "1440"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_number", "1"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_unit", "1440"),
-				),
-			},
-		},
-	})
-}
-
 func TestAccSettingGuestAccess_password(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		Lock: settingGuestAccessLock,
@@ -132,52 +105,6 @@ func TestAccSettingGuestAccess_password(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "password_enabled", "false"),
-				),
-			},
-		},
-	})
-}
-
-// TODO move
-func TestAccSettingGuestAccess_portal(t *testing.T) {
-	t.Skip()
-	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGuestAccessLock,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccSettingGuestAccessConfig_portal(),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_enabled", "true"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_use_hostname", "true"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_hostname", "guest.example.com"),
-				),
-			},
-			{
-				Config: testAccSettingGuestAccessConfig_portalDisabled(),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_enabled", "false"),
-				),
-			},
-		},
-	})
-}
-
-// TODO move
-func TestAccSettingGuestAccess_templateEngine(t *testing.T) {
-	t.Skip()
-	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGuestAccessLock,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccSettingGuestAccessConfig_templateEngine("angular"),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "template_engine", "angular"),
-				),
-			},
-			{
-				Config: testAccSettingGuestAccessConfig_templateEngine("jsp"),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "template_engine", "jsp"),
 				),
 			},
 		},
@@ -232,48 +159,6 @@ func TestAccSettingGuestAccess_allowedSubnet(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "allowed_subnet", "10.0.0.0/24"),
 				),
 			},
-		},
-	})
-}
-
-func TestAccSettingGuestAccess_comprehensive(t *testing.T) {
-	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGuestAccessLock,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccSettingGuestAccessConfig_comprehensive(),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
-					//resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "allowed_subnet", "192.168.1.0/24"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "ec_enabled", "true"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire", "60"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_number", "1"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_unit", "60"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "password", "guestpassword"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_enabled", "true"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_use_hostname", "true"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_hostname", "guest.example.com"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "template_engine", "angular"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "voucher_enabled", "true"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "voucher_customized", "true"),
-				),
-			},
-			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
-			{
-				Config: testAccSettingGuestAccessConfig_comprehensiveUpdated(),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "custom"),
-					//resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "allowed_subnet", "10.0.0.0/24"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "custom_ip", "192.168.1.2"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "ec_enabled", "false"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire", "1440"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_number", "1"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "expire_unit", "1440"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_enabled", "false"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "template_engine", "jsp"),
-				),
-			},
-			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 		},
 	})
 }
@@ -551,8 +436,8 @@ func TestAccSettingGuestAccess_redirect(t *testing.T) {
 				Config: testAccSettingGuestAccessConfig_redirect("https://updated-example.com", false, false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect_enabled", "true"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.use_https", "true"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.to_https", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.use_https", "false"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.to_https", "false"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.url", "https://updated-example.com"),
 				),
 			},
@@ -805,7 +690,6 @@ func TestAccSettingGuestAccess_portalCustomizationPostVersion74(t *testing.T) {
 		Lock:              settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				// Initial configuration with color theme and basic settings
 				Config: testAccSettingGuestAccessConfig_portalCustomizationBasicPost74(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "true"),
@@ -886,7 +770,27 @@ func testAccSettingGuestAccessConfig_basic() string {
 resource "unifi_setting_guest_access" "test" {
   auth           = "none"
   portal_enabled = true
+  portal_use_hostname = true
+  portal_hostname    = "guest.example.com"
   template_engine = "angular"
+  expire        = 60
+  expire_number = 1
+  expire_unit   = 60
+  ec_enabled = true
+}
+`
+}
+
+func testAccSettingGuestAccessConfig_basicUpdated() string {
+	return `
+resource "unifi_setting_guest_access" "test" {
+  auth           = "hotspot"
+  portal_enabled = false
+  template_engine = "jsp"
+  expire        = 1440
+  expire_number = 1
+  expire_unit   = 1440
+  ec_enabled = false
 }
 `
 }
@@ -908,24 +812,6 @@ resource "unifi_setting_guest_access" "test" {
 `, ip)
 }
 
-func testAccSettingGuestAccessConfig_ecEnabled(enabled bool) string {
-	return fmt.Sprintf(`
-resource "unifi_setting_guest_access" "test" {
-  ec_enabled = %t
-}
-`, enabled)
-}
-
-func testAccSettingGuestAccessConfig_expiration(expire, expireNumber, expireUnit int) string {
-	return fmt.Sprintf(`
-resource "unifi_setting_guest_access" "test" {
-  expire        = %d
-  expire_number = %d
-  expire_unit   = %d
-}
-`, expire, expireNumber, expireUnit)
-}
-
 func testAccSettingGuestAccessConfig_password(password string) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
@@ -933,32 +819,6 @@ resource "unifi_setting_guest_access" "test" {
   password = %q
 }
 `, password)
-}
-
-func testAccSettingGuestAccessConfig_portal() string {
-	return `
-resource "unifi_setting_guest_access" "test" {
-  portal_enabled     = true
-  portal_use_hostname = true
-  portal_hostname    = "guest.example.com"
-}
-`
-}
-
-func testAccSettingGuestAccessConfig_portalDisabled() string {
-	return `
-resource "unifi_setting_guest_access" "test" {
-  portal_enabled = false
-}
-`
-}
-
-func testAccSettingGuestAccessConfig_templateEngine(engine string) string {
-	return fmt.Sprintf(`
-resource "unifi_setting_guest_access" "test" {
-  template_engine = "%s"
-}
-`, engine)
 }
 
 func testAccSettingGuestAccessConfig_voucher(enabled bool) string {
@@ -986,42 +846,6 @@ resource "unifi_setting_guest_access" "test" {
   allowed_subnet = %q
 }
 `, subnet)
-}
-
-func testAccSettingGuestAccessConfig_comprehensive() string {
-	return `
-resource "unifi_setting_guest_access" "test" {
-  auth               = "hotspot"
-  //allowed_subnet     = "192.168.1.0/24"
-  ec_enabled         = true
-  expire             = 60
-  expire_number      = 1
-  expire_unit        = 60
-  password           = "guestpassword"
-  portal_enabled     = true
-  portal_use_hostname = true
-  portal_hostname    = "guest.example.com"
-  template_engine    = "angular"
-  voucher_enabled    = true
-  voucher_customized = true
-}
-`
-}
-
-func testAccSettingGuestAccessConfig_comprehensiveUpdated() string {
-	return `
-resource "unifi_setting_guest_access" "test" {
-  auth               = "custom"
-  //allowed_subnet     = "10.0.0.0/24"
-  custom_ip          = "192.168.1.2"
-  ec_enabled         = false
-  expire             = 1440
-  expire_number      = 1
-  expire_unit        = 1440
-  portal_enabled     = false
-  template_engine    = "jsp"
-}
-`
 }
 
 func testAccSettingGuestAccessConfig_paymentPaypal(useSandbox bool) string {
