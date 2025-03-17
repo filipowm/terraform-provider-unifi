@@ -150,8 +150,8 @@ func TestFeaturesIsUnavailable(t *testing.T) {
 
 func newTestClient(mock *MockUnifiClient) *Client {
 	return &Client{
-		retryableClient: retryableClient{mock, sync.Mutex{}},
-		Site:            "default",
+		Client: mock,
+		Site:   "default",
 	}
 }
 

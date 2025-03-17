@@ -858,16 +858,26 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 }
 
 var (
-	_ resource.Resource              = &guestAccessResource{}
-	_ resource.ResourceWithConfigure = &guestAccessResource{}
-	//_ resource.ResourceWithValidateConfig = &guestAccessResource{}
-	_ resource.ResourceWithImportState = &guestAccessResource{}
-	//_ resource.ResourceWithConfigValidators = &guestAccessResource{}
-	_ base.Resource = &guestAccessResource{}
+	_ resource.Resource                     = &guestAccessResource{}
+	_ resource.ResourceWithConfigure        = &guestAccessResource{}
+	_ resource.ResourceWithImportState      = &guestAccessResource{}
+	_ resource.ResourceWithConfigValidators = &guestAccessResource{}
+	_ resource.ResourceWithModifyPlan       = &guestAccessResource{}
+	_ base.Resource                         = &guestAccessResource{}
 )
 
 type guestAccessResource struct {
 	*base.GenericResource[*guestAccessModel]
+}
+
+func (g *guestAccessResource) ModifyPlan(_ context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	resp.Diagnostics.Append(g.RequireMinVersionForPath("7.4", path.Root("portal_customization").AtName("bg_type"), req.Config)...)
+	resp.Diagnostics.Append(g.RequireMinVersionForPath("7.4", path.Root("portal_customization").AtName("box_radius"), req.Config)...)
+	resp.Diagnostics.Append(g.RequireMinVersionForPath("7.4", path.Root("portal_customization").AtName("button_text"), req.Config)...)
+	resp.Diagnostics.Append(g.RequireMinVersionForPath("7.4", path.Root("portal_customization").AtName("success_text"), req.Config)...)
+	resp.Diagnostics.Append(g.RequireMinVersionForPath("7.4", path.Root("portal_customization").AtName("authentication_text"), req.Config)...)
+	resp.Diagnostics.Append(g.RequireMinVersionForPath("7.4", path.Root("portal_customization").AtName("logo_size"), req.Config)...)
+	resp.Diagnostics.Append(g.RequireMinVersionForPath("7.4", path.Root("portal_customization").AtName("logo_position"), req.Config)...)
 }
 
 func requiredTogetherIfTrue(condition string, attrs ...string) validators.RequiredTogetherIfValidator {

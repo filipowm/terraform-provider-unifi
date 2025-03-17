@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"net/http"
@@ -266,12 +267,14 @@ func (te *TestEnvironment) newTestClient() (unifi.Client, error) {
 		return nil, err
 	}
 
-	return unifi.NewClient(&unifi.ClientConfig{
+	client, err := unifi.NewClient(&unifi.ClientConfig{
 		URL:            te.Endpoint,
 		User:           user,
 		Password:       password,
 		VerifySSL:      false,
+		RememberMe:     true,
 		ValidationMode: unifi.DisableValidation,
 		Logger:         unifi.NewDefaultLogger(unifi.WarnLevel),
 	})
+	return base.NewRetryableUnifiClient(client), err
 }

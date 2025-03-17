@@ -55,9 +55,9 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		return nil, err
 	}
 	c := &Client{
-		retryableClient: retryableClient{unifiClient, sync.Mutex{}},
-		Site:            cfg.Site,
-		Version:         version.Must(version.NewVersion(unifiClient.Version())),
+		Client:  NewRetryableUnifiClient(unifiClient),
+		Site:    cfg.Site,
+		Version: version.Must(version.NewVersion(unifiClient.Version())),
 	}
 	if cfg.ApiKey != "" && !c.SupportsApiKeyAuthentication() {
 		return nil, fmt.Errorf("API key authentication is not supported on this controller version: %s, you must be on %s or higher", c.Version, ControllerVersionApiKeyAuth)
@@ -65,12 +65,19 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	return c, nil
 }
 
-type retryableClient struct {
+func NewRetryableUnifiClient(client unifi.Client) unifi.Client {
+	return &RetryableUnifiClient{
+		Client:     client,
+		loginMutex: sync.Mutex{},
+	}
+}
+
+type RetryableUnifiClient struct {
 	unifi.Client
 	loginMutex sync.Mutex
 }
 
-func (c *retryableClient) relogin(err error) error {
+func (c *RetryableUnifiClient) relogin(err error) error {
 	c.loginMutex.Lock()
 	defer c.loginMutex.Unlock()
 	loginErr := c.Client.Login()
@@ -81,7 +88,7 @@ func (c *retryableClient) relogin(err error) error {
 	}
 }
 
-func (c *retryableClient) Do(ctx context.Context, method string, apiPath string, reqBody interface{}, respBody interface{}) error {
+func (c *RetryableUnifiClient) Do(ctx context.Context, method string, apiPath string, reqBody interface{}, respBody interface{}) error {
 	err := c.Client.Do(ctx, method, apiPath, reqBody, respBody)
 	if err != nil && IsServerErrorStatusCode(err, 401) {
 		err := c.relogin(err)
@@ -94,7 +101,7 @@ func (c *retryableClient) Do(ctx context.Context, method string, apiPath string,
 }
 
 type Client struct {
-	retryableClient
+	unifi.Client
 	Site    string
 	Version *version.Version
 }
