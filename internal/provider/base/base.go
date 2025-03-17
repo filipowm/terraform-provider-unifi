@@ -3,7 +3,9 @@ package base
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -40,6 +42,20 @@ type ResourceModel interface {
 type DatasourceModel interface {
 	SiteAware
 	Merge(context.Context, interface{}) diag.Diagnostics
+}
+
+type NestedObject interface {
+	AttributeTypes() map[string]attr.Type
+}
+
+func ObjectNull(obj interface{}) (basetypes.ObjectValue, diag.Diagnostics) {
+	diags := diag.Diagnostics{}
+	if nested, ok := obj.(NestedObject); ok {
+		obj := types.ObjectNull(nested.AttributeTypes())
+		return obj, diags
+	}
+	diags.AddError("Invalid object type", fmt.Sprintf("Expected NestedObject, got: %T", obj))
+	return types.ObjectNull(map[string]attr.Type{}), diags
 }
 
 type Model struct {

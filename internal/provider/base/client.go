@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -54,7 +55,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		return nil, err
 	}
 	c := &Client{
-		Client:  unifiClient,
+		Client:  NewRetryableUnifiClient(unifiClient),
 		Site:    cfg.Site,
 		Version: version.Must(version.NewVersion(unifiClient.Version())),
 	}
@@ -62,6 +63,41 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		return nil, fmt.Errorf("API key authentication is not supported on this controller version: %s, you must be on %s or higher", c.Version, ControllerVersionApiKeyAuth)
 	}
 	return c, nil
+}
+
+func NewRetryableUnifiClient(client unifi.Client) unifi.Client {
+	return &RetryableUnifiClient{
+		Client:     client,
+		loginMutex: sync.Mutex{},
+	}
+}
+
+type RetryableUnifiClient struct {
+	unifi.Client
+	loginMutex sync.Mutex
+}
+
+func (c *RetryableUnifiClient) relogin(err error) error {
+	c.loginMutex.Lock()
+	defer c.loginMutex.Unlock()
+	loginErr := c.Client.Login()
+	if loginErr != nil {
+		return fmt.Errorf("Tried relogging in after %w, but failed: %w.", err, loginErr)
+	} else {
+		return nil
+	}
+}
+
+func (c *RetryableUnifiClient) Do(ctx context.Context, method string, apiPath string, reqBody interface{}, respBody interface{}) error {
+	err := c.Client.Do(ctx, method, apiPath, reqBody, respBody)
+	if err != nil && IsServerErrorStatusCode(err, 401) {
+		err := c.relogin(err)
+		if err != nil {
+			return err
+		}
+		return c.Client.Do(ctx, method, apiPath, reqBody, respBody)
+	}
+	return err
 }
 
 type Client struct {

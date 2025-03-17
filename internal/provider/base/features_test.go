@@ -148,6 +148,13 @@ func TestFeaturesIsUnavailable(t *testing.T) {
 	}
 }
 
+func newTestClient(mock *MockUnifiClient) *Client {
+	return &Client{
+		Client: mock,
+		Site:   "default",
+	}
+}
+
 // TestNewFeatureValidator tests the NewFeatureValidator function
 func TestNewFeatureValidator(t *testing.T) {
 	mockUnifiClient := &MockUnifiClient{
@@ -156,10 +163,7 @@ func TestNewFeatureValidator(t *testing.T) {
 		},
 	}
 
-	client := &Client{
-		Client: mockUnifiClient,
-		Site:   "default",
-	}
+	client := newTestClient(mockUnifiClient)
 
 	validator := NewFeatureValidator(client)
 
@@ -225,10 +229,7 @@ func TestGetFeatures(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUnifiClient := tt.setup()
-			client := &Client{
-				Client: mockUnifiClient,
-				Site:   "default",
-			}
+			client := newTestClient(mockUnifiClient)
 
 			validator := &featureEnabledValidator{
 				client: client,
@@ -267,10 +268,7 @@ func TestGetFeaturesConcurrent(t *testing.T) {
 		},
 	}
 
-	client := &Client{
-		Client: mockUnifiClient,
-		Site:   "default",
-	}
+	client := newTestClient(mockUnifiClient)
 
 	validator := &featureEnabledValidator{
 		client: client,
@@ -367,10 +365,7 @@ func TestRequireFeatures(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUnifiClient := &MockUnifiClient{}
-			client := &Client{
-				Client: mockUnifiClient,
-				Site:   "default",
-			}
+			client := newTestClient(mockUnifiClient)
 
 			validator := &featureEnabledValidator{
 				client: client,
@@ -465,10 +460,7 @@ func TestRequireFeaturesEnabledForPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUnifiClient := tt.setupClient()
-			client := &Client{
-				Client: mockUnifiClient,
-				Site:   "default",
-			}
+			client := newTestClient(mockUnifiClient)
 
 			// Create a wrapper FeatureValidator that provides a minimal implementation
 			// of RequireFeaturesEnabledForPath without needing a real tfsdk.Config
@@ -538,10 +530,7 @@ func TestRequireFeaturesEnabled(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUnifiClient := tt.setupClient()
-			client := &Client{
-				Client: mockUnifiClient,
-				Site:   "default",
-			}
+			client := newTestClient(mockUnifiClient)
 			validator := NewFeatureValidator(client)
 			diags := validator.RequireFeaturesEnabled(context.Background(), "site1", tt.requiredFeatures...)
 			assert.Equal(t, tt.expectedHasErrors, diags.HasError())
@@ -605,10 +594,7 @@ func TestFeatureValidatorCache(t *testing.T) {
 		},
 	}
 
-	client := &Client{
-		Client: mockUnifiClient,
-		Site:   "default",
-	}
+	client := newTestClient(mockUnifiClient)
 
 	validator := NewFeatureValidator(client)
 
