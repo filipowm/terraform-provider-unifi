@@ -43,7 +43,7 @@ type guestAccessModel struct {
 	FacebookEnabled types.Bool   `tfsdk:"facebook_enabled"`
 	Facebook        types.Object `tfsdk:"facebook"`
 
-	//FacebookWifi types.Object `tfsdk:"facebook_wifi"`
+	FacebookWifi types.Object `tfsdk:"facebook_wifi"`
 
 	GoogleEnabled types.Bool   `tfsdk:"google_enabled"`
 	Google        types.Object `tfsdk:"google"`
@@ -431,6 +431,18 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.WechatEnabled = false
 	}
 
+	if base.IsDefined(d.FacebookWifi) {
+		var facebookWifi *facebookWifiModel
+		diags.Append(d.FacebookWifi.As(ctx, &facebookWifi, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		model.FacebookWifiBlockHttps = facebookWifi.BlockHttps.ValueBool()
+		model.FacebookWifiGwID = facebookWifi.GwID.ValueString()
+		model.FacebookWifiGwName = facebookWifi.GwName.ValueString()
+		model.XFacebookWifiGwSecret = facebookWifi.GwSecret.ValueString()
+	}
+
 	return model, diags
 }
 
@@ -698,11 +710,28 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 	if model.WechatEnabled {
 		wechat := &wechatModel{
 			AppID:     types.StringValue(model.WechatAppID),
-			AppSecret: types.StringValue(model.XWechatAppSecret),
 			ShopID:    types.StringValue(model.WechatShopID),
+			AppSecret: types.StringValue(model.XWechatAppSecret),
 			SecretKey: types.StringValue(model.XWechatSecretKey),
 		}
 		d.Wechat, diags = types.ObjectValueFrom(ctx, wechat.AttributeTypes(), wechat)
+		if diags.HasError() {
+			return diags
+		}
+	}
+
+	d.FacebookWifi, diags = base.ObjectNull(&facebookWifiModel{})
+	if diags.HasError() {
+		return diags
+	}
+	if model.Auth == "facebook_wifi" {
+		facebookWifi := &facebookWifiModel{
+			BlockHttps: types.BoolValue(model.FacebookWifiBlockHttps),
+			GwID:       types.StringValue(model.FacebookWifiGwID),
+			GwName:     types.StringValue(model.FacebookWifiGwName),
+			GwSecret:   types.StringValue(model.XFacebookWifiGwSecret),
+		}
+		d.FacebookWifi, diags = types.ObjectValueFrom(ctx, facebookWifi.AttributeTypes(), facebookWifi)
 		if diags.HasError() {
 			return diags
 		}
@@ -913,31 +942,31 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 					},
 				},
 			},
-			//"facebook_wifi": schema.SingleNestedAttribute{
-			//	MarkdownDescription: "Facebook WiFi authentication settings.",
-			//	Optional:            true,
-			//	Attributes: map[string]schema.Attribute{
-			//		"block_https": schema.BoolAttribute{
-			//			MarkdownDescription: "Mode HTTPS for Facebook WiFi.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"gateway_id": schema.StringAttribute{
-			//			MarkdownDescription: "Facebook WiFi gateway ID.",
-			//			Required:            true,
-			//		},
-			//		"gateway_name": schema.StringAttribute{
-			//			MarkdownDescription: "Facebook WiFi gateway name.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"gateway_secret": schema.StringAttribute{
-			//			MarkdownDescription: "Facebook WiFi gateway secret.",
-			//			Required:            true,
-			//			Sensitive:           true,
-			//		},
-			//	},
-			//},
+			"facebook_wifi": schema.SingleNestedAttribute{
+				MarkdownDescription: "Facebook WiFi authentication settings.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"block_https": schema.BoolAttribute{
+						MarkdownDescription: "Mode HTTPS for Facebook WiFi.",
+						Optional:            true,
+						Computed:            true,
+						Default:             booldefault.StaticBool(false),
+					},
+					"gateway_id": schema.StringAttribute{
+						MarkdownDescription: "Facebook WiFi gateway ID.",
+						Required:            true,
+					},
+					"gateway_name": schema.StringAttribute{
+						MarkdownDescription: "Facebook WiFi gateway name.",
+						Required:            true,
+					},
+					"gateway_secret": schema.StringAttribute{
+						MarkdownDescription: "Facebook WiFi gateway secret.",
+						Required:            true,
+						Sensitive:           true,
+					},
+				},
+			},
 			"google_enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether Google authentication for guest access is enabled.",
 				Computed:            true,
@@ -949,16 +978,17 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 					"client_id": schema.StringAttribute{
 						MarkdownDescription: "Google client ID for authentication.",
 						Required:            true,
-						Sensitive:           true,
+						//Sensitive:           true,
 					},
 					"client_secret": schema.StringAttribute{
 						MarkdownDescription: "Google client secret for authentication.",
 						Required:            true,
-						Sensitive:           true,
+						//Sensitive:           true,
 					},
 					"domain": schema.StringAttribute{
 						MarkdownDescription: "Restrict Google authentication to specific domain.",
 						Optional:            true,
+						Computed:            true,
 						Validators: []validator.String{
 							validators.Hostname(),
 						},
@@ -1439,6 +1469,7 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 					"shop_id": schema.StringAttribute{
 						MarkdownDescription: "WeChat Shop ID for payments.",
 						Optional:            true,
+						Computed:            true,
 					},
 				},
 			},

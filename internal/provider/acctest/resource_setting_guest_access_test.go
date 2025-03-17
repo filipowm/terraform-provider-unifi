@@ -743,14 +743,14 @@ func TestAccSettingGuestAccess_wechat(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_wechat("updated-app-id", "updated-app-secret", "updated-secret-key", ""),
+				Config: testAccSettingGuestAccessConfig_wechat("updated-app-id", "updated-app-secret", "updated-secret-key", "updated-shop-id"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat_enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.app_id", "updated-app-id"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.app_secret", "updated-app-secret"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.secret_key", "updated-secret-key"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.shop_id", ""),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat.shop_id", "updated-shop-id"),
 				),
 			},
 			{
@@ -759,6 +759,42 @@ func TestAccSettingGuestAccess_wechat(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat_enabled", "false"),
 					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "wechat"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccSettingGuestAccess_facebookWifi(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		Lock: settingGuestAccessLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingGuestAccessConfig_facebookWifi("gateway-id", "gateway-name", "gateway-secret", true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "facebook_wifi"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_wifi.gateway_id", "gateway-id"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_wifi.gateway_name", "gateway-name"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_wifi.gateway_secret", "gateway-secret"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_wifi.block_https", "true"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
+			{
+				Config: testAccSettingGuestAccessConfig_facebookWifi("updated-gateway-id", "updated-gateway-name", "updated-gateway-secret", false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "facebook_wifi"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_wifi.gateway_id", "updated-gateway-id"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_wifi.gateway_name", "updated-gateway-name"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_wifi.gateway_secret", "updated-gateway-secret"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_wifi.block_https", "false"),
+				),
+			},
+			{
+				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
+					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "facebook_wifi"),
 				),
 			},
 		},
@@ -1083,4 +1119,18 @@ resource "unifi_setting_guest_access" "test" {
   }
 }
 `, appId, appSecret, secretKey, shopIdConfig)
+}
+
+func testAccSettingGuestAccessConfig_facebookWifi(gatewayId, gatewayName, gatewaySecret string, blockHttps bool) string {
+	return fmt.Sprintf(`
+resource "unifi_setting_guest_access" "test" {
+  auth = "facebook_wifi"
+  facebook_wifi = {
+    gateway_id     = %q
+    gateway_name   = %q
+    gateway_secret = %q
+    block_https    = %t
+  }
+}
+`, gatewayId, gatewayName, gatewaySecret, blockHttps)
 }
