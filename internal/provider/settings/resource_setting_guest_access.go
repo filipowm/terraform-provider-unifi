@@ -32,8 +32,9 @@ import (
 
 type guestAccessModel struct {
 	base.Model
-	AllowedSubnet types.String `tfsdk:"allowed_subnet"`
-	//RestrictedSubnet     types.String `tfsdk:"restricted_subnet"`
+	AllowedSubnet    types.String `tfsdk:"allowed_subnet"`
+	RestrictedSubnet types.String `tfsdk:"restricted_subnet"`
+
 	Auth    types.String `tfsdk:"auth"`
 	AuthUrl types.String `tfsdk:"auth_url"`
 
@@ -337,14 +338,15 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 	var diags diag.Diagnostics
 
 	model := &unifi.SettingGuestAccess{
-		AllowedSubnet: d.AllowedSubnet.ValueString(),
-		Auth:          d.Auth.ValueString(),
-		AuthUrl:       d.AuthUrl.ValueString(),
-		CustomIP:      d.CustomIP.ValueString(),
-		EcEnabled:     d.EcEnabled.ValueBool(),
-		Expire:        int(d.Expire.ValueInt32()),
-		ExpireNumber:  int(d.ExpireNumber.ValueInt32()),
-		ExpireUnit:    int(d.ExpireUnit.ValueInt32()),
+		AllowedSubnet:    d.AllowedSubnet.ValueString(),
+		RestrictedSubnet: d.RestrictedSubnet.ValueString(),
+		Auth:             d.Auth.ValueString(),
+		AuthUrl:          d.AuthUrl.ValueString(),
+		CustomIP:         d.CustomIP.ValueString(),
+		EcEnabled:        d.EcEnabled.ValueBool(),
+		Expire:           int(d.Expire.ValueInt32()),
+		ExpireNumber:     int(d.ExpireNumber.ValueInt32()),
+		ExpireUnit:       int(d.ExpireUnit.ValueInt32()),
 
 		PortalEnabled:     d.PortalEnabled.ValueBool(),
 		PortalHostname:    d.PortalHostname.ValueString(),
@@ -649,6 +651,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 
 	d.ID = types.StringValue(model.ID)
 	d.AllowedSubnet = types.StringValue(model.AllowedSubnet)
+	d.RestrictedSubnet = types.StringValue(model.RestrictedSubnet)
 	d.Auth = types.StringValue(model.Auth)
 	d.AuthUrl = types.StringValue(model.AuthUrl)
 	switch model.Auth {
@@ -941,6 +944,11 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"site": base.SiteAttribute(),
 			"allowed_subnet": schema.StringAttribute{
 				MarkdownDescription: "Subnet allowed for guest access.",
+				Optional:            true,
+				Computed:            true,
+			},
+			"restricted_subnet": schema.StringAttribute{
+				MarkdownDescription: "Subnet for restricted guest access.",
 				Optional:            true,
 				Computed:            true,
 			},
@@ -1521,11 +1529,6 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 					listvalidator.ValueStringsAre(validators.IPv4()),
 				},
 			},
-			//"restricted_subnet": schema.StringAttribute{
-			//	MarkdownDescription: "Subnet for restricted guest access.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//},
 			"stripe": schema.SingleNestedAttribute{
 				MarkdownDescription: "Stripe payment settings.",
 				Optional:            true,
