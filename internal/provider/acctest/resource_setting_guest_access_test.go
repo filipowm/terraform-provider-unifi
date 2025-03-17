@@ -2,9 +2,10 @@ package acctest
 
 import (
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"sync"
 	"testing"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
@@ -549,7 +550,7 @@ func TestAccSettingGuestAccess_paymentSwitchGateways(t *testing.T) {
 	})
 }
 
-func TestAccSettingGuestAccess_redirectToggleOptions(t *testing.T) {
+func TestAccSettingGuestAccess_redirect(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
@@ -604,6 +605,43 @@ func TestAccSettingGuestAccess_redirectToggleOptions(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect_enabled", "false"),
 					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "redirect"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccSettingGuestAccess_facebook(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		Lock: settingGuestAccessLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingGuestAccessConfig_facebook("facebook-app-id", "facebook-app-secret", true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook.app_id", "facebook-app-id"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook.app_secret", "facebook-app-secret"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook.scope_email", "true"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
+			{
+				Config: testAccSettingGuestAccessConfig_facebook("updated-app-id", "updated-app-secret", false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook.app_id", "updated-app-id"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook.app_secret", "updated-app-secret"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook.scope_email", "false"),
+				),
+			},
+			{
+				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_enabled", "false"),
+					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "facebook"),
 				),
 			},
 		},
@@ -875,4 +913,17 @@ resource "unifi_setting_guest_access" "test" {
   }
 }
 `, url, useHttps, toHttps)
+}
+
+func testAccSettingGuestAccessConfig_facebook(appId, appSecret string, scopeEmail bool) string {
+	return fmt.Sprintf(`
+resource "unifi_setting_guest_access" "test" {
+  auth = "hotspot"
+  facebook = {
+    app_id      = %q
+    app_secret  = %q
+    scope_email = %t
+  }
+}
+`, appId, appSecret, scopeEmail)
 }

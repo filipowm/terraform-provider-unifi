@@ -40,8 +40,8 @@ type guestAccessModel struct {
 	ExpireNumber types.Int32 `tfsdk:"expire_number"`
 	ExpireUnit   types.Int32 `tfsdk:"expire_unit"`
 
-	//FacebookEnabled types.Bool `tfsdk:"facebook_enabled"`
-	//Facebook        types.Object `tfsdk:"facebook"`
+	FacebookEnabled types.Bool   `tfsdk:"facebook_enabled"`
+	Facebook        types.Object `tfsdk:"facebook"`
 
 	//FacebookWifi types.Object `tfsdk:"facebook_wifi"`
 
@@ -372,6 +372,20 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.RedirectEnabled = false
 	}
 
+	if base.IsDefined(d.Facebook) {
+		var facebook *facebookModel
+		diags.Append(d.Facebook.As(ctx, &facebook, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		model.FacebookEnabled = true
+		model.FacebookAppID = facebook.AppID.ValueString()
+		model.XFacebookAppSecret = facebook.AppSecret.ValueString()
+		model.FacebookScopeEmail = facebook.ScopeEmail.ValueBool()
+	} else {
+		model.FacebookEnabled = false
+	}
+
 	return model, diags
 }
 
@@ -578,6 +592,23 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 		}
 	}
 
+	d.FacebookEnabled = types.BoolValue(model.FacebookEnabled)
+	d.Facebook, diags = base.ObjectNull(&facebookModel{})
+	if diags.HasError() {
+		return diags
+	}
+	if model.FacebookEnabled {
+		facebook := &facebookModel{
+			AppID:      types.StringValue(model.FacebookAppID),
+			AppSecret:  types.StringValue(model.XFacebookAppSecret),
+			ScopeEmail: types.BoolValue(model.FacebookScopeEmail),
+		}
+		d.Facebook, diags = types.ObjectValueFrom(ctx, facebook.AttributeTypes(), facebook)
+		if diags.HasError() {
+			return diags
+		}
+	}
+
 	d.PortalEnabled = types.BoolValue(model.PortalEnabled)
 	d.PortalHostname = types.StringValue(model.PortalHostname)
 	d.PortalUseHostname = types.BoolValue(model.PortalUseHostname)
@@ -762,31 +793,31 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 					int32validator.OneOf(1, 60, 1440, 10080),
 				},
 			},
-			//"facebook_enabled": schema.BoolAttribute{
-			//	MarkdownDescription: "Whether Facebook authentication for guest access is enabled.",
-			//	Computed:            true,
-			//},
-			//"facebook": schema.SingleNestedAttribute{
-			//	MarkdownDescription: "Facebook authentication settings.",
-			//	Optional:            true,
-			//	Attributes: map[string]schema.Attribute{
-			//		"app_id": schema.StringAttribute{
-			//			MarkdownDescription: "Facebook application ID for authentication.",
-			//			Required:            true,
-			//		},
-			//		"app_secret": schema.StringAttribute{
-			//			MarkdownDescription: "Facebook application secret for authentication.",
-			//			Required:            true,
-			//			Sensitive:           true,
-			//		},
-			//		"scope_email": schema.BoolAttribute{
-			//			MarkdownDescription: "Request email scope for Facebook authentication.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Default:             booldefault.StaticBool(true),
-			//		},
-			//	},
-			//},
+			"facebook_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether Facebook authentication for guest access is enabled.",
+				Computed:            true,
+			},
+			"facebook": schema.SingleNestedAttribute{
+				MarkdownDescription: "Facebook authentication settings.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"app_id": schema.StringAttribute{
+						MarkdownDescription: "Facebook application ID for authentication.",
+						Required:            true,
+					},
+					"app_secret": schema.StringAttribute{
+						MarkdownDescription: "Facebook application secret for authentication.",
+						Required:            true,
+						Sensitive:           true,
+					},
+					"scope_email": schema.BoolAttribute{
+						MarkdownDescription: "Request email scope for Facebook authentication.",
+						Optional:            true,
+						Computed:            true,
+						Default:             booldefault.StaticBool(true),
+					},
+				},
+			},
 			//"facebook_wifi": schema.SingleNestedAttribute{
 			//	MarkdownDescription: "Facebook WiFi authentication settings.",
 			//	Optional:            true,
