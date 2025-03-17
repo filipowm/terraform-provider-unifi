@@ -3,8 +3,11 @@ package settings
 import (
 	"context"
 	"fmt"
+	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
@@ -28,8 +31,9 @@ import (
 type guestAccessModel struct {
 	base.Model
 	AllowedSubnet types.String `tfsdk:"allowed_subnet"`
-	Auth          types.String `tfsdk:"auth"`
-	AuthUrl       types.String `tfsdk:"auth_url"`
+	//RestrictedSubnet     types.String `tfsdk:"restricted_subnet"`
+	Auth    types.String `tfsdk:"auth"`
+	AuthUrl types.String `tfsdk:"auth_url"`
 
 	Authorize types.Object `tfsdk:"authorize"`
 
@@ -73,9 +77,8 @@ type guestAccessModel struct {
 	RedirectEnabled types.Bool   `tfsdk:"redirect_enabled"`
 	Redirect        types.Object `tfsdk:"redirect"`
 
-	//RestrictedDNSEnabled types.Bool   `tfsdk:"restricted_dns_enabled"`
-	//RestrictedDNSServers types.List   `tfsdk:"restricted_dns_servers"`
-	//RestrictedSubnet     types.String `tfsdk:"restricted_subnet"`
+	RestrictedDNSEnabled types.Bool `tfsdk:"restricted_dns_enabled"`
+	RestrictedDNSServers types.List `tfsdk:"restricted_dns_servers"`
 
 	TemplateEngine types.String `tfsdk:"template_engine"`
 
@@ -443,6 +446,20 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.XFacebookWifiGwSecret = facebookWifi.GwSecret.ValueString()
 	}
 
+	if base.IsDefined(d.RestrictedDNSServers) {
+		var servers []string
+		diags := utils.ListElementsAs(d.RestrictedDNSServers, &servers)
+		if diags.HasError() {
+			return nil, diags
+		}
+		if len(servers) > 0 {
+			model.RestrictedDNSEnabled = true
+		}
+		model.RestrictedDNSServers = servers
+	} else {
+		model.RestrictedDNSEnabled = false
+	}
+
 	return model, diags
 }
 
@@ -735,6 +752,16 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 		if diags.HasError() {
 			return diags
 		}
+	}
+
+	d.RestrictedDNSEnabled = types.BoolValue(model.RestrictedDNSEnabled)
+	if model.RestrictedDNSEnabled && len(model.RestrictedDNSServers) > 0 {
+		d.RestrictedDNSServers, diags = types.ListValueFrom(ctx, types.StringType, model.RestrictedDNSServers)
+		if diags.HasError() {
+			return diags
+		}
+	} else {
+		d.RestrictedDNSServers = utils.EmptyList(types.StringType)
 	}
 
 	d.PortalEnabled = types.BoolValue(model.PortalEnabled)
@@ -1398,17 +1425,20 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 					},
 				},
 			},
-			//"restricted_dns_enabled": schema.BoolAttribute{
-			//	MarkdownDescription: "Enable restricted DNS servers for guest networks.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//},
-			//"restricted_dns_servers": schema.ListAttribute{
-			//	MarkdownDescription: "List of restricted DNS servers for guest networks. Each value must be a valid IPv4 address.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//	ElementType:         types.StringType,
-			//},
+			"restricted_dns_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether restricted DNS servers for guest networks are enabled.",
+				Computed:            true,
+			},
+			"restricted_dns_servers": schema.ListAttribute{
+				MarkdownDescription: "List of restricted DNS servers for guest networks. Each value must be a valid IPv4 address.",
+				Optional:            true,
+				Computed:            true,
+				ElementType:         types.StringType,
+				Default:             listdefault.StaticValue(utils.EmptyList(types.StringType)),
+				Validators: []validator.List{
+					listvalidator.ValueStringsAre(validators.IPv4()),
+				},
+			},
 			//"restricted_subnet": schema.StringAttribute{
 			//	MarkdownDescription: "Subnet for restricted guest access.",
 			//	Optional:            true,

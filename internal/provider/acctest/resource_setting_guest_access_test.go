@@ -801,6 +801,48 @@ func TestAccSettingGuestAccess_facebookWifi(t *testing.T) {
 	})
 }
 
+func TestAccSettingGuestAccess_restrictedDNS(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		Lock: settingGuestAccessLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingGuestAccessConfig_restrictedDNS([]string{"8.8.8.8", "1.1.1.1"}),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.#", "2"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.0", "8.8.8.8"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.1", "1.1.1.1"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
+			{
+				Config: testAccSettingGuestAccessConfig_restrictedDNS([]string{"8.8.4.4", "1.0.0.1", "9.9.9.9"}),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.#", "3"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.0", "8.8.4.4"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.1", "1.0.0.1"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.2", "9.9.9.9"),
+				),
+			},
+			{
+				Config: testAccSettingGuestAccessConfig_restrictedDNS([]string{}),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_enabled", "false"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.#", "0"),
+				),
+			},
+			{
+				Config: testAccSettingGuestAccessConfig_basic(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_enabled", "false"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.#", "0"),
+				),
+			},
+		},
+	})
+}
+
 func testAccSettingGuestAccessConfig_basic() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
@@ -1133,4 +1175,21 @@ resource "unifi_setting_guest_access" "test" {
   }
 }
 `, gatewayId, gatewayName, gatewaySecret, blockHttps)
+}
+
+func testAccSettingGuestAccessConfig_restrictedDNS(dnsServers []string) string {
+	serversStr := ""
+	for i, server := range dnsServers {
+		if i > 0 {
+			serversStr += ", "
+		}
+		serversStr += fmt.Sprintf("%q", server)
+	}
+
+	return fmt.Sprintf(`
+resource "unifi_setting_guest_access" "test" {
+  auth = "none"
+  restricted_dns_servers = [%s]
+}
+`, serversStr)
 }
