@@ -45,8 +45,8 @@ type guestAccessModel struct {
 
 	//FacebookWifi types.Object `tfsdk:"facebook_wifi"`
 
-	//GoogleEnabled types.Bool   `tfsdk:"google_enabled"`
-	//Google        types.Object `tfsdk:"google"`
+	GoogleEnabled types.Bool   `tfsdk:"google_enabled"`
+	Google        types.Object `tfsdk:"google"`
 
 	IPpay           types.Object `tfsdk:"ippay"`
 	MerchantWarrior types.Object `tfsdk:"merchant_warrior"`
@@ -386,6 +386,21 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.FacebookEnabled = false
 	}
 
+	if base.IsDefined(d.Google) {
+		var google *googleModel
+		diags.Append(d.Google.As(ctx, &google, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		model.GoogleEnabled = true
+		model.GoogleClientID = google.ClientID.ValueString()
+		model.XGoogleClientSecret = google.ClientSecret.ValueString()
+		model.GoogleScopeEmail = google.ScopeEmail.ValueBool()
+		model.GoogleDomain = google.Domain.ValueString()
+	} else {
+		model.GoogleEnabled = false
+	}
+
 	return model, diags
 }
 
@@ -604,6 +619,24 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 			ScopeEmail: types.BoolValue(model.FacebookScopeEmail),
 		}
 		d.Facebook, diags = types.ObjectValueFrom(ctx, facebook.AttributeTypes(), facebook)
+		if diags.HasError() {
+			return diags
+		}
+	}
+
+	d.GoogleEnabled = types.BoolValue(model.GoogleEnabled)
+	d.Google, diags = base.ObjectNull(&googleModel{})
+	if diags.HasError() {
+		return diags
+	}
+	if model.FacebookEnabled {
+		google := &googleModel{
+			ClientID:     types.StringValue(model.GoogleClientID),
+			ClientSecret: types.StringValue(model.XGoogleClientSecret),
+			Domain:       types.StringValue(model.GoogleDomain),
+			ScopeEmail:   types.BoolValue(model.FacebookScopeEmail),
+		}
+		d.Google, diags = types.ObjectValueFrom(ctx, google.AttributeTypes(), google)
 		if diags.HasError() {
 			return diags
 		}
@@ -843,39 +876,39 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 			//		},
 			//	},
 			//},
-			//"google_enabled": schema.BoolAttribute{
-			//	MarkdownDescription: "Whether Google authentication for guest access is enabled.",
-			//	Computed:            true,
-			//},
-			//"google": schema.SingleNestedAttribute{
-			//	MarkdownDescription: "Google authentication settings.",
-			//	Optional:            true,
-			//	Attributes: map[string]schema.Attribute{
-			//		"client_id": schema.StringAttribute{
-			//			MarkdownDescription: "Google client ID for authentication.",
-			//			Required:            true,
-			//			Sensitive:           true,
-			//		},
-			//		"client_secret": schema.StringAttribute{
-			//			MarkdownDescription: "Google client secret for authentication.",
-			//			Required:            true,
-			//			Sensitive:           true,
-			//		},
-			//		"domain": schema.StringAttribute{
-			//			MarkdownDescription: "Restrict Google authentication to specific domain.",
-			//			Optional:            true,
-			//			Validators: []validator.String{
-			//				validators.Hostname(),
-			//			},
-			//		},
-			//		"scope_email": schema.BoolAttribute{
-			//			MarkdownDescription: "Request email scope for Google authentication.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Default:             booldefault.StaticBool(true),
-			//		},
-			//	},
-			//},
+			"google_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether Google authentication for guest access is enabled.",
+				Computed:            true,
+			},
+			"google": schema.SingleNestedAttribute{
+				MarkdownDescription: "Google authentication settings.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"client_id": schema.StringAttribute{
+						MarkdownDescription: "Google client ID for authentication.",
+						Required:            true,
+						Sensitive:           true,
+					},
+					"client_secret": schema.StringAttribute{
+						MarkdownDescription: "Google client secret for authentication.",
+						Required:            true,
+						Sensitive:           true,
+					},
+					"domain": schema.StringAttribute{
+						MarkdownDescription: "Restrict Google authentication to specific domain.",
+						Optional:            true,
+						Validators: []validator.String{
+							validators.Hostname(),
+						},
+					},
+					"scope_email": schema.BoolAttribute{
+						MarkdownDescription: "Request email scope for Google authentication.",
+						Optional:            true,
+						Computed:            true,
+						Default:             booldefault.StaticBool(true),
+					},
+				},
+			},
 			"ippay": schema.SingleNestedAttribute{
 				MarkdownDescription: "IPpay Payments settings.",
 				Optional:            true,

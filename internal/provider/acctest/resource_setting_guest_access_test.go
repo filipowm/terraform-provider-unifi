@@ -648,6 +648,45 @@ func TestAccSettingGuestAccess_facebook(t *testing.T) {
 	})
 }
 
+func TestAccSettingGuestAccess_google(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		Lock: settingGuestAccessLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingGuestAccessConfig_google("google-client-id", "google-client-secret", "example.com", true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google.client_id", "google-client-id"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google.client_secret", "google-client-secret"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google.domain", "example.com"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google.scope_email", "true"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
+			{
+				Config: testAccSettingGuestAccessConfig_google("updated-client-id", "updated-client-secret", "", false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google.client_id", "updated-client-id"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google.client_secret", "updated-client-secret"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google.domain", ""),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google.scope_email", "false"),
+				),
+			},
+			{
+				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google_enabled", "false"),
+					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "google"),
+				),
+			},
+		},
+	})
+}
+
 func testAccSettingGuestAccessConfig_basic() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
@@ -926,4 +965,23 @@ resource "unifi_setting_guest_access" "test" {
   }
 }
 `, appId, appSecret, scopeEmail)
+}
+
+func testAccSettingGuestAccessConfig_google(clientId, clientSecret, domain string, scopeEmail bool) string {
+	domainConfig := ""
+	if domain != "" {
+		domainConfig = fmt.Sprintf("    domain       = %q", domain)
+	}
+	
+	return fmt.Sprintf(`
+resource "unifi_setting_guest_access" "test" {
+  auth = "hotspot"
+  google = {
+    client_id      = %q
+    client_secret  = %q
+%s
+    scope_email    = %t
+  }
+}
+`, clientId, clientSecret, domainConfig, scopeEmail)
 }
