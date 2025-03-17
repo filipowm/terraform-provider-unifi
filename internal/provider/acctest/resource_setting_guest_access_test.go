@@ -843,6 +843,87 @@ func TestAccSettingGuestAccess_restrictedDNS(t *testing.T) {
 	})
 }
 
+func TestAccSettingGuestAccess_portalCustomization(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		Lock: settingGuestAccessLock,
+		Steps: []resource.TestStep{
+			{
+				// Initial configuration with color theme and basic settings
+				Config: testAccSettingGuestAccessConfig_portalCustomizationBasic(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.bg_type", "color"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.bg_color", "#f5f5f5"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.box_color", "#ffffff"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.box_opacity", "90"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.box_radius", "8"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.title", "Guest WiFi Portal"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.button_text", "Connect"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
+			{
+				// Update with gallery background and text customizations
+				Config: testAccSettingGuestAccessConfig_portalCustomizationGallery(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.bg_type", "gallery"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.unsplash_author_name", "John Doe"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.unsplash_author_username", "johndoe"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.welcome_text_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.welcome_text", "Welcome to our WiFi network!"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.welcome_text_position", "above_boxes"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.authentication_text", "Please authenticate to access the internet"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.success_text", "You are now connected!"),
+				),
+			},
+			{
+				// Update with terms of service and color changes
+				Config: testAccSettingGuestAccessConfig_portalCustomizationTos(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.tos_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.tos", "By using this WiFi service, you agree to our terms and conditions."),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.box_text_color", "#333333"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.text_color", "#222222"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.link_color", "#0066cc"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.box_link_color", "#0055aa"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.button_color", "#4CAF50"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.button_text_color", "#ffffff"),
+				),
+			},
+			{
+				// Update with logo settings and languages
+				Config: testAccSettingGuestAccessConfig_portalCustomizationLogo(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.logo_position", "center"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.logo_size", "150"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.languages.#", "3"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.languages.0", "en"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.languages.1", "es"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.languages.2", "fr"),
+				),
+			},
+			{
+				// Disable customization
+				Config: testAccSettingGuestAccessConfig_portalCustomizationDisabled(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "false"),
+				),
+			},
+			{
+				// Back to basic configuration
+				Config: testAccSettingGuestAccessConfig_basic(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "false"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.%", "27"),
+				),
+			},
+		},
+	})
+}
+
 func testAccSettingGuestAccessConfig_basic() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
@@ -1192,4 +1273,104 @@ resource "unifi_setting_guest_access" "test" {
   restricted_dns_servers = [%s]
 }
 `, serversStr)
+}
+
+func testAccSettingGuestAccessConfig_portalCustomizationBasic() string {
+	return `
+resource "unifi_setting_guest_access" "test" {
+  auth = "none"
+  portal_customization = {
+    customized   = true
+    bg_type      = "color"
+    bg_color     = "#f5f5f5"
+    box_color    = "#ffffff"
+    box_opacity  = 90
+    box_radius   = 8
+    title        = "Guest WiFi Portal"
+    button_text  = "Connect"
+  }
+}
+`
+}
+
+func testAccSettingGuestAccessConfig_portalCustomizationGallery() string {
+	return `
+resource "unifi_setting_guest_access" "test" {
+  auth = "none"
+  portal_customization = {
+    customized               = true
+    bg_type                  = "gallery"
+    unsplash_author_name     = "John Doe"
+    unsplash_author_username = "johndoe"
+    welcome_text_enabled     = true
+    welcome_text             = "Welcome to our WiFi network!"
+    welcome_text_position    = "above_boxes"
+    authentication_text      = "Please authenticate to access the internet"
+    success_text             = "You are now connected!"
+    box_color                = "#ffffff"
+    box_opacity              = 90
+    box_radius               = 8
+    title                    = "Guest WiFi Portal"
+    button_text              = "Connect"
+  }
+}
+`
+}
+
+func testAccSettingGuestAccessConfig_portalCustomizationTos() string {
+	return `
+resource "unifi_setting_guest_access" "test" {
+  auth = "none"
+  portal_customization = {
+    customized         = true
+    bg_type            = "color"
+    bg_color           = "#f5f5f5"
+    box_color          = "#ffffff"
+    box_opacity        = 90
+    box_radius         = 8
+    title              = "Guest WiFi Portal"
+    button_text        = "Connect"
+    tos_enabled        = true
+    tos                = "By using this WiFi service, you agree to our terms and conditions."
+    box_text_color     = "#333333"
+    text_color         = "#222222"
+    link_color         = "#0066cc"
+    box_link_color     = "#0055aa"
+    button_color       = "#4CAF50"
+    button_text_color  = "#ffffff"
+  }
+}
+`
+}
+
+func testAccSettingGuestAccessConfig_portalCustomizationLogo() string {
+	return `
+resource "unifi_setting_guest_access" "test" {
+  auth = "none"
+  portal_customization = {
+    customized         = true
+    bg_type            = "color"
+    bg_color           = "#f5f5f5"
+    box_color          = "#ffffff"
+    box_opacity        = 90
+    box_radius         = 8
+    title              = "Guest WiFi Portal"
+    button_text        = "Connect"
+    logo_position      = "center"
+    logo_size          = 150
+    languages          = ["en", "es", "fr"]
+  }
+}
+`
+}
+
+func testAccSettingGuestAccessConfig_portalCustomizationDisabled() string {
+	return `
+resource "unifi_setting_guest_access" "test" {
+  auth = "none"
+  portal_customization = {
+    customized = false
+  }
+}
+`
 }

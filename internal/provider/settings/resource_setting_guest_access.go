@@ -8,6 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
@@ -63,7 +65,7 @@ type guestAccessModel struct {
 
 	Paypal types.Object `tfsdk:"paypal"`
 
-	//PortalCustomization types.Object `tfsdk:"portal_customization"`
+	PortalCustomization types.Object `tfsdk:"portal_customization"`
 
 	PortalEnabled     types.Bool   `tfsdk:"portal_enabled"`
 	PortalHostname    types.String `tfsdk:"portal_hostname"`
@@ -460,6 +462,48 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.RestrictedDNSEnabled = false
 	}
 
+	if base.IsDefined(d.PortalCustomization) {
+		var portalCustomization *portalCustomizationModel
+		diags.Append(d.PortalCustomization.As(ctx, &portalCustomization, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		var languages []string
+		diags := utils.ListElementsAs(portalCustomization.Languages, &languages)
+		if diags.HasError() {
+			return nil, diags
+		}
+		model.PortalCustomized = portalCustomization.Customized.ValueBool()
+		model.PortalCustomizedAuthenticationText = portalCustomization.AuthenticationText.ValueString()
+		model.PortalCustomizedBgColor = portalCustomization.BgColor.ValueString()
+		model.PortalCustomizedBgImageTile = portalCustomization.BgImageTile.ValueBool()
+		model.PortalCustomizedBgType = portalCustomization.BgType.ValueString()
+		model.PortalCustomizedBoxColor = portalCustomization.BoxColor.ValueString()
+		model.PortalCustomizedBoxLinkColor = portalCustomization.BoxLinkColor.ValueString()
+		model.PortalCustomizedBoxOpacity = int(portalCustomization.BoxOpacity.ValueInt32())
+		model.PortalCustomizedBoxRADIUS = int(portalCustomization.BoxRadius.ValueInt32())
+		model.PortalCustomizedBoxTextColor = portalCustomization.BoxTextColor.ValueString()
+		model.PortalCustomizedButtonColor = portalCustomization.ButtonColor.ValueString()
+		model.PortalCustomizedButtonText = portalCustomization.ButtonText.ValueString()
+		model.PortalCustomizedButtonTextColor = portalCustomization.ButtonTextColor.ValueString()
+		model.PortalCustomizedLanguages = languages
+		model.PortalCustomizedLinkColor = portalCustomization.LinkColor.ValueString()
+		model.PortalCustomizedLogoPosition = portalCustomization.LogoPosition.ValueString()
+		model.PortalCustomizedLogoSize = int(portalCustomization.LogoSize.ValueInt32())
+		model.PortalCustomizedSuccessText = portalCustomization.SuccessText.ValueString()
+		model.PortalCustomizedTextColor = portalCustomization.TextColor.ValueString()
+		model.PortalCustomizedTitle = portalCustomization.Title.ValueString()
+		model.PortalCustomizedTos = portalCustomization.Tos.ValueString()
+		model.PortalCustomizedTosEnabled = portalCustomization.TosEnabled.ValueBool()
+		model.PortalCustomizedUnsplashAuthorName = portalCustomization.UnsplashAuthorName.ValueString()
+		model.PortalCustomizedUnsplashAuthorUsername = portalCustomization.UnsplashAuthorUsername.ValueString()
+		model.PortalCustomizedWelcomeText = portalCustomization.WelcomeText.ValueString()
+		model.PortalCustomizedWelcomeTextEnabled = portalCustomization.WelcomeTextEnabled.ValueBool()
+		model.PortalCustomizedWelcomeTextPosition = portalCustomization.WelcomeTextPosition.ValueString()
+	} else {
+		model.PortalCustomized = false
+	}
+
 	return model, diags
 }
 
@@ -762,6 +806,41 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 		}
 	} else {
 		d.RestrictedDNSServers = utils.EmptyList(types.StringType)
+	}
+
+	languages, diags := types.ListValueFrom(ctx, types.StringType, model.PortalCustomizedLanguages)
+	customizations := &portalCustomizationModel{
+		Customized:             types.BoolValue(model.PortalCustomized),
+		AuthenticationText:     types.StringValue(model.PortalCustomizedAuthenticationText),
+		BgColor:                types.StringValue(model.PortalCustomizedBgColor),
+		BgImageTile:            types.BoolValue(model.PortalCustomizedBgImageTile),
+		BgType:                 types.StringValue(model.PortalCustomizedBgType),
+		BoxColor:               types.StringValue(model.PortalCustomizedBoxColor),
+		BoxLinkColor:           types.StringValue(model.PortalCustomizedBoxLinkColor),
+		BoxOpacity:             types.Int32Value(int32(model.PortalCustomizedBoxOpacity)),
+		BoxRadius:              types.Int32Value(int32(model.PortalCustomizedBoxRADIUS)),
+		BoxTextColor:           types.StringValue(model.PortalCustomizedBoxTextColor),
+		ButtonColor:            types.StringValue(model.PortalCustomizedButtonColor),
+		ButtonText:             types.StringValue(model.PortalCustomizedButtonText),
+		ButtonTextColor:        types.StringValue(model.PortalCustomizedButtonTextColor),
+		Languages:              languages,
+		LinkColor:              types.StringValue(model.PortalCustomizedLinkColor),
+		LogoPosition:           types.StringValue(model.PortalCustomizedLogoPosition),
+		LogoSize:               types.Int32Value(int32(model.PortalCustomizedLogoSize)),
+		SuccessText:            types.StringValue(model.PortalCustomizedSuccessText),
+		TextColor:              types.StringValue(model.PortalCustomizedTextColor),
+		Title:                  types.StringValue(model.PortalCustomizedTitle),
+		Tos:                    types.StringValue(model.PortalCustomizedTos),
+		TosEnabled:             types.BoolValue(model.PortalCustomizedTosEnabled),
+		UnsplashAuthorName:     types.StringValue(model.PortalCustomizedUnsplashAuthorName),
+		UnsplashAuthorUsername: types.StringValue(model.PortalCustomizedUnsplashAuthorUsername),
+		WelcomeText:            types.StringValue(model.PortalCustomizedWelcomeText),
+		WelcomeTextEnabled:     types.BoolValue(model.PortalCustomizedWelcomeTextEnabled),
+		WelcomeTextPosition:    types.StringValue(model.PortalCustomizedWelcomeTextPosition),
+	}
+	d.PortalCustomization, diags = types.ObjectValueFrom(ctx, customizations.AttributeTypes(), customizations)
+	if diags.HasError() {
+		return diags
 	}
 
 	d.PortalEnabled = types.BoolValue(model.PortalEnabled)
@@ -1128,194 +1207,197 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 					stringvalidator.OneOf("paypal", "stripe", "authorize", "quickpay", "merchantwarrior", "ippay"),
 				},
 			},
-			//"portal_customization": schema.SingleNestedAttribute{
-			//	MarkdownDescription: "Portal customization settings.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//	Attributes: map[string]schema.Attribute{
-			//		"customized": schema.BoolAttribute{
-			//			MarkdownDescription: "Whether the portal is customized.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"authentication_text": schema.StringAttribute{
-			//			MarkdownDescription: "Custom authentication text for the portal.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"bg_color": schema.StringAttribute{
-			//			MarkdownDescription: "Background color for the custom portal. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.String{
-			//				validators.HexColor(),
-			//			},
-			//		},
-			//		"bg_image_tile": schema.BoolAttribute{
-			//			MarkdownDescription: "Tile the background image.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"bg_type": schema.StringAttribute{
-			//			MarkdownDescription: "Type of portal background. Valid values are:\n" +
-			//				"* `color` - Solid color background\n" +
-			//				"* `image` - (not yet supported!) Custom image background\n" +
-			//				"* `gallery` - Image from Unsplash gallery",
-			//			Optional: true,
-			//			Computed: true,
-			//			Validators: []validator.String{
-			//				stringvalidator.OneOf("color", "image", "gallery"),
-			//			},
-			//		},
-			//		"box_color": schema.StringAttribute{
-			//			MarkdownDescription: "Color of the login box in the portal. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.String{
-			//				validators.HexColor(),
-			//			},
-			//		},
-			//		"box_link_color": schema.StringAttribute{
-			//			MarkdownDescription: "Color of links in the login box. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.String{
-			//				validators.HexColor(),
-			//			},
-			//		},
-			//		"box_opacity": schema.Int32Attribute{
-			//			MarkdownDescription: "Opacity of the login box (0-100).",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.Int32{
-			//				int32validator.Between(0, 100),
-			//			},
-			//		},
-			//		"box_radius": schema.Int32Attribute{
-			//			MarkdownDescription: "Border radius of the login box in pixels.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.Int32{
-			//				int32validator.AtLeast(0),
-			//			},
-			//		},
-			//		"box_text_color": schema.StringAttribute{
-			//			MarkdownDescription: "Text color in the login box. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.String{
-			//				validators.HexColor(),
-			//			},
-			//		},
-			//		"button_color": schema.StringAttribute{
-			//			MarkdownDescription: "Button color in the portal. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.String{
-			//				validators.HexColor(),
-			//			},
-			//		},
-			//		"button_text": schema.StringAttribute{
-			//			MarkdownDescription: "Custom text for the login button.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"button_text_color": schema.StringAttribute{
-			//			MarkdownDescription: "Button text color. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.String{
-			//				validators.HexColor(),
-			//			},
-			//		},
-			//		"languages": schema.ListAttribute{
-			//			MarkdownDescription: "List of enabled languages for the portal.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			ElementType:         types.StringType,
-			//		},
-			//		"link_color": schema.StringAttribute{
-			//			MarkdownDescription: "Color for links in the portal. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.String{
-			//				validators.HexColor(),
-			//			},
-			//		},
-			//		"logo_position": schema.StringAttribute{
-			//			MarkdownDescription: "Position of the logo in the portal. Valid values are: left, center, right.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.String{
-			//				stringvalidator.OneOf("left", "center", "right"),
-			//			},
-			//		},
-			//		"logo_size": schema.Int32Attribute{
-			//			MarkdownDescription: "Size of the logo in pixels.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.Int32{
-			//				int32validator.AtLeast(0),
-			//			},
-			//		},
-			//		"success_text": schema.StringAttribute{
-			//			MarkdownDescription: "Text displayed after successful authentication.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"text_color": schema.StringAttribute{
-			//			MarkdownDescription: "Main text color for the portal. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.String{
-			//				validators.HexColor(),
-			//			},
-			//		},
-			//		"title": schema.StringAttribute{
-			//			MarkdownDescription: "Title of the portal page.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"tos": schema.StringAttribute{
-			//			MarkdownDescription: "Terms of service text.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"tos_enabled": schema.BoolAttribute{
-			//			MarkdownDescription: "Enable terms of service acceptance requirement.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"unsplash_author_name": schema.StringAttribute{
-			//			MarkdownDescription: "Name of the Unsplash author for gallery background.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"unsplash_author_username": schema.StringAttribute{
-			//			MarkdownDescription: "Username of the Unsplash author for gallery background.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"welcome_text": schema.StringAttribute{
-			//			MarkdownDescription: "Welcome text displayed on the portal.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"welcome_text_enabled": schema.BoolAttribute{
-			//			MarkdownDescription: "Enable welcome text display.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//		},
-			//		"welcome_text_position": schema.StringAttribute{
-			//			MarkdownDescription: "Position of the welcome text. Valid values are: top, middle, bottom.",
-			//			Optional:            true,
-			//			Computed:            true,
-			//			Validators: []validator.String{
-			//				stringvalidator.OneOf("top", "middle", "bottom"),
-			//			},
-			//		},
-			//	},
-			//},
+			"portal_customization": schema.SingleNestedAttribute{
+				MarkdownDescription: "Portal customization settings.",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.UseStateForUnknown(),
+				},
+				Attributes: map[string]schema.Attribute{
+					"customized": schema.BoolAttribute{
+						MarkdownDescription: "Whether the portal is customized.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"authentication_text": schema.StringAttribute{
+						MarkdownDescription: "Custom authentication text for the portal.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"bg_color": schema.StringAttribute{
+						MarkdownDescription: "Background color for the custom portal. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.String{
+							validators.HexColor(),
+						},
+					},
+					"bg_image_tile": schema.BoolAttribute{
+						MarkdownDescription: "Tile the background image.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"bg_type": schema.StringAttribute{
+						MarkdownDescription: "Type of portal background. Valid values are:\n" +
+							"* `color` - Solid color background\n" +
+							"* `image` - (not yet supported!) Custom image background\n" +
+							"* `gallery` - Image from Unsplash gallery",
+						Optional: true,
+						Computed: true,
+						Validators: []validator.String{
+							stringvalidator.OneOf("color", "image", "gallery"),
+						},
+					},
+					"box_color": schema.StringAttribute{
+						MarkdownDescription: "Color of the login box in the portal. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.String{
+							validators.HexColor(),
+						},
+					},
+					"box_link_color": schema.StringAttribute{
+						MarkdownDescription: "Color of links in the login box. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.String{
+							validators.HexColor(),
+						},
+					},
+					"box_opacity": schema.Int32Attribute{
+						MarkdownDescription: "Opacity of the login box (0-100).",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.Int32{
+							int32validator.Between(0, 100),
+						},
+					},
+					"box_radius": schema.Int32Attribute{
+						MarkdownDescription: "Border radius of the login box in pixels.",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.Int32{
+							int32validator.AtLeast(0),
+						},
+					},
+					"box_text_color": schema.StringAttribute{
+						MarkdownDescription: "Text color in the login box. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.String{
+							validators.HexColor(),
+						},
+					},
+					"button_color": schema.StringAttribute{
+						MarkdownDescription: "Button color in the portal. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.String{
+							validators.HexColor(),
+						},
+					},
+					"button_text": schema.StringAttribute{
+						MarkdownDescription: "Custom text for the login button.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"button_text_color": schema.StringAttribute{
+						MarkdownDescription: "Button text color. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.String{
+							validators.HexColor(),
+						},
+					},
+					"languages": schema.ListAttribute{
+						MarkdownDescription: "List of enabled languages for the portal.",
+						Optional:            true,
+						Computed:            true,
+						ElementType:         types.StringType,
+					},
+					"link_color": schema.StringAttribute{
+						MarkdownDescription: "Color for links in the portal. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.String{
+							validators.HexColor(),
+						},
+					},
+					"logo_position": schema.StringAttribute{
+						MarkdownDescription: "Position of the logo in the portal. Valid values are: left, center, right.",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.String{
+							stringvalidator.OneOf("left", "center", "right"),
+						},
+					},
+					"logo_size": schema.Int32Attribute{
+						MarkdownDescription: "Size of the logo in pixels.",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.Int32{
+							int32validator.AtLeast(0),
+						},
+					},
+					"success_text": schema.StringAttribute{
+						MarkdownDescription: "Text displayed after successful authentication.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"text_color": schema.StringAttribute{
+						MarkdownDescription: "Main text color for the portal. Must be a valid hex color code (e.g., #FFF or #FFFFFF).",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.String{
+							validators.HexColor(),
+						},
+					},
+					"title": schema.StringAttribute{
+						MarkdownDescription: "Title of the portal page.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"tos": schema.StringAttribute{
+						MarkdownDescription: "Terms of service text.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"tos_enabled": schema.BoolAttribute{
+						MarkdownDescription: "Enable terms of service acceptance requirement.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"unsplash_author_name": schema.StringAttribute{
+						MarkdownDescription: "Name of the Unsplash author for gallery background.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"unsplash_author_username": schema.StringAttribute{
+						MarkdownDescription: "Username of the Unsplash author for gallery background.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"welcome_text": schema.StringAttribute{
+						MarkdownDescription: "Welcome text displayed on the portal.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"welcome_text_enabled": schema.BoolAttribute{
+						MarkdownDescription: "Enable welcome text display.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"welcome_text_position": schema.StringAttribute{
+						MarkdownDescription: "Position of the welcome text. Valid values are: `under_logo`, `above_boxes`.",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.String{
+							stringvalidator.OneOf("under_logo", "above_boxes"),
+						},
+					},
+				},
+			},
 			"portal_enabled": schema.BoolAttribute{
 				MarkdownDescription: "Enable the guest portal.",
 				Optional:            true,
