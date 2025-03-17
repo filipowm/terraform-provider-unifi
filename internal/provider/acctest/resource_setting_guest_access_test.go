@@ -345,7 +345,7 @@ func TestAccSettingGuestAccess_paymentStripe(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_paymentStripe(),
+				Config: testAccSettingGuestAccessConfig_paymentStripe("stripe-api-key"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -355,7 +355,7 @@ func TestAccSettingGuestAccess_paymentStripe(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_paymentStripeUpdated(),
+				Config: testAccSettingGuestAccessConfig_paymentStripe("updated-stripe-api-key"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -504,7 +504,7 @@ func TestAccSettingGuestAccess_paymentSwitchGateways(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_paymentStripe(),
+				Config: testAccSettingGuestAccessConfig_paymentStripe("stripe-api-key"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_gateway", "stripe"),
 					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "paypal.username"),
@@ -687,6 +687,45 @@ func TestAccSettingGuestAccess_google(t *testing.T) {
 	})
 }
 
+func TestAccSettingGuestAccess_radius(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		Lock: settingGuestAccessLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingGuestAccessConfig_radius("chap", "radius-profile-id", true, 3799),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius.auth_type", "chap"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius.profile_id", "radius-profile-id"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius.disconnect_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius.disconnect_port", "3799"),
+				),
+			},
+			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
+			{
+				Config: testAccSettingGuestAccessConfig_radius("mschapv2", "updated-profile-id", false, 1812),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius.auth_type", "mschapv2"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius.profile_id", "updated-profile-id"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius.disconnect_enabled", "false"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius.disconnect_port", "1812"),
+				),
+			},
+			{
+				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius_enabled", "false"),
+					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "radius"),
+				),
+			},
+		},
+	})
+}
+
 func testAccSettingGuestAccessConfig_basic() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
@@ -860,28 +899,16 @@ resource "unifi_setting_guest_access" "test" {
 `
 }
 
-func testAccSettingGuestAccessConfig_paymentStripe() string {
-	return `
+func testAccSettingGuestAccessConfig_paymentStripe(apiKey string) string {
+	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth            = "hotspot"
   payment_gateway = "stripe"
   stripe = {
-    api_key = "stripe-api-key"
+    api_key = %q
   }
 }
-`
-}
-
-func testAccSettingGuestAccessConfig_paymentStripeUpdated() string {
-	return `
-resource "unifi_setting_guest_access" "test" {
-  auth            = "hotspot"
-  payment_gateway = "stripe"
-  stripe = {
-    api_key = "updated-stripe-api-key"
-  }
-}
-`
+`, apiKey)
 }
 
 func testAccSettingGuestAccessConfig_paymentAuthorize(useSandbox bool) string {
@@ -972,7 +999,7 @@ func testAccSettingGuestAccessConfig_google(clientId, clientSecret, domain strin
 	if domain != "" {
 		domainConfig = fmt.Sprintf("    domain       = %q", domain)
 	}
-	
+
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth = "hotspot"
@@ -984,4 +1011,18 @@ resource "unifi_setting_guest_access" "test" {
   }
 }
 `, clientId, clientSecret, domainConfig, scopeEmail)
+}
+
+func testAccSettingGuestAccessConfig_radius(authType, profileId string, disconnectEnabled bool, disconnectPort int) string {
+	return fmt.Sprintf(`
+resource "unifi_setting_guest_access" "test" {
+  auth = "hotspot"
+  radius = {
+	auth_type          = %q
+	profile_id         = %q
+	disconnect_enabled = %t
+	disconnect_port    = %d
+  }
+}
+`, authType, profileId, disconnectEnabled, disconnectPort)
 }

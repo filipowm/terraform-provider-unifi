@@ -67,8 +67,8 @@ type guestAccessModel struct {
 
 	Quickpay types.Object `tfsdk:"quickpay"`
 
-	//RadiusEnabled types.Bool   `tfsdk:"radius_enabled"`
-	//Radius        types.Object `tfsdk:"radius"`
+	RadiusEnabled types.Bool   `tfsdk:"radius_enabled"`
+	Radius        types.Object `tfsdk:"radius"`
 
 	RedirectEnabled types.Bool   `tfsdk:"redirect_enabled"`
 	Redirect        types.Object `tfsdk:"redirect"`
@@ -401,6 +401,21 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.GoogleEnabled = false
 	}
 
+	if base.IsDefined(d.Radius) {
+		var radius *radiusModel
+		diags.Append(d.Radius.As(ctx, &radius, basetypes.ObjectAsOptions{})...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		model.RADIUSEnabled = true
+		model.RADIUSAuthType = radius.AuthType.ValueString()
+		model.RADIUSDisconnectEnabled = radius.DisconnectEnabled.ValueBool()
+		model.RADIUSDisconnectPort = int(radius.DisconnectPort.ValueInt32())
+		model.RADIUSProfileID = radius.ProfileID.ValueString()
+	} else {
+		model.RADIUSEnabled = false
+	}
+
 	return model, diags
 }
 
@@ -629,7 +644,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 	if diags.HasError() {
 		return diags
 	}
-	if model.FacebookEnabled {
+	if model.GoogleEnabled {
 		google := &googleModel{
 			ClientID:     types.StringValue(model.GoogleClientID),
 			ClientSecret: types.StringValue(model.XGoogleClientSecret),
@@ -637,6 +652,24 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 			ScopeEmail:   types.BoolValue(model.FacebookScopeEmail),
 		}
 		d.Google, diags = types.ObjectValueFrom(ctx, google.AttributeTypes(), google)
+		if diags.HasError() {
+			return diags
+		}
+	}
+
+	d.RadiusEnabled = types.BoolValue(model.RADIUSEnabled)
+	d.Radius, diags = base.ObjectNull(&radiusModel{})
+	if diags.HasError() {
+		return diags
+	}
+	if model.RADIUSEnabled {
+		radius := &radiusModel{
+			AuthType:          types.StringValue(model.RADIUSAuthType),
+			DisconnectEnabled: types.BoolValue(model.RADIUSDisconnectEnabled),
+			DisconnectPort:    types.Int32Value(int32(model.RADIUSDisconnectPort)),
+			ProfileID:         types.StringValue(model.RADIUSProfileID),
+		}
+		d.Radius, diags = types.ObjectValueFrom(ctx, radius.AttributeTypes(), radius)
 		if diags.HasError() {
 			return diags
 		}
@@ -683,10 +716,6 @@ func requiredTogetherIfStringVal(condition, value string, attrs ...string) valid
 }
 
 func requiredStringValueIfTrue(conditionAttr, targetAttr, targetVal string) validators.RequiredValueIfValidator {
-	return validators.RequiredValueIf(path.MatchRoot(conditionAttr), types.BoolValue(true), path.MatchRoot(targetAttr), types.StringValue(targetVal))
-}
-
-func requiredStringValueIfSet(conditionAttr, targetAttr, targetVal string) validators.RequiredValueIfValidator {
 	return validators.RequiredValueIf(path.MatchRoot(conditionAttr), types.BoolValue(true), path.MatchRoot(targetAttr), types.StringValue(targetVal))
 }
 
@@ -1243,34 +1272,40 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 					},
 				},
 			},
-			//"radius_auth_type": schema.StringAttribute{
-			//	MarkdownDescription: "RADIUS authentication type. Valid values are: chap, mschapv2.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//	Validators: []validator.String{
-			//		stringvalidator.OneOf("chap", "mschapv2"),
-			//	},
-			//},
-			//"radius_disconnect_enabled": schema.BoolAttribute{
-			//	MarkdownDescription: "Enable RADIUS disconnect messages.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//},
-			//"radius_disconnect_port": schema.Int32Attribute{
-			//	MarkdownDescription: "Port for RADIUS disconnect messages.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//},
-			//"radius_enabled": schema.BoolAttribute{
-			//	MarkdownDescription: "Enable RADIUS authentication for guest access.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//},
-			//"radius_profile_id": schema.StringAttribute{
-			//	MarkdownDescription: "ID of the RADIUS profile to use.",
-			//	Optional:            true,
-			//	Computed:            true,
-			//},
+			"radius_enabled": schema.BoolAttribute{
+				MarkdownDescription: "Whether RADIUS authentication for guest access is enabled.",
+				Computed:            true,
+			},
+			"radius": schema.SingleNestedAttribute{
+				MarkdownDescription: "RADIUS authentication settings.",
+				Optional:            true,
+				Attributes: map[string]schema.Attribute{
+					"auth_type": schema.StringAttribute{
+						MarkdownDescription: "RADIUS authentication type. Valid values are: `chap`, `mschapv2`.",
+						Required:            true,
+						Validators: []validator.String{
+							stringvalidator.OneOf("chap", "mschapv2"),
+						},
+					},
+					"disconnect_enabled": schema.BoolAttribute{
+						MarkdownDescription: "Enable RADIUS disconnect messages.",
+						Optional:            true,
+						Computed:            true,
+					},
+					"disconnect_port": schema.Int32Attribute{
+						MarkdownDescription: "Port for RADIUS disconnect messages.",
+						Optional:            true,
+						Computed:            true,
+						Validators: []validator.Int32{
+							int32validator.Between(1, 65535),
+						},
+					},
+					"profile_id": schema.StringAttribute{
+						MarkdownDescription: "ID of the RADIUS profile to use.",
+						Required:            true,
+					},
+				},
+			},
 			"redirect_enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether redirect after authentication is enabled.",
 				Computed:            true,
