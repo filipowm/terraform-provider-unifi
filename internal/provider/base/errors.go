@@ -14,6 +14,17 @@ func ErrorInvalidModelMergeTarget(expectedType, actualType interface{}) diag.Dia
 	return diag.NewErrorDiagnostic("Invalid model merge target", "Expected target type to be the same a receiver: "+e+". Was : "+a)
 }
 
+func IsServerErrorStatusCode(err error, statusCode int) bool {
+	if err == nil {
+		return false
+	}
+	var se *unifi.ServerError
+	if errors.As(err, &se) {
+		return se.StatusCode == statusCode
+	}
+	return false
+}
+
 func IsServerErrorContains(err error, messageContains string) bool {
 	if err == nil {
 		return false
