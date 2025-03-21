@@ -10,6 +10,8 @@ import (
 	"testing"
 )
 
+const TfAccLocal = "TF_ACC_LOCAL"
+
 // MarkAccTest marks the test as acceptance test. Useful when executing code before resource.ParallelTest or resource.Test
 // to bring acceptance test check earlier when test environment is required
 func MarkAccTest(t *testing.T) {
@@ -65,8 +67,8 @@ func SiteAndIDImportStateIDFunc(resourceName string) func(*terraform.State) (str
 // PreCheck checks if provided environment variables are set. If not, it will fail the test.
 func PreCheck(t *testing.T) {
 	variables := []string{
-		"UNIFI_USERNAME",
-		"UNIFI_PASSWORD",
+		//"UNIFI_USERNAME",
+		//"UNIFI_PASSWORD",
 		"UNIFI_API",
 	}
 
@@ -94,4 +96,16 @@ func CheckResourceActions(resourceAddress string, actions ...plancheck.ResourceA
 
 func ComposeConfig(configs ...string) string {
 	return strings.Join(configs, "\n")
+}
+
+func SkipIfEnvMissing(t *testing.T, msg string, env string) {
+	t.Helper()
+	if os.Getenv(env) == "" {
+		t.Skip(msg)
+	}
+}
+
+func SkipIfEnvLocalMissing(t *testing.T, msg string) {
+	t.Helper()
+	SkipIfEnvMissing(t, msg, TfAccLocal)
 }
