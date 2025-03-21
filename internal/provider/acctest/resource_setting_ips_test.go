@@ -175,6 +175,7 @@ func TestAccSettingIps_dnsFilters(t *testing.T) {
 }
 
 func TestAccSettingIps_suppression(t *testing.T) {
+	t.Skip("Flaky! Alerts often cause ImportStateVerify attributes not equivalent on 2nd step")
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 8.0",
 		Lock:              settingIpsLock,

@@ -5,7 +5,6 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/dns"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/firewall"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/portal"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/settings"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/filipowm/terraform-provider-unifi/internal/utils"
@@ -178,7 +177,7 @@ func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource 
 		dns.NewDnsRecordResource,
 		firewall.NewFirewallZoneResource,
 		//firewall.NewFirewallZonePolicyResource,
-		portal.NewPortalFileResource,
+		//portal.NewPortalFileResource,
 		settings.NewAutoSpeedtestResource,
 		settings.NewCountryResource,
 		settings.NewDpiResource,
