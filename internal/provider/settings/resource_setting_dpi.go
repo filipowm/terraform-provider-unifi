@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
@@ -60,8 +61,8 @@ func (r *dpiResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Deep Packet Inspection (DPI) settings for a UniFi site. DPI is a feature that allows the UniFi controller to analyze network traffic and identify applications and services being used on the network.",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether Deep Packet Inspection is enabled.",
 				Required:            true,

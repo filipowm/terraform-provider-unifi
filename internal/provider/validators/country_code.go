@@ -3,7 +3,7 @@ package validators
 import (
 	"context"
 	"github.com/biter777/countries"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/helpers/validatordiag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
@@ -24,7 +24,7 @@ func (c countryCodeAlpha2Validator) MarkdownDescription(ctx context.Context) str
 
 func (c countryCodeAlpha2Validator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	code := req.ConfigValue
-	if base.IsEmptyString(code) {
+	if types.IsEmptyString(code) {
 		return
 	}
 

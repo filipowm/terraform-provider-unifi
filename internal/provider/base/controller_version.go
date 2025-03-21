@@ -3,6 +3,7 @@ package base
 import (
 	"context"
 	"fmt"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -28,18 +29,6 @@ var (
 	// https://community.ui.com/releases/UniFi-Network-Controller-6-1-61/62f1ad38-1ac5-430c-94b0-becbb8f71d7d
 	ControllerVersionWPA3 = AsVersion("6.1.61")
 )
-
-func (c *Client) IsControllerV6() bool {
-	return c.Version.GreaterThanOrEqual(ControllerV6)
-}
-
-func (c *Client) IsControllerV7() bool {
-	return c.Version.GreaterThanOrEqual(ControllerV7)
-}
-
-func (c *Client) IsControllerV9() bool {
-	return c.Version.GreaterThanOrEqual(ControllerV9)
-}
 
 func (c *Client) SupportsApiKeyAuthentication() bool {
 	return c.Version.GreaterThanOrEqual(ControllerVersionApiKeyAuth)
@@ -149,7 +138,7 @@ func (v controllerVersionValidator) requireVersionForPath(req versionRequirement
 	if diags.HasError() {
 		return diags
 	}
-	if !IsDefined(val) {
+	if !types.IsDefined(val) {
 		return diags
 	}
 	diags.Append(v.requireVersion(req, &attrPath)...)

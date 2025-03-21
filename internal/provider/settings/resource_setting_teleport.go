@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
@@ -67,8 +68,8 @@ func (r *teleportResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Teleport settings for a UniFi site. Teleport is a secure remote access technology that allows authorized users to connect to UniFi devices from anywhere.",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether Teleport is enabled.",
 				Required:            true,

@@ -3,12 +3,12 @@ package firewall
 import (
 	"context"
 	"errors"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"regexp"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
-
 	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -184,7 +184,7 @@ func ResourceFirewallRule() *schema.Resource {
 					"  * A list of ports/ranges separated by commas",
 				Type:         schema.TypeString,
 				Optional:     true,
-				ValidateFunc: utils.ValidatePortRange,
+				ValidateFunc: validators.PortRangeV2,
 			},
 			"src_mac": {
 				Description: "The source MAC address this rule applies to. Use this to create rules that match specific devices " +
@@ -235,7 +235,7 @@ func ResourceFirewallRule() *schema.Resource {
 					"  * A list of ports/ranges separated by commas",
 				Type:         schema.TypeString,
 				Optional:     true,
-				ValidateFunc: utils.ValidatePortRange,
+				ValidateFunc: validators.PortRangeV2,
 			},
 
 			// advanced
@@ -293,7 +293,7 @@ func resourceFirewallRuleCreate(ctx context.Context, d *schema.ResourceData, met
 
 	resp, err := c.CreateFirewallRule(ctx, site, req)
 	if err != nil {
-		if base.IsServerErrorContains(err, "api.err.FirewallGroupTypeExists") {
+		if utils.IsServerErrorContains(err, "api.err.FirewallGroupTypeExists") {
 			return diag.Errorf("firewall rule groups must be of different group types (ie. a port group and address group): %s", err)
 		}
 

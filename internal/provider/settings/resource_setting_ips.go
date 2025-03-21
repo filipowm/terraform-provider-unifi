@@ -5,8 +5,9 @@ import (
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/go-unifi/unifi/features"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -185,23 +186,23 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	}
 
 	var enabledCategories []string
-	diags.Append(utils.ListElementsAs(d.EnabledCategories, &enabledCategories)...)
+	diags.Append(ut.ListElementsAs(d.EnabledCategories, &enabledCategories)...)
 	if diags.HasError() {
 		return nil, diags
 	}
 	model.EnabledCategories = enabledCategories
 
 	var enabledNetworks []string
-	diags.Append(utils.ListElementsAs(d.EnabledNetworks, &enabledNetworks)...)
+	diags.Append(ut.ListElementsAs(d.EnabledNetworks, &enabledNetworks)...)
 	if diags.HasError() {
 		return nil, diags
 	}
 	model.EnabledNetworks = enabledNetworks
 
 	// Handle AdBlockedNetworks - if any networks are configured, set AdBlockingEnabled to true
-	if base.IsDefined(d.AdBlockedNetworks) {
+	if ut.IsDefined(d.AdBlockedNetworks) {
 		var adBlockedNetworks []string
-		diags.Append(utils.ListElementsAs(d.AdBlockedNetworks, &adBlockedNetworks)...)
+		diags.Append(ut.ListElementsAs(d.AdBlockedNetworks, &adBlockedNetworks)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -221,9 +222,9 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	}
 
 	// Handle DNSFilters - if any filters are configured, set DNSFiltering to true
-	if base.IsDefined(d.DNSFilters) {
+	if ut.IsDefined(d.DNSFilters) {
 		var dnsFiltersObjects []DNSFilterModel
-		diags.Append(utils.ListElementsAs(d.DNSFilters, &dnsFiltersObjects)...)
+		diags.Append(ut.ListElementsAs(d.DNSFilters, &dnsFiltersObjects)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -248,9 +249,9 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 				// Handle allowed sites
 
 				var allowedSites, blockedSites, blockedTlds []string
-				diags.Append(utils.ListElementsAs(filterObj.AllowedSites, &allowedSites)...)
-				diags.Append(utils.ListElementsAs(filterObj.BlockedSites, &blockedSites)...)
-				diags.Append(utils.ListElementsAs(filterObj.BlockedTld, &blockedTlds)...)
+				diags.Append(ut.ListElementsAs(filterObj.AllowedSites, &allowedSites)...)
+				diags.Append(ut.ListElementsAs(filterObj.BlockedSites, &blockedSites)...)
+				diags.Append(ut.ListElementsAs(filterObj.BlockedTld, &blockedTlds)...)
 				if diags.HasError() {
 					return nil, diags
 				}
@@ -266,9 +267,9 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	}
 
 	// Handle honeypot
-	if base.IsDefined(d.Honeypots) {
+	if ut.IsDefined(d.Honeypots) {
 		var honeypotObjects []HoneypotModel
-		diags.Append(utils.ListElementsAs(d.Honeypots, &honeypotObjects)...)
+		diags.Append(ut.ListElementsAs(d.Honeypots, &honeypotObjects)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -293,7 +294,7 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	}
 
 	// Handle suppression
-	if base.IsDefined(d.Suppression) {
+	if ut.IsDefined(d.Suppression) {
 		var suppressionObj SuppressionModel
 		diags.Append(d.Suppression.As(ctx, &suppressionObj, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -301,7 +302,7 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 		}
 
 		var alerts []AlertsModel
-		diags.Append(utils.ListElementsAs(suppressionObj.Alerts, &alerts)...)
+		diags.Append(ut.ListElementsAs(suppressionObj.Alerts, &alerts)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -317,13 +318,13 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 			// Handle tracking
 
 			var trackings []TrackingModel
-			diags.Append(utils.ListElementsAs(alertObj.Tracking, &trackings)...)
+			diags.Append(ut.ListElementsAs(alertObj.Tracking, &trackings)...)
 			if diags.HasError() {
 				return nil, diags
 			}
 			alert.Tracking = make([]unifi.SettingIpsTracking, 0)
 			for _, trackingObj := range trackings {
-				if base.IsEmptyString(trackingObj.Direction) || base.IsEmptyString(trackingObj.Mode) || base.IsEmptyString(trackingObj.Value) {
+				if ut.IsEmptyString(trackingObj.Direction) || ut.IsEmptyString(trackingObj.Mode) || ut.IsEmptyString(trackingObj.Value) {
 					continue
 				}
 				alert.Tracking = append(alert.Tracking, unifi.SettingIpsTracking{
@@ -335,7 +336,7 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 		}
 
 		var whitelists []WhitelistModel
-		diags.Append(utils.ListElementsAs(suppressionObj.Whitelist, &whitelists)...)
+		diags.Append(ut.ListElementsAs(suppressionObj.Whitelist, &whitelists)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -379,10 +380,10 @@ func (d *ipsModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	if diags.HasError() {
 		return diags
 	}
-	if base.IsDefined(enabledCategoriesList) {
+	if ut.IsDefined(enabledCategoriesList) {
 		d.EnabledCategories = enabledCategoriesList
 	} else {
-		d.EnabledCategories = utils.EmptyList(types.StringType)
+		d.EnabledCategories = ut.EmptyList(types.StringType)
 	}
 
 	// Handle enabled networks
@@ -390,10 +391,10 @@ func (d *ipsModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	if diags.HasError() {
 		return diags
 	}
-	if base.IsDefined(enabledNetworksList) {
+	if ut.IsDefined(enabledNetworksList) {
 		d.EnabledNetworks = enabledNetworksList
 	} else {
-		d.EnabledNetworks = utils.EmptyList(types.StringType)
+		d.EnabledNetworks = ut.EmptyList(types.StringType)
 	}
 
 	//Handle AdBlockedNetworks - extract network IDs from AdBlockingConfigurations
@@ -561,8 +562,8 @@ func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_setting_ips` resource allows you to configure the Intrusion Prevention System (IPS) settings for your UniFi network. IPS provides network threat protection by monitoring, detecting, and preventing malicious traffic based on configured rules and policies. Requires controller version 7.4 or later",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"ad_blocked_networks": schema.ListAttribute{
 				MarkdownDescription: "List of network IDs to enable ad blocking for. If any networks are configured, ad blocking will be automatically enabled. Each entry should be a valid network ID from your UniFi configuration. Leave empty to disable ad blocking.",
 				ElementType:         types.StringType,

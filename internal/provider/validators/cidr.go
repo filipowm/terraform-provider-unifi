@@ -30,15 +30,15 @@ type cidrValidator struct {
 	allowEmpty bool
 }
 
-func (v cidrValidator) Description(ctx context.Context) string {
+func (v cidrValidator) Description(_ context.Context) string {
 	return "value must be a valid CIDR notation (e.g., '192.168.1.0/24')"
 }
 
-func (v cidrValidator) MarkdownDescription(ctx context.Context) string {
+func (v cidrValidator) MarkdownDescription(_ context.Context) string {
 	return "value must be a valid CIDR notation (e.g., `192.168.1.0/24`)"
 }
 
-func (v cidrValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+func (v cidrValidator) ValidateString(_ context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		return
 	}

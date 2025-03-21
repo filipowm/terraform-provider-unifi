@@ -3,6 +3,7 @@ package base
 import (
 	"context"
 	"errors"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"sync"
 	"testing"
 
@@ -574,7 +575,7 @@ func TestIsDefined(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, IsDefined(tt.value))
+			assert.Equal(t, tt.expected, ut.IsDefined(tt.value))
 		})
 	}
 }
@@ -640,7 +641,7 @@ func (v *testFeatureValidator) TestRequireFeaturesEnabledForPath(ctx context.Con
 		return diags
 	}
 
-	if !IsDefined(v.attrValue) {
+	if !ut.IsDefined(v.attrValue) {
 		return diags
 	}
 

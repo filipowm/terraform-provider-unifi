@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
@@ -57,8 +58,8 @@ func (r *magicSiteToSiteVpnResource) Schema(_ context.Context, _ resource.Schema
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Magic Site to Site VPN settings for a UniFi site.",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether the Magic Site to Site VPN is enabled.",
 				Required:            true,

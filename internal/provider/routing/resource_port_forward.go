@@ -3,11 +3,11 @@ package routing
 import (
 	"context"
 	"errors"
-
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 
 	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -48,7 +48,7 @@ func ResourcePortForward() *schema.Resource {
 				Description:  "The external port(s) that will be forwarded. Can be a single port (e.g., '80') or a port range (e.g., '8080:8090').",
 				Type:         schema.TypeString,
 				Optional:     true,
-				ValidateFunc: utils.ValidatePortRange,
+				ValidateFunc: validators.PortRangeV2,
 			},
 			// TODO: remove this, disabled rules should just be deleted.
 			"enabled": {
@@ -69,7 +69,7 @@ func ResourcePortForward() *schema.Resource {
 				Description:  "The internal port(s) that will receive the forwarded traffic. Can be a single port (e.g., '8080') or a port range (e.g., '8080:8090').",
 				Type:         schema.TypeString,
 				Optional:     true,
-				ValidateFunc: utils.ValidatePortRange,
+				ValidateFunc: validators.PortRangeV2,
 			},
 			"log": {
 				Description: "Enable logging of traffic matching this port forwarding rule. Useful for monitoring and troubleshooting.",

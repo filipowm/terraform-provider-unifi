@@ -3,11 +3,11 @@ package firewall
 import (
 	"context"
 	"github.com/filipowm/go-unifi/unifi/features"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -33,7 +33,7 @@ func (m *firewallZoneModel) AsUnifiModel(_ context.Context) (interface{}, diag.D
 	diags := diag.Diagnostics{}
 	var networkIDs []string
 
-	diags.Append(utils.ListElementsAs(m.Networks, &networkIDs)...)
+	diags.Append(ut.ListElementsAs(m.Networks, &networkIDs)...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -111,8 +111,8 @@ func (r *firewallZoneResource) Schema(_ context.Context, _ resource.SchemaReques
 			"This resource allows you to create, update, and delete firewall zones.",
 
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The name of the firewall zone.",
 				Required:            true,
@@ -122,7 +122,7 @@ func (r *firewallZoneResource) Schema(_ context.Context, _ resource.SchemaReques
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,
-				Default:             utils.DefaultEmptyList(types.StringType),
+				Default:             ut.DefaultEmptyList(types.StringType),
 			},
 		},
 	}

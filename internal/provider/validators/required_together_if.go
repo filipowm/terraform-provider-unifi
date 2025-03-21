@@ -3,6 +3,7 @@ package validators
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/helpers/validatordiag"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -178,6 +179,33 @@ func RequiredTogetherIf(conditionPath path.Expression, conditionValue attr.Value
 		ConditionPath:     conditionPath,
 		ConditionValue:    conditionValue,
 		TargetExpressions: targetExpressions,
+		CheckOnlyIfSet:    false,
+	}
+}
+
+func mapPathToExpression(p string) path.Expression {
+	parts := strings.Split(p, ".")
+	root := parts[0]
+	exp := path.MatchRoot(root)
+	for _, part := range parts[1:] {
+		exp = exp.AtName(part)
+	}
+	return exp
+}
+
+func mapPathsToExpressions(paths ...string) []path.Expression {
+	var expressions []path.Expression
+	for _, p := range paths {
+		expressions = append(expressions, mapPathToExpression(p))
+	}
+	return expressions
+}
+
+func RequiredSimpleTogetherIf(conditionPath string, conditionValue attr.Value, targetExpressions ...string) RequiredTogetherIfValidator {
+	return RequiredTogetherIfValidator{
+		ConditionPath:     mapPathToExpression(conditionPath),
+		ConditionValue:    conditionValue,
+		TargetExpressions: mapPathsToExpressions(targetExpressions...),
 		CheckOnlyIfSet:    false,
 	}
 }

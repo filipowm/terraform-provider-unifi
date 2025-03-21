@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -49,7 +50,7 @@ func (d *dnsRecordsDatasource) Schema(_ context.Context, _ datasource.SchemaRequ
 	resp.Schema = schema.Schema{
 		Description: "Retrieves information about a all DNS records.",
 		Attributes: map[string]schema.Attribute{
-			"site": base.SiteAttribute(),
+			"site": ut.SiteAttribute(),
 			"result": schema.ListNestedAttribute{
 				Description: "The list of DNS records.",
 				Computed:    true,

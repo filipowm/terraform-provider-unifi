@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -39,16 +40,16 @@ func (d *ntpModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostic
 		model.NtpServer3 = ""
 		model.NtpServer4 = ""
 	} else {
-		if !base.IsEmptyString(d.NtpServer1) {
+		if !ut.IsEmptyString(d.NtpServer1) {
 			model.NtpServer1 = d.NtpServer1.ValueString()
 		}
-		if !base.IsEmptyString(d.NtpServer2) {
+		if !ut.IsEmptyString(d.NtpServer2) {
 			model.NtpServer2 = d.NtpServer2.ValueString()
 		}
-		if !base.IsEmptyString(d.NtpServer3) {
+		if !ut.IsEmptyString(d.NtpServer3) {
 			model.NtpServer3 = d.NtpServer3.ValueString()
 		}
-		if !base.IsEmptyString(d.NtpServer4) {
+		if !ut.IsEmptyString(d.NtpServer4) {
 			model.NtpServer4 = d.NtpServer4.ValueString()
 		}
 	}
@@ -115,8 +116,8 @@ func (r *ntpResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 		MarkdownDescription: "The `unifi_setting_ntp` resource allows you to configure Network Time Protocol (NTP) server settings for your UniFi network.\n\n" +
 			"NTP servers provide time synchronization for your network devices. This resource supports both automatic and manual NTP configuration modes.",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"ntp_server_1": schema.StringAttribute{
 				MarkdownDescription: "Primary NTP server hostname or IP address. Must be a valid hostname (e.g., `pool.ntp.org`) or IPv4 address. " +
 					"Only applicable when `mode` is set to `manual`.",

@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// for Terraform Plugin SDK v2
 func ImportSiteAndID(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
 	if id := d.Id(); strings.Contains(id, ":") {
 		importParts := strings.SplitN(id, ":", 2)
@@ -16,6 +17,7 @@ func ImportSiteAndID(_ context.Context, d *schema.ResourceData, _ interface{}) (
 	return []*schema.ResourceData{d}, nil
 }
 
+// for Terraform Plugin Framework
 func ImportIDWithSite(req resource.ImportStateRequest, resp *resource.ImportStateResponse) (string, string) {
 	id := req.ID
 	if id == "" {

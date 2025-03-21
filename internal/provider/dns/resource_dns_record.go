@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -78,8 +79,8 @@ func (d *dnsRecordResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 			"  * Adding TXT records for service verification\n\n",
 
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"name": schema.StringAttribute{
 				MarkdownDescription: "DNS record name.",
 				Required:            true,

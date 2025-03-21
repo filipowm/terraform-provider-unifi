@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	"github.com/filipowm/go-unifi/unifi"
@@ -59,8 +60,8 @@ func (r *localeResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages locale settings for a UniFi site.",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"timezone": schema.StringAttribute{
 				Required:            true,
 				MarkdownDescription: "Timezone for the UniFi controller, e.g., `America/Los_Angeles`",

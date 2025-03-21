@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -46,7 +48,7 @@ type autoSpeedtestResource struct {
 }
 
 func checkAutoSpeedtestUnsupportedError(err error) error {
-	if base.IsServerErrorContains(err, "api.err.SpeedTestNotSupported") {
+	if utils.IsServerErrorContains(err, "api.err.SpeedTestNotSupported") {
 		return fmt.Errorf("Auto Speedtest is not supported on this controller")
 	}
 	return err
@@ -81,8 +83,8 @@ func (a *autoSpeedtestResource) Schema(_ context.Context, _ resource.SchemaReque
 			"Automatic speedtests can be scheduled to run at regular intervals to monitor the network performance.\n\n" +
 			"**NOTE:** Automatic speedtests where not verified and tested on all UniFi controller versions due to limitations of controller used in acceptance testing. ",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"cron": schema.StringAttribute{
 				MarkdownDescription: "Cron expression defining the schedule for automatic speedtests.",
 				Optional:            true,

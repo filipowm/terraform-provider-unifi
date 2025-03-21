@@ -3,10 +3,10 @@ package user
 import (
 	"context"
 	"errors"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -163,7 +163,7 @@ func resourceUserCreate(ctx context.Context, d *schema.ResourceData, meta interf
 
 	resp, err := c.CreateUser(ctx, site, req)
 	if err != nil {
-		if !base.IsServerErrorContains(err, "api.err.MacUsed") || !allowExisting {
+		if !utils.IsServerErrorContains(err, "api.err.MacUsed") || !allowExisting {
 			return diag.FromErr(err)
 		}
 

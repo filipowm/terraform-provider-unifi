@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -11,7 +12,6 @@ import (
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -206,7 +206,7 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 
 	// Extract DHCP relay servers from the list
 	var dhcpRelayServers []string
-	diags.Append(utils.ListElementsAs(d.DhcpRelayServers, &dhcpRelayServers)...)
+	diags.Append(ut.ListElementsAs(d.DhcpRelayServers, &dhcpRelayServers)...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -233,7 +233,7 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	// TODO end of deprecated
 
 	// Assign Geo IP filtering attributes
-	if base.IsDefined(d.GeoIPFiltering) {
+	if ut.IsDefined(d.GeoIPFiltering) {
 		var geoIPFiltering *GeoIPFilteringModel
 		diags.Append(d.GeoIPFiltering.As(ctx, &geoIPFiltering, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -242,7 +242,7 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 
 		model.GeoIPFilteringBlock = geoIPFiltering.Mode.ValueString()
 		model.GeoIPFilteringTrafficDirection = geoIPFiltering.TrafficDirection.ValueString()
-		countries, diags := utils.ListElementsToString(ctx, geoIPFiltering.Countries)
+		countries, diags := ut.ListElementsToString(ctx, geoIPFiltering.Countries)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -253,7 +253,7 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	}
 
 	// Assign UPNP attributes
-	if base.IsDefined(d.Upnp) {
+	if ut.IsDefined(d.Upnp) {
 		var upnp *UpnpModel
 		diags.Append(d.Upnp.As(ctx, &upnp, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -268,7 +268,7 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 		model.UpnpEnabled = false
 	}
 
-	if base.IsDefined(d.TcpTimeouts) {
+	if ut.IsDefined(d.TcpTimeouts) {
 		var tcpTimeouts *TCPTimeoutModel
 		diags.Append(d.TcpTimeouts.As(ctx, &tcpTimeouts, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -286,7 +286,7 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	}
 
 	// Assign DNS Verification attributes
-	if base.IsDefined(d.DnsVerification) {
+	if ut.IsDefined(d.DnsVerification) {
 		var dnsVerification *DNSVerificationModel
 		diags.Append(d.DnsVerification.As(ctx, &dnsVerification, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -301,7 +301,7 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 		}
 	}
 
-	if base.IsDefined(d.DhcpRelay) {
+	if ut.IsDefined(d.DhcpRelay) {
 		var dhcpRelay *DHCPRelayModel
 		diags.Append(d.DhcpRelay.As(ctx, &dhcpRelay, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -365,7 +365,7 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 			TrafficDirection: types.StringValue(model.GeoIPFilteringTrafficDirection),
 		}
 
-		countries, diags := utils.StringToListElements(ctx, model.GeoIPFilteringCountries)
+		countries, diags := ut.StringToListElements(ctx, model.GeoIPFilteringCountries)
 		if diags.HasError() {
 			return diags
 		}
@@ -507,8 +507,8 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 			"  * MSS clamping for optimizing MTU issues\n\n" +
 			"Note: Some settings may not be available on all controller versions. For example, multicast_dns_enabled is not supported on UniFi OS v7+. Changes to certain attributes may not be reflected in the plan unless explicitly modified in the configuration.",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"multicast_dns_enabled": schema.BoolAttribute{
 				MarkdownDescription: "Enable multicast DNS (mDNS/Bonjour/Avahi) forwarding across VLANs. This allows devices to discover services " +
 					"(like printers, Chromecasts, Apple devices, etc.) even when they are on different networks or VLANs. " +
@@ -533,7 +533,7 @@ func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.UseStateForUnknown(),
 				},
-				Default: utils.DefaultEmptyList(types.StringType),
+				Default: ut.DefaultEmptyList(types.StringType),
 				Validators: []validator.List{
 					listvalidator.SizeAtMost(5),
 					listvalidator.ValueStringsAre(validators.IPv4()),

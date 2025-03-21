@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -52,8 +53,8 @@ func (d *firewallZoneDatasource) Schema(_ context.Context, _ datasource.SchemaRe
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_firewall_zone` datsources allows retrieving existing firewall zone details from the UniFi controller by the zone name.",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The name of the firewall zone.",
 				Required:            true,
