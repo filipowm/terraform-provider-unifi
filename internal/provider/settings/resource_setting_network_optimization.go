@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
@@ -58,8 +59,8 @@ func (r *networkOptimizationResource) Schema(_ context.Context, _ resource.Schem
 		MarkdownDescription: "Manages Network Optimization settings for a UniFi site. UniFi network optimization is a feature designed to automatically enhance the performance of a UniFi network" +
 			" by making automatic adjustments to various settings such as channel selection, transmit power, or frequency usage",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether the Network Optimization is enabled.",
 				Required:            true,

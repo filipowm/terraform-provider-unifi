@@ -3,7 +3,7 @@ package settings
 import (
 	"context"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -355,7 +355,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		VoucherCustomized: d.VoucherCustomized.ValueBool(),
 		VoucherEnabled:    d.VoucherEnabled.ValueBool(),
 	}
-	if base.IsEmptyString(d.Password) {
+	if ut.IsEmptyString(d.Password) {
 		model.PasswordEnabled = false
 	} else {
 		model.PasswordEnabled = true
@@ -365,7 +365,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 	if diags.HasError() {
 		return nil, diags
 	}
-	if base.IsDefined(d.Redirect) {
+	if ut.IsDefined(d.Redirect) {
 		var redirect *redirectModel
 		diags.Append(d.Redirect.As(ctx, &redirect, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -379,7 +379,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.RedirectEnabled = false
 	}
 
-	if base.IsDefined(d.Facebook) {
+	if ut.IsDefined(d.Facebook) {
 		var facebook *facebookModel
 		diags.Append(d.Facebook.As(ctx, &facebook, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -393,7 +393,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.FacebookEnabled = false
 	}
 
-	if base.IsDefined(d.Google) {
+	if ut.IsDefined(d.Google) {
 		var google *googleModel
 		diags.Append(d.Google.As(ctx, &google, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -408,7 +408,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.GoogleEnabled = false
 	}
 
-	if base.IsDefined(d.Radius) {
+	if ut.IsDefined(d.Radius) {
 		var radius *radiusModel
 		diags.Append(d.Radius.As(ctx, &radius, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -423,7 +423,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.RADIUSEnabled = false
 	}
 
-	if base.IsDefined(d.Wechat) {
+	if ut.IsDefined(d.Wechat) {
 		var wechat *wechatModel
 		diags.Append(d.Wechat.As(ctx, &wechat, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -438,7 +438,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.WechatEnabled = false
 	}
 
-	if base.IsDefined(d.FacebookWifi) {
+	if ut.IsDefined(d.FacebookWifi) {
 		var facebookWifi *facebookWifiModel
 		diags.Append(d.FacebookWifi.As(ctx, &facebookWifi, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
@@ -450,9 +450,9 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.XFacebookWifiGwSecret = facebookWifi.GwSecret.ValueString()
 	}
 
-	if base.IsDefined(d.RestrictedDNSServers) {
+	if ut.IsDefined(d.RestrictedDNSServers) {
 		var servers []string
-		diags := utils.ListElementsAs(d.RestrictedDNSServers, &servers)
+		diags.Append(ut.ListElementsAs(d.RestrictedDNSServers, &servers)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -464,14 +464,14 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.RestrictedDNSEnabled = false
 	}
 
-	if base.IsDefined(d.PortalCustomization) {
+	if ut.IsDefined(d.PortalCustomization) {
 		var portalCustomization *portalCustomizationModel
 		diags.Append(d.PortalCustomization.As(ctx, &portalCustomization, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
 			return nil, diags
 		}
 		var languages []string
-		diags := utils.ListElementsAs(portalCustomization.Languages, &languages)
+		diags := ut.ListElementsAs(portalCustomization.Languages, &languages)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -511,7 +511,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 
 func (d *guestAccessModel) paymentAsUnifiModel(ctx context.Context, model *unifi.SettingGuestAccess) diag.Diagnostics {
 	diags := diag.Diagnostics{}
-	if base.IsEmptyString(d.PaymentGateway) {
+	if ut.IsEmptyString(d.PaymentGateway) {
 		model.PaymentEnabled = false
 	} else {
 		gateway := d.PaymentGateway.ValueString()
@@ -524,7 +524,7 @@ func (d *guestAccessModel) paymentAsUnifiModel(ctx context.Context, model *unifi
 			if diags.HasError() {
 				return diags
 			}
-			if base.IsDefined(authorize.UseSandbox) {
+			if ut.IsDefined(authorize.UseSandbox) {
 				model.AuthorizeUseSandbox = authorize.UseSandbox.ValueBool()
 			}
 			model.XAuthorizeLoginid = authorize.LoginID.ValueString()
@@ -535,7 +535,7 @@ func (d *guestAccessModel) paymentAsUnifiModel(ctx context.Context, model *unifi
 			if diags.HasError() {
 				return diags
 			}
-			if base.IsDefined(ippay.UseSandbox) {
+			if ut.IsDefined(ippay.UseSandbox) {
 				model.IPpayUseSandbox = ippay.UseSandbox.ValueBool()
 			}
 			model.XIPpayTerminalid = ippay.TerminalID.ValueString()
@@ -545,7 +545,7 @@ func (d *guestAccessModel) paymentAsUnifiModel(ctx context.Context, model *unifi
 			if diags.HasError() {
 				return diags
 			}
-			if base.IsDefined(merchantWarrior.UseSandbox) {
+			if ut.IsDefined(merchantWarrior.UseSandbox) {
 				model.MerchantwarriorUseSandbox = merchantWarrior.UseSandbox.ValueBool()
 			}
 			model.XMerchantwarriorApikey = merchantWarrior.ApiKey.ValueString()
@@ -557,7 +557,7 @@ func (d *guestAccessModel) paymentAsUnifiModel(ctx context.Context, model *unifi
 			if diags.HasError() {
 				return diags
 			}
-			if base.IsDefined(paypal.UseSandbox) {
+			if ut.IsDefined(paypal.UseSandbox) {
 				model.PaypalUseSandbox = paypal.UseSandbox.ValueBool()
 			}
 			model.XPaypalPassword = paypal.Password.ValueString()
@@ -569,7 +569,7 @@ func (d *guestAccessModel) paymentAsUnifiModel(ctx context.Context, model *unifi
 			if diags.HasError() {
 				return diags
 			}
-			if base.IsDefined(quickpay.UseSandbox) {
+			if ut.IsDefined(quickpay.UseSandbox) {
 				model.QuickpayTestmode = quickpay.UseSandbox.ValueBool()
 			}
 			model.XQuickpayAgreementid = quickpay.AgreementID.ValueString()
@@ -667,17 +667,17 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 
 	d.PaymentEnabled = types.BoolValue(model.PaymentEnabled)
 	var od diag.Diagnostics
-	d.Authorize, od = base.ObjectNull(&authorizeModel{})
+	d.Authorize, od = ut.ObjectNull(&authorizeModel{})
 	diags.Append(od...)
-	d.Paypal, od = base.ObjectNull(&paypalModel{})
+	d.Paypal, od = ut.ObjectNull(&paypalModel{})
 	diags.Append(od...)
-	d.IPpay, od = base.ObjectNull(&ipPayModel{})
+	d.IPpay, od = ut.ObjectNull(&ipPayModel{})
 	diags.Append(od...)
-	d.MerchantWarrior, od = base.ObjectNull(&merchantWarriorModel{})
+	d.MerchantWarrior, od = ut.ObjectNull(&merchantWarriorModel{})
 	diags.Append(od...)
-	d.Quickpay, od = base.ObjectNull(&quickpayModel{})
+	d.Quickpay, od = ut.ObjectNull(&quickpayModel{})
 	diags.Append(od...)
-	d.Stripe, od = base.ObjectNull(&stripeModel{})
+	d.Stripe, od = ut.ObjectNull(&stripeModel{})
 	diags.Append(od...)
 	if diags.HasError() {
 		return diags
@@ -697,7 +697,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 	}
 
 	d.RedirectEnabled = types.BoolValue(model.RedirectEnabled)
-	d.Redirect, diags = base.ObjectNull(&redirectModel{})
+	d.Redirect, diags = ut.ObjectNull(&redirectModel{})
 	if diags.HasError() {
 		return diags
 	}
@@ -714,7 +714,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 	}
 
 	d.FacebookEnabled = types.BoolValue(model.FacebookEnabled)
-	d.Facebook, diags = base.ObjectNull(&facebookModel{})
+	d.Facebook, diags = ut.ObjectNull(&facebookModel{})
 	if diags.HasError() {
 		return diags
 	}
@@ -731,7 +731,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 	}
 
 	d.GoogleEnabled = types.BoolValue(model.GoogleEnabled)
-	d.Google, diags = base.ObjectNull(&googleModel{})
+	d.Google, diags = ut.ObjectNull(&googleModel{})
 	if diags.HasError() {
 		return diags
 	}
@@ -749,7 +749,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 	}
 
 	d.RadiusEnabled = types.BoolValue(model.RADIUSEnabled)
-	d.Radius, diags = base.ObjectNull(&radiusModel{})
+	d.Radius, diags = ut.ObjectNull(&radiusModel{})
 	if diags.HasError() {
 		return diags
 	}
@@ -767,7 +767,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 	}
 
 	d.WechatEnabled = types.BoolValue(model.WechatEnabled)
-	d.Wechat, diags = base.ObjectNull(&wechatModel{})
+	d.Wechat, diags = ut.ObjectNull(&wechatModel{})
 	if diags.HasError() {
 		return diags
 	}
@@ -784,7 +784,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 		}
 	}
 
-	d.FacebookWifi, diags = base.ObjectNull(&facebookWifiModel{})
+	d.FacebookWifi, diags = ut.ObjectNull(&facebookWifiModel{})
 	if diags.HasError() {
 		return diags
 	}
@@ -808,7 +808,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 			return diags
 		}
 	} else {
-		d.RestrictedDNSServers = utils.EmptyList(types.StringType)
+		d.RestrictedDNSServers = ut.EmptyList(types.StringType)
 	}
 
 	languages, diags := types.ListValueFrom(ctx, types.StringType, model.PortalCustomizedLanguages)
@@ -950,8 +950,8 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_setting_guest_access` resource manages the guest access settings in the UniFi controller.\n\nThis resource allows you to configure all aspects of guest network access including authentication methods, portal customization, and payment options.",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"allowed_subnet": schema.StringAttribute{
 				MarkdownDescription: "Subnet allowed for guest access.",
 				Optional:            true,
@@ -1194,7 +1194,7 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 						Required:            true,
 						Sensitive:           true,
 						Validators: []validator.String{
-							validators.Email(),
+							validators.Email,
 						},
 					},
 				},
@@ -1248,7 +1248,7 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 						Optional:            true,
 						Computed:            true,
 						Validators: []validator.String{
-							validators.HexColor(),
+							validators.HexColor,
 						},
 					},
 					"bg_image_tile": schema.BoolAttribute{
@@ -1272,7 +1272,7 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 						Optional:            true,
 						Computed:            true,
 						Validators: []validator.String{
-							validators.HexColor(),
+							validators.HexColor,
 						},
 					},
 					"box_link_color": schema.StringAttribute{
@@ -1280,7 +1280,7 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 						Optional:            true,
 						Computed:            true,
 						Validators: []validator.String{
-							validators.HexColor(),
+							validators.HexColor,
 						},
 					},
 					"box_opacity": schema.Int32Attribute{
@@ -1304,7 +1304,7 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 						Optional:            true,
 						Computed:            true,
 						Validators: []validator.String{
-							validators.HexColor(),
+							validators.HexColor,
 						},
 					},
 					"button_color": schema.StringAttribute{
@@ -1312,7 +1312,7 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 						Optional:            true,
 						Computed:            true,
 						Validators: []validator.String{
-							validators.HexColor(),
+							validators.HexColor,
 						},
 					},
 					"button_text": schema.StringAttribute{
@@ -1325,7 +1325,7 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 						Optional:            true,
 						Computed:            true,
 						Validators: []validator.String{
-							validators.HexColor(),
+							validators.HexColor,
 						},
 					},
 					"languages": schema.ListAttribute{
@@ -1339,7 +1339,7 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 						Optional:            true,
 						Computed:            true,
 						Validators: []validator.String{
-							validators.HexColor(),
+							validators.HexColor,
 						},
 					},
 					"logo_position": schema.StringAttribute{
@@ -1368,7 +1368,7 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 						Optional:            true,
 						Computed:            true,
 						Validators: []validator.String{
-							validators.HexColor(),
+							validators.HexColor,
 						},
 					},
 					"title": schema.StringAttribute{
@@ -1534,7 +1534,7 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,
-				Default:             listdefault.StaticValue(utils.EmptyList(types.StringType)),
+				Default:             listdefault.StaticValue(ut.EmptyList(types.StringType)),
 				Validators: []validator.List{
 					listvalidator.ValueStringsAre(validators.IPv4()),
 				},

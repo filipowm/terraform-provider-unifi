@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -46,8 +47,8 @@ func (b *dnsRecordsDatasourceModel) SetSite(site string) {
 }
 
 var dnsRecordDatasourceAttributes = map[string]schema.Attribute{
-	"id":   base.ID(),
-	"site": base.SiteAttribute(),
+	"id":   ut.ID(),
+	"site": ut.SiteAttribute(),
 	"name": schema.StringAttribute{
 		Description: "DNS record name.",
 		Optional:    true,

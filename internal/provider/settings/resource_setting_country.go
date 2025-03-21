@@ -5,6 +5,7 @@ import (
 	"github.com/biter777/countries"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -67,8 +68,8 @@ func (c *countryResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_setting_country` resource allows you to configure the country settings for your UniFi network. ",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"code": schema.StringAttribute{
 				Description: "The country code to set for the UniFi site. The country code must be a valid ISO 3166-1 alpha-2 code.",
 				Required:    true,

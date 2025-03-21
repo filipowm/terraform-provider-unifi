@@ -3,11 +3,10 @@ package firewall
 import (
 	"context"
 	"errors"
-
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -90,7 +89,7 @@ func resourceFirewallGroupCreate(ctx context.Context, d *schema.ResourceData, me
 
 	resp, err := c.CreateFirewallGroup(ctx, site, req)
 	if err != nil {
-		if base.IsServerErrorContains(err, "api.err.FirewallGroupExisted") {
+		if utils.IsServerErrorContains(err, "api.err.FirewallGroupExisted") {
 			return diag.Errorf("firewall groups must have unique names: %s", err)
 		}
 		return diag.FromErr(err)

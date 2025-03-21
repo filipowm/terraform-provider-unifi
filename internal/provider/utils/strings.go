@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -69,5 +70,15 @@ func SplitAndTrim(s string, separator string) []string {
 		}
 	}
 
+	return result
+}
+
+func RemoveElements[S ~[]E, E comparable](first S, second S) S {
+	var result S
+	for _, category := range first {
+		if !slices.Contains(second, category) {
+			result = append(result, category)
+		}
+	}
 	return result
 }

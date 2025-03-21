@@ -3,9 +3,9 @@ package validators
 import (
 	"context"
 	"fmt"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"net/url"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework-validators/helpers/validatordiag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
@@ -37,7 +37,7 @@ func (v urlValidator) MarkdownDescription(ctx context.Context) string {
 
 func (v urlValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	value := req.ConfigValue
-	if !base.IsDefined(value) {
+	if !types.IsDefined(value) {
 		return
 	}
 

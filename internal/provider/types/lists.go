@@ -1,8 +1,8 @@
-package utils
+package types
 
 import (
 	"context"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
@@ -20,7 +20,7 @@ func EmptyList(elementType attr.Type) types.List {
 
 func ListElementsAs(list types.List, target interface{}) diag.Diagnostics {
 	diags := diag.Diagnostics{}
-	if !base.IsDefined(list) {
+	if !IsDefined(list) {
 		return diags
 	}
 	if diagErr := list.ElementsAs(context.Background(), target, false); diagErr != nil {
@@ -31,7 +31,7 @@ func ListElementsAs(list types.List, target interface{}) diag.Diagnostics {
 
 func ListElementsToString(ctx context.Context, list types.List) (string, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
-	if !base.IsDefined(list) {
+	if !IsDefined(list) {
 		return "", diags
 	}
 	if list.ElementType(ctx) == types.StringType {
@@ -40,14 +40,14 @@ func ListElementsToString(ctx context.Context, list types.List) (string, diag.Di
 		if diags.HasError() {
 			return "", diags
 		}
-		return JoinNonEmpty(target, ","), diags
+		return utils.JoinNonEmpty(target, ","), diags
 	}
 	diags.AddError("List is not a list of types.StringType", "List is not a list of strings")
 	return "", diags
 }
 
 func StringToListElements(ctx context.Context, value string) (types.List, diag.Diagnostics) {
-	countries := SplitAndTrim(value, ",")
+	countries := utils.SplitAndTrim(value, ",")
 	if len(countries) == 0 {
 		return types.ListNull(types.StringType), diag.Diagnostics{}
 	}

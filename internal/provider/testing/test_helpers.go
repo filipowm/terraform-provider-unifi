@@ -1,7 +1,11 @@
 package testing
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -67,8 +71,8 @@ func SiteAndIDImportStateIDFunc(resourceName string) func(*terraform.State) (str
 // PreCheck checks if provided environment variables are set. If not, it will fail the test.
 func PreCheck(t *testing.T) {
 	variables := []string{
-		//"UNIFI_USERNAME",
-		//"UNIFI_PASSWORD",
+		"UNIFI_USERNAME",
+		"UNIFI_PASSWORD",
 		"UNIFI_API",
 	}
 
@@ -108,4 +112,29 @@ func SkipIfEnvMissing(t *testing.T, msg string, env string) {
 func SkipIfEnvLocalMissing(t *testing.T, msg string) {
 	t.Helper()
 	SkipIfEnvMissing(t, msg, TfAccLocal)
+}
+
+func CheckDestroy(resourceType string, read func(ctx context.Context, site, id string) error) func(s *terraform.State) error {
+	return func(s *terraform.State) error {
+		for _, rs := range s.RootModule().Resources {
+			if rs.Type == "" || rs.Type != resourceType {
+				continue
+			}
+			site := "default"
+			if s, ok := rs.Primary.Attributes["site"]; ok {
+				if s != "" {
+					site = s
+				}
+			}
+			err := read(context.Background(), site, rs.Primary.ID)
+			if err == nil {
+				return fmt.Errorf("Resource with id %q still exists.", rs.Primary.ID)
+			}
+			if utils.IsServerErrorStatusCode(err, 404) || errors.Is(err, unifi.ErrNotFound) {
+				continue
+			}
+			return err
+		}
+		return nil
+	}
 }

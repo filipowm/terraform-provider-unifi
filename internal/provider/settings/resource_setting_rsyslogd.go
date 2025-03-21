@@ -2,8 +2,8 @@ package settings
 
 import (
 	"context"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 
@@ -82,7 +82,7 @@ func (d *rsyslogdModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagn
 
 		if !d.Contents.IsNull() {
 			var contents []string
-			diags.Append(utils.ListElementsAs(d.Contents, &contents)...)
+			diags.Append(ut.ListElementsAs(d.Contents, &contents)...)
 			if diags.HasError() {
 				return nil, diags
 			}
@@ -133,7 +133,7 @@ func (d *rsyslogdModel) Merge(ctx context.Context, other interface{}) diag.Diagn
 		d.Port = types.Int64Null()
 		d.ThisController = types.BoolNull()
 		d.ThisControllerEncryptedOnly = types.BoolNull()
-		d.Contents = utils.EmptyList(types.StringType)
+		d.Contents = ut.EmptyList(types.StringType)
 	}
 
 	return diags
@@ -178,8 +178,8 @@ func (r *rsyslogdResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Manages Remote Syslog (rsyslogd) settings for UniFi devices. Controller version 8.5 or later is required.",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"enabled": schema.BoolAttribute{
 				MarkdownDescription: "Whether remote syslog is enabled.",
 				Required:            true,

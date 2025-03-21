@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"fmt"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
@@ -212,8 +213,8 @@ func (r *mgmtResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 			"  * Enabling secure remote administration\n" +
 			"  * Implementing SSH key-based authentication",
 		Attributes: map[string]schema.Attribute{
-			"id":   base.ID(),
-			"site": base.SiteAttribute(),
+			"id":   ut.ID(),
+			"site": ut.SiteAttribute(),
 			"auto_upgrade": schema.BoolAttribute{
 				MarkdownDescription: "Enable automatic firmware upgrades for all UniFi devices at this site. When enabled, devices will automatically " +
 					"update to the latest stable firmware version approved for your controller version.",

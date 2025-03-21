@@ -3,6 +3,7 @@ package base
 import (
 	"context"
 	"fmt"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"strings"
 	"sync"
 
@@ -119,7 +120,7 @@ func (v *featureEnabledValidator) RequireFeaturesEnabledForPath(ctx context.Cont
 	if diags.HasError() {
 		return diags
 	}
-	if !IsDefined(val) {
+	if !types.IsDefined(val) {
 		return diags
 	}
 	diags.Append(v.requireFeatures(ctx, site, &attrPath, features...)...)

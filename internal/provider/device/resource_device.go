@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/utils"
-
 	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -316,7 +315,7 @@ func resourceDeviceDelete(ctx context.Context, d *schema.ResourceData, meta inte
 		if internalErr == nil {
 			return nil
 		}
-		if base.IsServerErrorContains(internalErr, "api.err.DeviceBusy") {
+		if utils.IsServerErrorContains(internalErr, "api.err.DeviceBusy") {
 			return retry.RetryableError(internalErr)
 		}
 		return retry.NonRetryableError(internalErr)

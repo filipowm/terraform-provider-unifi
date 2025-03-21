@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/filipowm/go-unifi/unifi"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -90,7 +92,7 @@ func (c *RetryableUnifiClient) relogin(err error) error {
 
 func (c *RetryableUnifiClient) Do(ctx context.Context, method string, apiPath string, reqBody interface{}, respBody interface{}) error {
 	err := c.Client.Do(ctx, method, apiPath, reqBody, respBody)
-	if err != nil && IsServerErrorStatusCode(err, 401) {
+	if err != nil && utils.IsServerErrorStatusCode(err, 401) {
 		err := c.relogin(err)
 		if err != nil {
 			return err
@@ -107,7 +109,7 @@ type Client struct {
 }
 
 func (c *Client) ResolveSite(res SiteAware) string {
-	if res == nil || IsEmptyString(res.GetRawSite()) {
+	if res == nil || ut.IsEmptyString(res.GetRawSite()) {
 		return c.Site
 	}
 	return res.GetSite()
@@ -119,7 +121,7 @@ func (c *Client) ResolveSiteFromConfig(ctx context.Context, config tfsdk.Config)
 	if diags.HasError() {
 		return "", diags
 	}
-	if IsEmptyString(site) {
+	if ut.IsEmptyString(site) {
 		return c.Site, diags
 	}
 	return site.ValueString(), diags
