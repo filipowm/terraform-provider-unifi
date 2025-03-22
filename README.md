@@ -104,16 +104,17 @@ Comprehensive documentation is available on the [Terraform Registry](https://reg
 
 ## Plans
 
-- [ ] Add support for zone-based firewalls
+- [x] Add support for zone-based firewalls
 - [x] Add support for DNS records
 - [ ] Add support for traffic management
-- [ ] Add support for more setting resources (eg. guest access, connectivity, country, IPS/IDS, etc.)
+- [x] Add support for more setting resources (eg. guest access, connectivity, country, IPS/IDS, etc.)
 - [x] Support API key authentication
 - [x] Improve documentation
-- [ ] Switch to Terraform Plugin Framework from Terraform Plugin SDK v2
+- [ ] Allow muxing of Terraform Plugin Framework resources with Terraform Plugin SDK v2 resources
+- [ ] Migrate all resources to the Terraform Plugin Framework
 - [x] Fix flaky tests
-- [ ] Implement validation for fields and structures
-- [ ] Increase test coverage and make tests more reliable
+- [x] Implement validation for fields and structures
+- [x] Increase test coverage and make tests more reliable
 - [x] Update all dependencies to the latest versions
 - [x] Switch to [filipowm/go-unifi](https://github.com/filipowm/go-unifi) SDK
 - [x] Support newest controller versions (9.x)
