@@ -1,15 +1,17 @@
 name: Acceptance Tests
 on:
   pull_request:
-    paths:
-      - "internal/**"
-      - "scripts/**"
-      - "tools/**"
-      - "main.go"
-      - "docker-compose.yaml"
-      - ".github/workflows/acctest.yml"
-      - "Makefile"
-      - "go.mod"
+    branches:
+      - "*"
+#    paths:
+#      - "internal/**"
+#      - "scripts/**"
+#      - "tools/**"
+#      - "main.go"
+#      - "docker-compose.yaml"
+#      - ".github/workflows/acctest.yml"
+#      - "Makefile"
+#      - "go.mod"
   push:
     branches:
       - "main"
@@ -25,6 +27,8 @@ on:
       - "Makefile"
   schedule:
     - cron: "0 13 * * *"
+  workflow_dispatch:
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
