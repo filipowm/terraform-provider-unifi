@@ -32,8 +32,39 @@ resource "unifi_site" "example" {
 }
 
 resource "unifi_setting_mgmt" "example" {
-  site         = unifi_site.example.name
+  # Reference a specific site (optional, defaults to site configured in provider, otherwise "default")
+  site = unifi_site.example.name
+  
+  # Auto upgrade settings
   auto_upgrade = true
+  auto_upgrade_hour = 3
+  
+  # Device management settings
+  advanced_feature_enabled = true
+  alert_enabled = true
+  boot_sound = false
+  debug_tools_enabled = true
+  direct_connect_enabled = false
+  led_enabled = true
+  outdoor_mode_enabled = false
+  unifi_idp_enabled = false
+  wifiman_enabled = true
+  
+  # SSH access configuration
+  ssh_enabled = true
+  ssh_auth_password_enabled = true
+  ssh_bind_wildcard = false
+  ssh_username = "admin"
+  
+  # Optional: SSH key configuration
+  ssh_key = [
+    {
+      name = "Admin Key"
+      type = "ssh-rsa"
+      key = "AAAAB3NzaC1yc2EAAAADAQABAAABAQCxxx..."
+      comment = "admin@example.com"
+    }
+  ]
 }
 ```
 
@@ -42,14 +73,28 @@ resource "unifi_setting_mgmt" "example" {
 
 ### Optional
 
+- `advanced_feature_enabled` (Boolean) Enable advanced features for UniFi devices at this site.
+- `alert_enabled` (Boolean) Enable alerts for UniFi devices at this site.
 - `auto_upgrade` (Boolean) Enable automatic firmware upgrades for all UniFi devices at this site. When enabled, devices will automatically update to the latest stable firmware version approved for your controller version.
-- `site` (String) The name of the UniFi site where these management settings should be applied. If not specified, the default site will be used.
+- `auto_upgrade_hour` (Number) The hour of the day (0-23) when automatic firmware upgrades will occur.
+- `boot_sound` (Boolean) Enable the boot sound for UniFi devices at this site.
+- `debug_tools_enabled` (Boolean) Enable debug tools for UniFi devices at this site. Requires controller version 7.3 or later.
+- `direct_connect_enabled` (Boolean) Enable direct connect for UniFi devices at this site.
+- `led_enabled` (Boolean) Enable the LED light for UniFi devices at this site.
+- `outdoor_mode_enabled` (Boolean) Enable outdoor mode for UniFi devices at this site.
+- `site` (String) The name of the UniFi site where this resource should be applied. If not specified, the default site will be used.
+- `ssh_auth_password_enabled` (Boolean) Enable SSH password authentication for UniFi devices at this site.
+- `ssh_bind_wildcard` (Boolean) Enable SSH bind wildcard for UniFi devices at this site.
 - `ssh_enabled` (Boolean) Enable SSH access to UniFi devices at this site. When enabled, you can connect to devices using SSH for advanced configuration and troubleshooting. It's recommended to only enable this temporarily when needed.
-- `ssh_key` (Block Set) List of SSH public keys that are allowed to connect to UniFi devices when SSH is enabled. Using SSH keys is more secure than password authentication. (see [below for nested schema](#nestedblock--ssh_key))
+- `ssh_key` (Block List) List of SSH public keys that are allowed to connect to UniFi devices when SSH is enabled. Using SSH keys is more secure than password authentication. (see [below for nested schema](#nestedblock--ssh_key))
+- `ssh_password` (String, Sensitive) The SSH password for UniFi devices at this site.
+- `ssh_username` (String) The SSH username for UniFi devices at this site.
+- `unifi_idp_enabled` (Boolean) Enable UniFi IDP for UniFi devices at this site.
+- `wifiman_enabled` (Boolean) Enable WiFiman for UniFi devices at this site.
 
 ### Read-Only
 
-- `id` (String) The unique identifier of the management settings configuration in the UniFi controller.
+- `id` (String) The unique identifier of this resource.
 
 <a id="nestedblock--ssh_key"></a>
 ### Nested Schema for `ssh_key`

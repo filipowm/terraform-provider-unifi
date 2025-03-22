@@ -600,9 +600,10 @@ func NewFirewallZonePolicyResource() resource.Resource {
 // Schema defines the schema for the resource
 func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "The `unifi_firewall_zone_policy` resource manages firewall policies between zones in the UniFi controller.\n\n" +
-			"Firewall zone policies control traffic flow between different firewall zones. " +
-			"This resource allows you to create, update, and delete policies that define allowed or blocked traffic between zones.",
+		MarkdownDescription: "The `unifi_firewall_zone_policy` resource manages firewall policies between zones in the UniFi controller. " +
+			"This resource allows you to create, update, and delete policies that define allowed or blocked traffic between zones.\n\n" +
+			"!> This is experimental feature, that requires UniFi OS 9.0.0 or later and Zone Based Firewall feature enabled. " +
+			"Check [official documentation](https://help.ui.com/hc/en-us/articles/28223082254743-Migrating-to-Zone-Based-Firewalls-in-UniFi) how to migate to Zone-Based firewalls.",
 		Attributes: map[string]schema.Attribute{
 			"id":   ut.ID(),
 			"site": ut.SiteAttribute(),
