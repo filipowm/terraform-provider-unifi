@@ -11,16 +11,17 @@ The UniFi provider enables infrastructure-as-code management of [Ubiquiti's UniF
 
 ## Supported Features
 
-The provider supports management of:
-
-* Networks and VLANs
-* Wireless Networks (WLANs)
-* Firewall Rules and Groups
-* Port Forwarding
-* DNS Records
-* User Management
-* Device Configuration
-* And more...
+- Manage UniFi network resources using Infrastructure as Code
+- Support for UniFi Controller version 6.x and later
+- Compatible with UDM, UDM-Pro, UCG, and standard controller deployments
+- Comprehensive resource management including:
+    - Network/WLAN configuration
+    - Firewall rules and groups
+    - Port forwarding
+    - DNS records
+    - User management
+    - Device management
+    - And more...
 
 ## Supported Platforms
 
@@ -105,3 +106,139 @@ provider "unifi" {
 - `username` (String) Local user name for the Unifi controller API. Can be specified with the `UNIFI_USERNAME` environment variable.
 
 ## Migrating from paultyng/terraform-provider-unifi
+
+This provider is a fork of the original [paultyng/terraform-provider-unifi](https://github.com/paultyng/terraform-provider-unifi) with significant enhancements, improvements, and additional features. If you're currently using the original provider, this guide will help you migrate to this enhanced version.
+
+### Key Differences and Improvements
+
+| Feature | paultyng/unifi | filipowm/unifi |
+|---------|---------------|----------------|
+| Framework | Terraform SDK v2 | Terraform Plugin Framework |
+| Controller Support | UniFi Controller v6.x | UniFi Controller v6.x and later (including v9.x) |
+| Authentication | Username/Password | Username/Password and API Key |
+| Resource Organization | Flat structure | Organized by domain (settings, dns, etc.) |
+| Validation | Basic | Enhanced with custom validators |
+| Documentation | Basic | Comprehensive with examples |
+| Settings Resources | Limited | Expanded (IPS, Guest Access, etc.) |
+| DNS Management | Limited | Enhanced with dedicated resources |
+
+### Migration Steps
+
+1. **Update Provider Configuration**
+
+   Change your provider source from `paultyng/unifi` to `filipowm/unifi`:
+
+   ```hcl
+   terraform {
+     required_providers {
+       unifi = {
+         source  = "filipowm/unifi"
+         version = "~> 0.0.1"  # Use the latest version
+       }
+     }
+   }
+   ```
+
+2. **Authentication Updates**
+
+   The provider configuration remains compatible, but now offers API Key authentication as an alternative to username/password:
+
+   ```hcl
+   # Using API Key (recommended for newer controllers)
+   provider "unifi" {
+     api_key = var.api_key
+     api_url = var.api_url
+     allow_insecure = var.insecure
+   }
+   
+   # Using Username/Password (backward compatible)
+   provider "unifi" {
+     username = var.username
+     password = var.password
+     api_url = var.api_url
+     allow_insecure = var.insecure
+   }
+   ```
+
+3. **Resource State Migration**
+
+   Most resources maintain backward compatibility, so your existing state should migrate seamlessly. However, for resources with enhanced functionality, you may need to run `terraform import` to reconcile state differences.
+
+   ```bash
+   # Example: Re-importing a network resource
+   terraform import unifi_network.my_network 5dc28e5e9106d105bdc87217
+   ```
+
+4. **Enhanced Resource Configuration**
+
+   Take advantage of new validation and configuration options:
+
+   - Use the new validators for attributes like URLs, emails, and hostnames
+   - Leverage nested attributes for more organized configuration
+   - Utilize new settings resources for comprehensive network management
+
+### New and Enhanced Resources
+
+#### New Settings Resources
+
+- `unifi_setting_auto_speedtest` - Manage automatic speed test configuration
+- `unifi_setting_country` - Configure country settings
+- `unifi_setting_dpi` - Manage Deep Packet Inspection settings
+- `unifi_setting_guest_access` - Configure guest network access settings
+- `unifi_setting_ips` - Manage Intrusion Prevention System settings
+- `unifi_setting_lcd_monitor` - Configure LCD monitor settings for devices
+- `unifi_setting_locale` - Set locale preferences
+- `unifi_setting_magic_site_to_site_vpn` - Configure site-to-site VPN
+- `unifi_setting_mgmt` - Manage management settings
+- `unifi_setting_network_optimization` - Configure network optimization
+- `unifi_setting_ntp` - Manage NTP server settings
+- `unifi_setting_radius` - Configure RADIUS server settings
+- `unifi_setting_rsyslogd` - Manage remote syslog settings
+- `unifi_setting_ssl_inspection` - Configure SSL inspection
+- `unifi_setting_teleport` - Manage Teleport settings
+- `unifi_setting_usg` - Configure UniFi Security Gateway settings
+- `unifi_setting_usw` - Manage UniFi Switch settings
+
+#### Enhanced DNS Management
+
+- `unifi_dns_record` - Create and manage DNS records
+
+#### Other Improvements
+
+- Enhanced validation for all resources
+- Better error messages and diagnostics
+- Improved documentation with comprehensive examples
+- Support for the latest UniFi Controller features
+
+### Developer-Focused Improvements
+
+For developers extending or customizing the provider:
+
+1. **Framework Migration**
+   - Migrated from Terraform SDK v2 to Terraform Plugin Framework
+   - Better type safety and validation capabilities
+   - Enhanced testing infrastructure
+
+2. **Code Organization**
+   - Resources organized by domain in separate packages
+   - Base types and utilities for consistent implementation
+   - Custom validators for common validation patterns
+
+3. **Testing**
+   - Comprehensive acceptance tests
+   - Test helpers and utilities
+   - Improved test stability
+
+### Compatibility Notes
+
+- The provider maintains backward compatibility with existing configurations where possible
+- Some advanced features may require updates to your configuration
+- The provider follows semantic versioning for releases
+
+### Getting Help
+
+If you encounter issues during migration:
+
+1. Check the [documentation](https://registry.terraform.io/providers/filipowm/unifi/latest/docs)
+2. Review examples in the [GitHub repository](https://github.com/filipowm/terraform-provider-unifi)
+3. Open an issue on GitHub for assistance

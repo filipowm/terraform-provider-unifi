@@ -5,10 +5,8 @@ subcategory: ""
 description: |-
   The unifi_setting_usg resource manages advanced settings for UniFi Security Gateways (USG) and UniFi Dream Machines (UDM/UDM-Pro).
   This resource allows you to configure gateway-specific features including:
-  Multicast DNS (mDNS) for service discoveryDHCP relay for forwarding DHCP requests to external servers
-  These settings are particularly useful for:
-  Enabling device discovery across VLANs (using mDNS)Centralizing DHCP management in enterprise environmentsIntegration with existing network infrastructure
-  Note: Some settings may not be available on all controller versions. For example, multicast_dns_enabled is not supported on UniFi OS v7+.
+  Multicast DNS (mDNS) for cross-VLAN service discoveryDHCP relay for forwarding DHCP requests to external serversGeo IP filtering for country-based traffic controlUPNP/NAT-PMP for automatic port forwardingProtocol helpers for FTP, GRE, H323, PPTP, SIP, and TFTPTCP/UDP timeout settings for connection trackingSecurity features like SYN cookies and ICMP redirect controlsMSS clamping for optimizing MTU issues
+  Note: Some settings may not be available on all controller versions. For example, multicast_dns_enabled is not supported on UniFi OS v7+. Changes to certain attributes may not be reflected in the plan unless explicitly modified in the configuration.
 ---
 
 # unifi_setting_usg (Resource)
@@ -16,27 +14,254 @@ description: |-
 The `unifi_setting_usg` resource manages advanced settings for UniFi Security Gateways (USG) and UniFi Dream Machines (UDM/UDM-Pro).
 
 This resource allows you to configure gateway-specific features including:
-  * Multicast DNS (mDNS) for service discovery
+  * Multicast DNS (mDNS) for cross-VLAN service discovery
   * DHCP relay for forwarding DHCP requests to external servers
+  * Geo IP filtering for country-based traffic control
+  * UPNP/NAT-PMP for automatic port forwarding
+  * Protocol helpers for FTP, GRE, H323, PPTP, SIP, and TFTP
+  * TCP/UDP timeout settings for connection tracking
+  * Security features like SYN cookies and ICMP redirect controls
+  * MSS clamping for optimizing MTU issues
 
-These settings are particularly useful for:
-  * Enabling device discovery across VLANs (using mDNS)
-  * Centralizing DHCP management in enterprise environments
-  * Integration with existing network infrastructure
+Note: Some settings may not be available on all controller versions. For example, multicast_dns_enabled is not supported on UniFi OS v7+. Changes to certain attributes may not be reflected in the plan unless explicitly modified in the configuration.
 
-Note: Some settings may not be available on all controller versions. For example, multicast_dns_enabled is not supported on UniFi OS v7+.
+## Example Usage
 
+```terraform
+resource "unifi_setting_usg" "example" {
+  # Geo IP Filtering Configuration
+  geo_ip_filtering = {
+    block            = "block"  # Options: "block" or "allow"
+    countries        = ["UK", "CN", "AU"]
+    traffic_direction = "both"  # Options: "both", "ingress", or "egress"
+  }
 
+  # UPNP Configuration
+  upnp = {
+    nat_pmp_enabled = true
+    secure_mode     = true
+    wan_interface   = "WAN"
+  }
+
+  # DNS Verification Settings
+  dns_verification = {
+    domain              = "example.com"
+    primary_dns_server  = "1.1.1.1"
+    secondary_dns_server = "1.0.0.1"
+    setting_preference  = "manual"  # Options: "auto" or "manual"
+  }
+
+  # TCP Timeout Settings
+  tcp_timeouts = {
+    close_timeout       = 10
+    established_timeout = 3600
+    close_wait_timeout  = 20
+    fin_wait_timeout    = 30
+    last_ack_timeout    = 30
+    syn_recv_timeout    = 60
+    syn_sent_timeout    = 120
+    time_wait_timeout   = 120
+  }
+
+  # ARP Cache Configuration
+  arp_cache_timeout = "custom"  # Options: "auto" or "custom"
+  arp_cache_base_reachable = 60
+
+  # DHCP Configuration
+  broadcast_ping = true
+  dhcpd_hostfile_update = true
+  dhcpd_use_dnsmasq = true
+  dnsmasq_all_servers = true
+
+  # DHCP Relay Configuration
+  dhcp_relay = {
+    agents_packets = "forward"  # Options: "forward" or "replace"
+    hop_count = 5
+  }
+  dhcp_relay_servers = ["10.1.2.3", "10.1.2.4"]
+
+  # Network Tools
+  echo_server = "echo.example.com"
+
+  # Protocol Modules
+  ftp_module = true
+  gre_module = true
+  tftp_module = true
+
+  # ICMP & LLDP Settings
+  icmp_timeout = 20
+  lldp_enable_all = true
+
+  # MSS Clamp Settings
+  mss_clamp = "auto"  # Options: "auto" or "custom"
+  mss_clamp_mss = 1452
+
+  # Offload Settings
+  offload_accounting = true
+  offload_l2_blocking = true
+  offload_scheduling = false
+
+  # Timeout Settings
+  other_timeout = 600
+  timeout_setting_preference = "auto"  # Options: "auto" or "custom"
+
+  # Security Settings
+  receive_redirects = false
+  send_redirects = true
+  syn_cookies = true
+
+  # UDP Timeout Settings
+  udp_other_timeout = 30
+  udp_stream_timeout = 120
+
+  # Specify the site (optional)
+  # site = "default"
+}
+```
 
 <!-- schema generated by tfplugindocs -->
 ## Schema
 
 ### Optional
 
-- `dhcp_relay_servers` (List of String) List of up to 5 DHCP relay servers (specified by IP address) that will receive forwarded DHCP requests. This is useful when you want to use external DHCP servers instead of the built-in DHCP server. Example: ['192.168.1.5', '192.168.2.5']
-- `multicast_dns_enabled` (Boolean) Enable multicast DNS (mDNS/Bonjour/Avahi) forwarding across VLANs. This allows devices to discover services (like printers, Chromecasts, etc.) even when they are on different networks. Note: Not supported on UniFi OS v7+.
-- `site` (String) The name of the UniFi site where these USG settings should be applied. If not specified, the default site will be used.
+- `arp_cache_base_reachable` (Number) The base reachable timeout (in seconds) for ARP cache entries. This controls how long the gateway considers a MAC-to-IP mapping valid without needing to refresh it. Higher values reduce network traffic but may cause stale entries if devices change IP addresses frequently.
+- `arp_cache_timeout` (String) The timeout strategy for ARP cache entries. Valid values are:
+  * `normal` - Use system default timeouts
+  * `min-dhcp-lease` - Set ARP timeout to match the minimum DHCP lease time
+  * `custom` - Use the custom timeout value specified in `arp_cache_base_reachable`
+
+This setting determines how long MAC-to-IP mappings are stored in the ARP cache before being refreshed.
+- `broadcast_ping` (Boolean) Enable responding to broadcast ping requests (ICMP echo requests sent to the broadcast address). When enabled, the gateway will respond to pings sent to the broadcast address of the network (e.g., 192.168.1.255). This can be useful for network diagnostics but may also be used in certain denial-of-service attacks.
+- `dhcp_relay` (Attributes) Advanced DHCP relay configuration settings. Controls how the gateway forwards DHCP requests to external servers and manages DHCP relay agent behavior. Use this block to fine-tune DHCP relay functionality beyond simply specifying relay servers. (see [below for nested schema](#nestedatt--dhcp_relay))
+- `dhcp_relay_servers` (List of String, Deprecated) List of up to 5 DHCP relay servers (specified by IP address) that will receive forwarded DHCP requests. This is useful when you want to use external DHCP servers instead of the built-in DHCP server on the USG/UDM. When configured, the gateway will forward DHCP discovery packets from clients to these external servers, allowing centralized IP address management across multiple networks. Example: `['192.168.1.5', '192.168.2.5']`
+- `dhcpd_hostfile_update` (Boolean) Enable updating the gateway's host files with DHCP client information. When enabled, the gateway will automatically add entries to its host file for each DHCP client, allowing hostname resolution for devices that receive IP addresses via DHCP. This improves name resolution on the local network.
+- `dhcpd_use_dnsmasq` (Boolean) Use dnsmasq for DHCP services instead of the default DHCP server. Dnsmasq provides integrated DNS and DHCP functionality with additional features like DNS caching, DHCP static leases, and local domain name resolution. This can improve DNS resolution performance and provide more flexible DHCP options.
+- `dns_verification` (Attributes) DNS verification settings for validating DNS responses. This feature helps detect and prevent DNS spoofing attacks by verifying DNS responses against trusted DNS servers. When configured, the gateway can compare DNS responses with those from known trusted servers to identify potential tampering or poisoning attempts. Requires controller version 8.5 or later. (see [below for nested schema](#nestedatt--dns_verification))
+- `dnsmasq_all_servers` (Boolean) When enabled, dnsmasq will query all configured DNS servers simultaneously and use the fastest response. This can improve DNS resolution speed but may increase DNS traffic. By default, dnsmasq queries servers sequentially, only trying the next server if the current one fails to respond.
+- `echo_server` (String) The hostname or IP address of a server to use for network echo tests. Echo tests send packets to this server and measure response times to evaluate network connectivity and performance. This can be used for network diagnostics and monitoring.
+- `ftp_module` (Boolean) Enable the FTP (File Transfer Protocol) helper module. This module allows the gateway to properly handle FTP connections through NAT by tracking the control channel and dynamically opening required data ports. Without this helper, passive FTP connections may fail when clients are behind NAT.
+- `geo_ip_filtering` (Attributes) Geographic IP filtering configuration that allows blocking or allowing traffic based on country of origin. This feature uses IP geolocation databases to identify the country associated with IP addresses and apply filtering rules. Useful for implementing country-specific access policies or blocking traffic from high-risk regions. Requires controller version 7.0 or later. (see [below for nested schema](#nestedatt--geo_ip_filtering))
+- `gre_module` (Boolean) Enable the GRE (Generic Routing Encapsulation) protocol helper module. This module allows proper handling of GRE tunneling protocol through the gateway's firewall. GRE is commonly used for VPN tunnels and other encapsulation needs. Required if you plan to use PPTP VPNs (see `pptp_module`).
+- `h323_module` (Boolean) Enable the H.323 protocol helper module. H.323 is a standard for multimedia communications (audio, video, and data) over packet-based networks. This helper allows H.323-based applications like video conferencing systems to work properly through NAT by tracking connection details and opening required ports.
+- `icmp_timeout` (Number) ICMP timeout in seconds for connection tracking. This controls how long the gateway maintains state information for ICMP (ping) packets in its connection tracking table. Higher values maintain ICMP connection state longer, while lower values reclaim resources more quickly but may affect some diagnostic tools.
+- `lldp_enable_all` (Boolean) Enable Link Layer Discovery Protocol (LLDP) on all interfaces. LLDP is a vendor-neutral protocol that allows network devices to advertise their identity, capabilities, and neighbors on a local network. When enabled, the gateway will both send and receive LLDP packets, facilitating network discovery and management tools.
+- `mss_clamp` (String) TCP Maximum Segment Size (MSS) clamping mode. MSS clamping adjusts the maximum segment size of TCP packets to prevent fragmentation issues when packets traverse networks with different MTU sizes. Valid values include:
+  * `auto` - Automatically determine appropriate MSS values based on interface MTUs
+  * `custom` - Use the custom MSS value specified in `mss_clamp_mss`
+  * `disabled` - Do not perform MSS clamping
+
+This setting is particularly important for VPN connections and networks with non-standard MTU sizes.
+- `mss_clamp_mss` (Number) Custom TCP Maximum Segment Size (MSS) value in bytes. This value is used when `mss_clamp` is set to `custom`. The MSS value should typically be set to the path MTU minus 40 bytes (for IPv4) or minus 60 bytes (for IPv6) to account for TCP/IP header overhead. Valid values range from 100 to 9999, with common values being 1460 (for standard 1500 MTU) or 1400 (for VPN tunnels).
+- `multicast_dns_enabled` (Boolean) Enable multicast DNS (mDNS/Bonjour/Avahi) forwarding across VLANs. This allows devices to discover services (like printers, Chromecasts, Apple devices, etc.) even when they are on different networks or VLANs. When enabled, the gateway will forward mDNS packets between networks, facilitating cross-VLAN service discovery. Note: This setting is not supported on UniFi OS v7+ as it has been replaced by mDNS settings in the network configuration.
+- `offload_accounting` (Boolean) Enable hardware accounting offload. When enabled, the gateway will use hardware acceleration for traffic accounting functions, reducing CPU load and potentially improving throughput for high-traffic environments. This setting may not be supported on all hardware models.
+- `offload_l2_blocking` (Boolean) Enable hardware offload for Layer 2 (L2) blocking functions. When enabled, the gateway will use hardware acceleration for blocking traffic at the data link layer (MAC address level), which can improve performance when implementing MAC-based filtering or isolation. This setting may not be supported on all hardware models.
+- `offload_sch` (Boolean) Enable hardware scheduling offload. When enabled, the gateway will use hardware acceleration for packet scheduling functions, which can improve QoS (Quality of Service) performance and throughput for prioritized traffic. This setting may not be supported on all hardware models and may affect other hardware offload capabilities.
+- `other_timeout` (Number) Timeout (in seconds) for connection tracking of protocols other than TCP, UDP, and ICMP. This controls how long the gateway maintains state information for connections using other protocols. Higher values maintain connection state longer, while lower values reclaim resources more quickly but may affect some applications using non-standard protocols.
+- `pptp_module` (Boolean) Enable the PPTP (Point-to-Point Tunneling Protocol) helper module. This module allows PPTP VPN connections to work properly through the gateway's firewall and NAT. PPTP uses GRE for tunneling, so the `gre_module` must also be enabled for PPTP to function correctly. Note that PPTP has known security vulnerabilities and more secure VPN protocols are generally recommended.
+- `receive_redirects` (Boolean) Enable accepting ICMP redirect messages. ICMP redirects are messages sent by routers to inform hosts of better routes to specific destinations. When enabled, the gateway will update its routing table based on these messages. While useful for route optimization, this can potentially be exploited for man-in-the-middle attacks, so it's often disabled in security-sensitive environments.
+- `send_redirects` (Boolean) Enable sending ICMP redirect messages. When enabled, the gateway will send ICMP redirect messages to hosts on the local network to inform them of better routes to specific destinations. This can help optimize network traffic but is typically only needed when the gateway has multiple interfaces on the same subnet or in complex routing scenarios.
+- `sip_module` (Boolean) Enable the SIP (Session Initiation Protocol) helper module. SIP is used for initiating, maintaining, and terminating real-time sessions for voice, video, and messaging applications (VoIP, video conferencing). This helper allows SIP-based applications to work correctly through NAT by tracking SIP connections and dynamically opening the necessary ports for media streams.
+- `site` (String) The name of the UniFi site where this resource should be applied. If not specified, the default site will be used.
+- `syn_cookies` (Boolean) Enable SYN cookies to protect against SYN flood attacks. SYN cookies are a technique that helps mitigate TCP SYN flood attacks by avoiding the need to track incomplete connections in a backlog queue. When enabled, the gateway can continue to establish legitimate connections even when under a SYN flood attack. This is a recommended security setting for internet-facing gateways.
+- `tcp_timeouts` (Attributes) TCP connection timeout settings for various TCP connection states. These settings control how long the gateway maintains state information for TCP connections in different states before removing them from the connection tracking table. Proper timeout values balance resource usage with connection reliability. These settings are particularly relevant when `timeout_setting_preference` is set to `manual`. (see [below for nested schema](#nestedatt--tcp_timeouts))
+- `tftp_module` (Boolean) Enable the TFTP (Trivial File Transfer Protocol) helper module. This module allows TFTP connections to work properly through the gateway's firewall and NAT. TFTP is commonly used for firmware updates, configuration file transfers, and network booting of devices. The helper tracks TFTP connections and ensures return traffic is properly handled.
+- `timeout_setting_preference` (String) Determines how connection timeout values are configured. Valid values are:
+  * `auto` - The gateway will automatically determine appropriate timeout values based on system defaults
+  * `manual` - Use the manually specified timeout values for various connection types
+
+When set to `manual`, you should specify values for the various timeout settings like `tcp_timeouts`, `udp_stream_timeout`, `udp_other_timeout`, `icmp_timeout`, and `other_timeout`. Requires controller version 7.0 or later.
+- `udp_other_timeout` (Number) Timeout (in seconds) for general UDP connections. Since UDP is connectionless, this timeout determines how long the gateway maintains state information for UDP packets that don't match the criteria for stream connections. This applies to most short-lived UDP communications like DNS queries. Lower values free resources more quickly but may affect some applications that expect longer session persistence.
+- `udp_stream_timeout` (Number) Timeout (in seconds) for UDP stream connections. This applies to UDP traffic patterns that resemble ongoing streams, such as VoIP calls, video streaming, or online gaming. The gateway identifies these based on traffic patterns and maintains state information longer than for regular UDP traffic. Higher values improve reliability for streaming applications but consume more connection tracking resources.
+- `unbind_wan_monitors` (Boolean) Unbind WAN monitors to prevent unnecessary traffic. When enabled, the gateway will stop certain monitoring processes that periodically check WAN connectivity. This can reduce unnecessary traffic on metered connections or in environments where the monitoring traffic might trigger security alerts. However, disabling these monitors may affect the gateway's ability to detect and respond to WAN connectivity issues. Requires controller version 9.0 or later.
+- `upnp` (Attributes) UPNP (Universal Plug and Play) configuration settings. UPNP allows compatible applications and devices to automatically configure port forwarding rules on the gateway without manual intervention. This is commonly used by gaming consoles, media servers, VoIP applications, and other network services that require incoming connections. (see [below for nested schema](#nestedatt--upnp))
 
 ### Read-Only
 
-- `id` (String) The unique identifier of the USG settings configuration in the UniFi controller.
+- `geo_ip_filtering_enabled` (Boolean) Whether Geo IP Filtering is enabled. When enabled, the gateway will apply the specified country-based
+- `id` (String) The unique identifier of this resource.
+- `upnp_enabled` (Boolean) Whether UPNP is enabled. When enabled, the gateway will automatically forward ports for UPNP-compatible devices
+
+<a id="nestedatt--dhcp_relay"></a>
+### Nested Schema for `dhcp_relay`
+
+Optional:
+
+- `agents_packets` (String) Specifies how to handle DHCP relay agent information in packets. Valid values are:
+  * `append` - Add relay agent information to packets that may already contain it
+  * `discard` - Drop packets that already contain relay agent information
+  * `forward` - Forward packets regardless of relay agent information
+  * `replace` - Replace existing relay agent information with the gateway's information
+- `hop_count` (Number) Maximum number of relay agents that can forward the DHCP packet before it is discarded. This prevents DHCP packets from being forwarded indefinitely in complex network topologies. Valid values range from 1 to 255, with lower values recommended for simpler networks.
+- `max_size` (Number) Maximum size (in bytes) of DHCP relay packets that will be forwarded. Packets exceeding this size will be truncated or dropped. Valid values range from 64 to 1400 bytes. The default is typically sufficient for most DHCP implementations, but may need adjustment if using extensive DHCP options or vendor-specific information.
+- `port` (Number) UDP port number for the DHCP relay service to listen on. The standard DHCP server port is 67, but this can be customized if needed for specific network configurations. Valid values range from 1 to 65535. Ensure this doesn't conflict with other services running on the gateway.
+
+
+<a id="nestedatt--dns_verification"></a>
+### Nested Schema for `dns_verification`
+
+Optional:
+
+- `domain` (String) The domain name to use for DNS verification tests. The gateway will query this domain when testing DNS server responses. This should be a reliable domain that is unlikely to change frequently. Required when `setting_preference` is set to `manual`.
+- `primary_dns_server` (String) The IP address of the primary trusted DNS server to use for verification. DNS responses will be compared against responses from this server to detect potential DNS spoofing. Required when `setting_preference` is set to `manual`. Must be a valid IPv4 address.
+- `secondary_dns_server` (String) The IP address of the secondary trusted DNS server to use for verification. This server will be used if the primary server is unavailable. Optional even when `setting_preference` is set to `manual`. Must be a valid IPv4 address if specified.
+- `setting_preference` (String) Determines how DNS verification servers are configured. Valid values are:
+  * `auto` - The gateway will automatically select DNS servers for verification
+  * `manual` - Use the manually specified `primary_dns_server` and optionally `secondary_dns_server`
+
+When set to `manual`, you must also specify `primary_dns_server` and `domain` values.
+
+
+<a id="nestedatt--geo_ip_filtering"></a>
+### Nested Schema for `geo_ip_filtering`
+
+Required:
+
+- `countries` (List of String) List of two-letter ISO 3166-1 alpha-2 country codes to block or allow, depending on the `block` setting. Must contain at least one country code when geo IP filtering is enabled. Country codes are case-insensitive but are typically written in uppercase.
+
+Examples:
+  * `['US', 'CA', 'MX']` - United States, Canada, and Mexico
+  * `['CN', 'RU', 'IR']` - China, Russia, and Iran
+  * `['GB', 'DE', 'FR']` - United Kingdom, Germany, and France
+
+Optional:
+
+- `mode` (String) Specifies whether the selected countries should be blocked or allowed. Valid values are:
+  * `block` (default) - Traffic from the specified countries will be blocked, while traffic from all other countries will be allowed
+  * `allow` - Only traffic from the specified countries will be allowed, while traffic from all other countries will be blocked
+
+This setting effectively determines whether the `countries` list functions as a blocklist or an allowlist.
+- `traffic_direction` (String) Specifies which traffic direction the geo IP filtering applies to. Valid values are:
+  * `both` (default) - Filters traffic in both directions (incoming and outgoing)
+  * `ingress` - Filters only incoming traffic (from WAN to LAN)
+  * `egress` - Filters only outgoing traffic (from LAN to WAN)
+
+This setting is useful for creating more granular filtering policies. For example, you might want to block incoming traffic from certain countries while still allowing outgoing connections to those same countries.
+
+
+<a id="nestedatt--tcp_timeouts"></a>
+### Nested Schema for `tcp_timeouts`
+
+Optional:
+
+- `close_timeout` (Number) Timeout (in seconds) for TCP connections in the CLOSE state. The CLOSE state occurs when a connection is being terminated but may still have packets in transit. Lower values reclaim resources more quickly, while higher values ensure all packets are properly processed during connection termination.
+- `close_wait_timeout` (Number) Timeout (in seconds) for TCP connections in the CLOSE_WAIT state. The CLOSE_WAIT state occurs when the remote end has initiated connection termination, but the local application hasn't closed the connection yet. This timeout prevents resources from being held indefinitely if a local application fails to properly close its connection.
+- `established_timeout` (Number) Timeout (in seconds) for TCP connections in the ESTABLISHED state. This is the most important TCP timeout as it determines how long idle but established connections are maintained in the connection tracking table. Higher values (e.g., 86400 = 24 hours) are suitable for long-lived connections, while lower values conserve resources but may cause issues with applications that maintain idle connections.
+- `fin_wait_timeout` (Number) Timeout (in seconds) for TCP connections in the FIN_WAIT state. The FIN_WAIT states occur during the normal TCP connection termination process after a FIN packet has been sent. This timeout prevents resources from being held if the connection termination process doesn't complete properly.
+- `last_ack_timeout` (Number) Timeout (in seconds) for TCP connections in the LAST_ACK state. The LAST_ACK state occurs during connection termination when the remote end has sent a FIN, the local end has responded with a FIN and ACK, and is waiting for the final ACK from the remote end to complete the connection termination.
+- `syn_recv_timeout` (Number) Timeout (in seconds) for TCP connections in the SYN_RECV state. This state occurs during connection establishment after receiving a SYN packet and sending a SYN-ACK, but before receiving the final ACK to complete the three-way handshake. A lower timeout helps mitigate SYN flood attacks by releasing resources for incomplete connections more quickly.
+- `syn_sent_timeout` (Number) Timeout (in seconds) for TCP connections in the SYN_SENT state. This state occurs during connection establishment after sending a SYN packet but before receiving a SYN-ACK response. This timeout determines how long the system will wait for a response to connection attempts before giving up.
+- `time_wait_timeout` (Number) Timeout (in seconds) for TCP connections in the TIME_WAIT state. The TIME_WAIT state occurs after a connection has been closed but is maintained to ensure any delayed packets are properly handled. The standard recommendation is 2 minutes (120 seconds), but can be reduced in high-connection environments to free resources more quickly at the risk of potential connection issues if delayed packets arrive.
+
+
+<a id="nestedatt--upnp"></a>
+### Nested Schema for `upnp`
+
+Optional:
+
+- `nat_pmp_enabled` (Boolean) Enable NAT-PMP (NAT Port Mapping Protocol) support alongside UPNP. NAT-PMP is Apple's alternative to UPNP, providing similar automatic port mapping capabilities. When enabled, Apple devices like Macs, iPhones, and iPads can automatically configure port forwarding for services like AirPlay, FaceTime, iMessage, and other Apple services. Defaults to `false`.
+- `secure_mode` (Boolean) Enable secure mode for UPNP. In secure mode, the gateway only forwards ports to the device that specifically requested them, enhancing security. This prevents malicious applications from redirecting ports to different devices than intended. It's strongly recommended to enable this setting when using UPNP to minimize security risks. Defaults to `false`.
+- `wan_interface` (String) Specify which WAN interface to use for UPNP service. Valid values are:
+  * `WAN` (default) - Use the primary WAN interface for UPNP port forwarding
+  * `WAN2` - Use the secondary WAN interface for UPNP port forwarding (if available)
+
+This setting is particularly relevant for dual-WAN setups where you may want to direct UPNP traffic through a specific WAN connection. If your gateway only has a single WAN interface, use the default `WAN` setting.
