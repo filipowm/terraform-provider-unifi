@@ -14,7 +14,7 @@ Use a hard-wired connection to your controller to use this provider.
 ## Features
 
 - Manage UniFi network resources using Infrastructure as Code
-- Support for UniFi Controller version 6.x and later
+- Support for **UniFi Controller version 6.x and later**
 - Compatible with UDM, UDM-Pro, UCG, and standard controller deployments
 - Comprehensive resource management including:
     - Network/WLAN configuration
@@ -33,7 +33,7 @@ terraform {
     required_providers {
         unifi = {
             source  = "filipowm/unifi"
-            version = "~> 0.0.1"  # Use the latest version
+            version = "~> 1.0.0"  # Use the latest version
         }
     }
 }
