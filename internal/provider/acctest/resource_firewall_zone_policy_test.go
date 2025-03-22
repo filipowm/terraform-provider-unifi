@@ -726,31 +726,6 @@ resource "unifi_firewall_zone_policy" "test" {
 `, name)
 }
 
-func testAccFirewallZonePolicyScheduledConfig(name string) string {
-	return fmt.Sprintf(`
-resource "unifi_firewall_zone_policy" "test" {
-	name     = %[1]q
-	action   = "BLOCK"
-	protocol = "all"
-	
-	source = {
-		zone_id = unifi_firewall_zone.test.id
-	}
-	
-	destination = {
-		zone_id = unifi_firewall_zone.test.id
-	}
-	
-	schedule = {
-		mode = "EVERY_DAY"
-		time_all_day = false
-		time_from = "08:00"
-		time_to = "17:00"
-	}
-}
-`, name)
-}
-
 func testAccFirewallZonePolicyIPSecConfig(name string) string {
 	return fmt.Sprintf(`
 resource "unifi_firewall_zone_policy" "test" {
