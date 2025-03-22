@@ -98,6 +98,7 @@ type portalCustomizationModel struct {
 	Customized             types.Bool   `tfsdk:"customized"`
 	AuthenticationText     types.String `tfsdk:"authentication_text"`
 	BgColor                types.String `tfsdk:"bg_color"`
+	BgImageFileId          types.String `tfsdk:"bg_image_file_id"`
 	BgImageTile            types.Bool   `tfsdk:"bg_image_tile"`
 	BgType                 types.String `tfsdk:"bg_type"`
 	BoxColor               types.String `tfsdk:"box_color"`
@@ -110,6 +111,7 @@ type portalCustomizationModel struct {
 	ButtonTextColor        types.String `tfsdk:"button_text_color"`
 	Languages              types.List   `tfsdk:"languages"`
 	LinkColor              types.String `tfsdk:"link_color"`
+	LogoFileId             types.String `tfsdk:"logo_file_id"`
 	LogoPosition           types.String `tfsdk:"logo_position"`
 	LogoSize               types.Int32  `tfsdk:"logo_size"`
 	SuccessText            types.String `tfsdk:"success_text"`
@@ -129,6 +131,7 @@ func (m *portalCustomizationModel) AttributeTypes() map[string]attr.Type {
 		"customized":          types.BoolType,
 		"authentication_text": types.StringType,
 		"bg_color":            types.StringType,
+		"bg_image_file_id":    types.StringType,
 		"bg_image_tile":       types.BoolType,
 		"bg_type":             types.StringType,
 		"box_color":           types.StringType,
@@ -143,6 +146,7 @@ func (m *portalCustomizationModel) AttributeTypes() map[string]attr.Type {
 			ElemType: types.StringType,
 		},
 		"link_color":               types.StringType,
+		"logo_file_id":             types.StringType,
 		"logo_position":            types.StringType,
 		"logo_size":                types.Int32Type,
 		"success_text":             types.StringType,
@@ -478,6 +482,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.PortalCustomized = portalCustomization.Customized.ValueBool()
 		model.PortalCustomizedAuthenticationText = portalCustomization.AuthenticationText.ValueString()
 		model.PortalCustomizedBgColor = portalCustomization.BgColor.ValueString()
+		model.PortalCustomizedBgImageFilename = portalCustomization.BgImageFileId.ValueString()
 		model.PortalCustomizedBgImageTile = portalCustomization.BgImageTile.ValueBool()
 		model.PortalCustomizedBgType = portalCustomization.BgType.ValueString()
 		model.PortalCustomizedBoxColor = portalCustomization.BoxColor.ValueString()
@@ -490,6 +495,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.PortalCustomizedButtonTextColor = portalCustomization.ButtonTextColor.ValueString()
 		model.PortalCustomizedLanguages = languages
 		model.PortalCustomizedLinkColor = portalCustomization.LinkColor.ValueString()
+		model.PortalCustomizedLogoFilename = portalCustomization.LogoFileId.ValueString()
 		model.PortalCustomizedLogoPosition = portalCustomization.LogoPosition.ValueString()
 		model.PortalCustomizedLogoSize = int(portalCustomization.LogoSize.ValueInt32())
 		model.PortalCustomizedSuccessText = portalCustomization.SuccessText.ValueString()
@@ -816,6 +822,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 		Customized:             types.BoolValue(model.PortalCustomized),
 		AuthenticationText:     types.StringValue(model.PortalCustomizedAuthenticationText),
 		BgColor:                types.StringValue(model.PortalCustomizedBgColor),
+		BgImageFileId:          types.StringValue(model.PortalCustomizedBgImageFilename),
 		BgImageTile:            types.BoolValue(model.PortalCustomizedBgImageTile),
 		BgType:                 types.StringValue(model.PortalCustomizedBgType),
 		BoxColor:               types.StringValue(model.PortalCustomizedBoxColor),
@@ -828,6 +835,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 		ButtonTextColor:        types.StringValue(model.PortalCustomizedButtonTextColor),
 		Languages:              languages,
 		LinkColor:              types.StringValue(model.PortalCustomizedLinkColor),
+		LogoFileId:             types.StringValue(model.PortalCustomizedLogoFilename),
 		LogoPosition:           types.StringValue(model.PortalCustomizedLogoPosition),
 		LogoSize:               types.Int32Value(int32(model.PortalCustomizedLogoSize)),
 		SuccessText:            types.StringValue(model.PortalCustomizedSuccessText),
@@ -880,14 +888,6 @@ func (g *guestAccessResource) ModifyPlan(_ context.Context, req resource.ModifyP
 	resp.Diagnostics.Append(g.RequireMinVersionForPath("7.4", path.Root("portal_customization").AtName("logo_position"), req.Config)...)
 }
 
-func requiredTogetherIfTrue(condition string, attrs ...string) validators.RequiredTogetherIfValidator {
-	var expressions []path.Expression
-	for _, attr := range attrs {
-		expressions = append(expressions, path.MatchRoot(attr))
-	}
-	return validators.RequiredTogetherIf(path.MatchRoot(condition), types.BoolValue(true), expressions...)
-}
-
 func requiredTogetherIfStringVal(condition, value string, attrs ...string) validators.RequiredTogetherIfValidator {
 	var expressions []path.Expression
 	for _, attr := range attrs {
@@ -904,17 +904,6 @@ func (g *guestAccessResource) ConfigValidators(_ context.Context) []resource.Con
 	return []resource.ConfigValidator{
 		// Auth validators
 		requiredTogetherIfStringVal("auth", "custom", "custom_ip"),
-		//requiredTogetherIfStringVal("auth", "facebook_wifi", "facebook_wifi.gateway_id", "facebook_wifi.gateway_name", "facebook_wifi.gateway_secret"),
-
-		// Facebook validators
-
-		// Google validators
-		requiredTogetherIfTrue("google.enabled", "google.client_id", "google.client_secret"),
-		requiredStringValueIfTrue("google.enabled", "auth", "hotspot"),
-
-		// Password validators
-		requiredTogetherIfTrue("password_enabled", "password"),
-		requiredStringValueIfTrue("password_enabled", "auth", "hotspot"),
 
 		// Payment validators
 		requiredTogetherIfStringVal("payment_gateway", "authorize", "authorize"),
@@ -925,21 +914,7 @@ func (g *guestAccessResource) ConfigValidators(_ context.Context) []resource.Con
 		requiredTogetherIfStringVal("payment_gateway", "stripe", "stripe"),
 
 		// Portal validators
-		//requiredTogetherIfStringVal("portal_customized_bg_type", "color", "portal_customized_bg_color"),
-		//requiredTogetherIfStringVal("portal_customized_bg_type", "gallery", "portal_customized_unsplash_author_name", "portal_customized_unsplash_author_username"),
-		//requiredTogetherIfStringVal("portal_customized_bg_type", "image", "portal_customized_bg_image_filename"),
-		//requiredTogetherIfTrue("portal_customized_bg_image_enabled", "portal_customized_bg_image_filename"),
-		//requiredTogetherIfTrue("portal_customized_logo_enabled", "portal_customized_logo_filename"),
-		//requiredTogetherIfTrue("portal_customized_tos_enabled", "portal_customized_tos"),
-		//requiredTogetherIfTrue("portal_customized_welcome_text_enabled", "portal_customized_welcome_text"),
-		//requiredTogetherIfTrue("portal_use_hostname", "portal_hostname"),
-
-		// RADIUS validators
-		//requiredTogetherIfTrue("radius_disconnect_enabled", "radius_disconnect_port"),
-		//requiredTogetherIfTrue("radius_enabled", "radius_auth_type", "radius_profile_id"),
-
-		// Restricted DNS validators
-		//requiredTogetherIfTrue("restricted_dns_enabled", "restricted_dns_servers"),
+		requiredTogetherIfStringVal("portal_customization.bg_type", "image", "portal_customization.bg_image_file_id"),
 
 		// Voucher validators
 		requiredStringValueIfTrue("voucher_enabled", "auth", "hotspot"),
@@ -1251,6 +1226,11 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 							validators.HexColor,
 						},
 					},
+					"bg_image_file_id": schema.StringAttribute{
+						MarkdownDescription: "ID of the background image portal file. File must exist in controller, use `unifi_portal_file` to manage it.",
+						Optional:            true,
+						Computed:            true,
+					},
 					"bg_image_tile": schema.BoolAttribute{
 						MarkdownDescription: "Tile the background image.",
 						Optional:            true,
@@ -1341,6 +1321,11 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 						Validators: []validator.String{
 							validators.HexColor,
 						},
+					},
+					"logo_file_id": schema.StringAttribute{
+						MarkdownDescription: "ID of the logo image portal file. File must exist in controller, use `unifi_portal_file` to manage it.",
+						Optional:            true,
+						Computed:            true,
 					},
 					"logo_position": schema.StringAttribute{
 						MarkdownDescription: "Position of the logo in the portal. Valid values are: left, center, right.",

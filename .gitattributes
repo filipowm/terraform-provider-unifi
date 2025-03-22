@@ -1,9 +1,6 @@
 * text=auto
-
 *.go diff=golang
-
 *.sh eol=lf
-
 *.jar binary
 *.wt binary
 *.bson binary

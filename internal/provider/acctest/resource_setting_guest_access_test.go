@@ -702,6 +702,15 @@ func TestAccSettingGuestAccess_portalCustomizationPostVersion74(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.logo_size", "150"),
 				),
 			},
+			{
+				Config: testAccSettingGuestAccessConfig_portalCustomizationImagesPost74(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "true"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.bg_type", "image"),
+					resource.TestCheckResourceAttrSet("unifi_setting_guest_access.test", "portal_customization.bg_image_file_id"),
+					resource.TestCheckResourceAttrSet("unifi_setting_guest_access.test", "portal_customization.logo_file_id"),
+				),
+			},
 		},
 	})
 }
@@ -758,7 +767,7 @@ func TestAccSettingGuestAccess_portalCustomization(t *testing.T) {
 				Config: testAccSettingGuestAccessConfig_basic(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "false"),
-					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.%", "27"),
+					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.%", "29"),
 				),
 			},
 		},
@@ -1093,6 +1102,28 @@ resource "unifi_setting_guest_access" "test" {
 	success_text = "You are now connected!",
 	logo_position = "center",
 	logo_size = 150
+  }
+}
+`
+}
+
+func testAccSettingGuestAccessConfig_portalCustomizationImagesPost74() string {
+	return `
+resource "unifi_portal_file" "logo" {
+  file_path = "files/testfile.png"
+}
+
+resource "unifi_portal_file" "background" {
+  file_path = "files/testfile2.jpg"
+}
+
+resource "unifi_setting_guest_access" "test" {
+  auth = "none"
+  portal_customization = {
+    customized       = true
+    bg_type          = "image"
+	bg_image_file_id = unifi_portal_file.background.id
+	logo_file_id     = unifi_portal_file.logo.id
   }
 }
 `
