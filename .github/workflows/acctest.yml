@@ -9,6 +9,7 @@ on:
       - "docker-compose.yaml"
       - ".github/workflows/acctest.yml"
       - "Makefile"
+      - "go.mod"
   push:
     branches:
       - "main"
