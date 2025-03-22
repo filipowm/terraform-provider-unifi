@@ -3,15 +3,15 @@
 page_title: "unifi_firewall_zone_policy Resource - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  The unifi_firewall_zone_policy resource manages firewall policies between zones in the UniFi controller.
-  Firewall zone policies control traffic flow between different firewall zones. This resource allows you to create, update, and delete policies that define allowed or blocked traffic between zones.
+  The unifi_firewall_zone_policy resource manages firewall policies between zones in the UniFi controller. This resource allows you to create, update, and delete policies that define allowed or blocked traffic between zones.
+  !> This is experimental feature, that requires UniFi OS 9.0.0 or later and Zone Based Firewall feature enabled. Check official documentation https://help.ui.com/hc/en-us/articles/28223082254743-Migrating-to-Zone-Based-Firewalls-in-UniFi how to migate to Zone-Based firewalls.
 ---
 
 # unifi_firewall_zone_policy (Resource)
 
-The `unifi_firewall_zone_policy` resource manages firewall policies between zones in the UniFi controller.
+The `unifi_firewall_zone_policy` resource manages firewall policies between zones in the UniFi controller. This resource allows you to create, update, and delete policies that define allowed or blocked traffic between zones.
 
-Firewall zone policies control traffic flow between different firewall zones. This resource allows you to create, update, and delete policies that define allowed or blocked traffic between zones.
+!> This is experimental feature, that requires UniFi OS 9.0.0 or later and Zone Based Firewall feature enabled. Check [official documentation](https://help.ui.com/hc/en-us/articles/28223082254743-Migrating-to-Zone-Based-Firewalls-in-UniFi) how to migate to Zone-Based firewalls.
 
 ## Example Usage
 

@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   The unifi_firewall_zone resource manages firewall zones in the UniFi controller.
   Firewall zones allow you to group networks together for firewall rule application. This resource allows you to create, update, and delete firewall zones.
+  !> This is experimental feature, that requires UniFi OS 9.0.0 or later and Zone Based Firewall feature enabled. Check official documentation https://help.ui.com/hc/en-us/articles/28223082254743-Migrating-to-Zone-Based-Firewalls-in-UniFi how to migate to Zone-Based firewalls.
 ---
 
 # unifi_firewall_zone (Resource)
@@ -12,6 +13,8 @@ description: |-
 The `unifi_firewall_zone` resource manages firewall zones in the UniFi controller.
 
 Firewall zones allow you to group networks together for firewall rule application. This resource allows you to create, update, and delete firewall zones.
+
+!> This is experimental feature, that requires UniFi OS 9.0.0 or later and Zone Based Firewall feature enabled. Check [official documentation](https://help.ui.com/hc/en-us/articles/28223082254743-Migrating-to-Zone-Based-Firewalls-in-UniFi) how to migate to Zone-Based firewalls.
 
 ## Example Usage
 
