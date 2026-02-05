@@ -10,7 +10,6 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -19,7 +18,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -635,13 +633,9 @@ func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.Sche
 				Default:             booldefault.StaticBool(false),
 			},
 			"index": schema.Int64Attribute{
-				MarkdownDescription: "Priority index for the policy.",
-				Optional:            true,
-				Computed:            true,
-				Default:             int64default.StaticInt64(10000),
-				Validators: []validator.Int64{
-					int64validator.AtLeast(0),
-				},
+				MarkdownDescription: "Priority index for the policy. This value is assigned by the UniFi controller and cannot be set directly. " +
+					"To control policy ordering, use the `unifi_firewall_zone_policy_order` resource (planned for future release).",
+				Computed: true,
 			},
 			"logging": schema.BoolAttribute{
 				MarkdownDescription: "Enable to generate syslog entries when traffic is matched.",
