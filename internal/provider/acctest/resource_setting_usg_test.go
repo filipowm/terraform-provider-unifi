@@ -60,7 +60,8 @@ func TestAccSettingUsg_dhcpRelayServers(t *testing.T) {
 				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_dhcpRelay(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
-			pt.ImportStepWithSite("unifi_setting_usg.test"),
+			// v10+ API does not echo dhcp_relay_server_1..5 on read-back, so import cannot recover them.
+			pt.ImportStepWithSite("unifi_setting_usg.test", "dhcp_relay_servers"),
 		},
 	})
 }
@@ -292,7 +293,8 @@ func TestAccSettingUsg_dhcpRelayConfig(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr("unifi_setting_usg.test", "dhcp_relay_servers.*", "10.1.2.4"),
 				),
 			},
-			pt.ImportStepWithSite("unifi_setting_usg.test"),
+			// v10+ API does not echo dhcp_relay_server_1..5 on read-back, so import cannot recover them.
+			pt.ImportStepWithSite("unifi_setting_usg.test", "dhcp_relay_servers"),
 			{
 				Config: testAccSettingUsgSite() + testAccSettingUsgConfig_dhcpRelayConfigUpdated(),
 				Check: resource.ComposeTestCheckFunc(
@@ -550,7 +552,8 @@ func TestAccSettingUsg_comprehensive(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_usg.test", "syn_cookies", "true"),
 				),
 			},
-			pt.ImportStepWithSite("unifi_setting_usg.test"),
+			// v10+ API does not echo dhcp_relay_server_1..5 on read-back, so import cannot recover them.
+			pt.ImportStepWithSite("unifi_setting_usg.test", "dhcp_relay_servers"),
 		},
 	})
 }

@@ -714,13 +714,13 @@ resource "unifi_firewall_zone_policy" "test" {
 	source = {
 		zone_id = unifi_firewall_zone.test.id
 		ips = ["192.168.1.10", "192.168.1.11"]
-		port = 80
+		port = "80"
 	}
 	
 	destination = {
 		zone_id = unifi_firewall_zone.test.id
 		ips = ["192.168.2.10"]
-		port = 443
+		port = "443"
 	}
 }
 `, name)

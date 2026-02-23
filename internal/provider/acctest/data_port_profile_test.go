@@ -8,8 +8,8 @@ import (
 
 func TestAccDataPortProfile_default(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
+		// The default "All" port profile was removed in UniFi 7.4+.
 		VersionConstraint: "< 7.4",
-		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataPortProfileConfig_default,

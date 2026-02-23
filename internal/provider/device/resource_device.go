@@ -276,13 +276,25 @@ func resourceDeviceUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		site = c.Site
 	}
 
-	req, err := resourceDeviceGetResourceData(d)
+	// Read-modify-write: read current device state to preserve controller-managed fields.
+	// Without this, sending a partial Device object replaces the controller's full state,
+	// causing issues like api.err.NotSupportQosConfig on devices with LAG ports.
+	current, err := c.GetDevice(ctx, site, d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
+	managedOverrides, err := setToPortOverrides(d.Get("port_override").(*schema.Set))
+	if err != nil {
+		return diag.FromErr(fmt.Errorf("unable to process port_override block: %w", err))
+	}
+
+	// Use full current device as base, only overlay Terraform-managed fields.
+	req := current
 	req.ID = d.Id()
 	req.SiteID = site
+	req.Name = d.Get("name").(string)
+	req.PortOverrides = mergePortOverrides(current.PortOverrides, managedOverrides)
 
 	resp, err := c.UpdateDevice(ctx, site, req)
 	if err != nil {
@@ -295,6 +307,43 @@ func resourceDeviceUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	return resourceDeviceSetResourceData(resp, d, site)
+}
+
+// mergePortOverrides merges Terraform-managed port overrides onto the current device
+// state. For each managed override, it finds the matching port by PortIDX in the
+// current state and copies ONLY the Terraform-managed fields (Name, PortProfileID,
+// OpMode, PoeMode, AggregateNumPorts) onto it, preserving all controller-managed
+// fields (QoS, storm control, dot1x, etc.). Ports not managed by Terraform are
+// included unchanged.
+func mergePortOverrides(current, managed []unifi.DevicePortOverrides) []unifi.DevicePortOverrides {
+	// Build a map of managed port overrides by PortIDX for quick lookup.
+	managedByIdx := make(map[int]unifi.DevicePortOverrides, len(managed))
+	for _, po := range managed {
+		managedByIdx[po.PortIDX] = po
+	}
+
+	result := make([]unifi.DevicePortOverrides, 0, len(current)+len(managed))
+
+	// Process current port overrides, merging managed fields where applicable.
+	for _, cur := range current {
+		if mgd, ok := managedByIdx[cur.PortIDX]; ok {
+			// This port is managed by Terraform — copy only the managed fields.
+			cur.Name = mgd.Name
+			cur.PortProfileID = mgd.PortProfileID
+			cur.OpMode = mgd.OpMode
+			cur.PoeMode = mgd.PoeMode
+			cur.AggregateNumPorts = mgd.AggregateNumPorts
+			delete(managedByIdx, cur.PortIDX)
+		}
+		result = append(result, cur)
+	}
+
+	// Add any Terraform-managed ports that don't exist in current state (new overrides).
+	for _, mgd := range managedByIdx {
+		result = append(result, mgd)
+	}
+
+	return result
 }
 
 func resourceDeviceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -367,21 +416,6 @@ func resourceDeviceSetResourceData(resp *unifi.Device, d *schema.ResourceData, s
 	d.Set("port_override", portOverrides)
 
 	return nil
-}
-
-func resourceDeviceGetResourceData(d *schema.ResourceData) (*unifi.Device, error) {
-	pos, err := setToPortOverrides(d.Get("port_override").(*schema.Set))
-	if err != nil {
-		return nil, fmt.Errorf("unable to process port_override block: %w", err)
-	}
-
-	//TODO: pass Disabled once we figure out how to enable the device afterwards
-
-	return &unifi.Device{
-		MAC:           d.Get("mac").(string),
-		Name:          d.Get("name").(string),
-		PortOverrides: pos,
-	}, nil
 }
 
 func setToPortOverrides(set *schema.Set) ([]unifi.DevicePortOverrides, error) {

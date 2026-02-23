@@ -12,7 +12,6 @@ import (
 func TestAccPortProfile_basic(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: "< 7.4",
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
@@ -25,6 +24,41 @@ func TestAccPortProfile_basic(t *testing.T) {
 			pt.ImportStep("unifi_port_profile.test"),
 		},
 	})
+}
+
+func TestAccPortProfile_forwardNative(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	AcceptanceTest(t, AcceptanceTestCase{
+		Steps: []resource.TestStep{
+			{
+				Config: testAccPortProfileConfigForwardNative(name),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_port_profile.test", "name", name),
+					// forward may read back as "native" or "customize" from the API;
+					// DiffSuppressFunc should treat both as equivalent.
+				),
+			},
+			// Re-apply the same config with PlanOnly to verify no spurious drift.
+			{
+				Config:   testAccPortProfileConfigForwardNative(name),
+				PlanOnly: true,
+			},
+			pt.ImportStep("unifi_port_profile.test"),
+		},
+	})
+}
+
+func testAccPortProfileConfigForwardNative(name string) string {
+	return fmt.Sprintf(`
+resource "unifi_port_profile" "test" {
+	name    = "%s"
+	forward = "native"
+
+	poe_mode      = "off"
+	speed         = 1000
+	stp_port_mode = false
+}
+`, name)
 }
 
 func testAccPortProfileConfig(name string) string {

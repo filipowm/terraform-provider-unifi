@@ -435,8 +435,8 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 
 	// TODO deprecated
 
-	// Extract non-empty DHCP relay servers
-	dhcpRelay := []string{}
+	// Extract non-empty DHCP relay servers from the individual fields.
+	apiServers := []string{}
 	for _, s := range []string{
 		model.DHCPRelayServer1,
 		model.DHCPRelayServer2,
@@ -444,18 +444,22 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 		model.DHCPRelayServer4,
 		model.DHCPRelayServer5,
 	} {
-		if s == "" {
-			continue
+		if s != "" {
+			apiServers = append(apiServers, s)
 		}
-		dhcpRelay = append(dhcpRelay, s)
 	}
 
-	// Set the DHCP relay servers list
-	dhcpRelayServers, diags := types.ListValueFrom(ctx, types.StringType, dhcpRelay)
-	if diags.HasError() {
-		return diags
+	if len(apiServers) == 0 && !d.DhcpRelayServers.IsNull() && !d.DhcpRelayServers.IsUnknown() && len(d.DhcpRelayServers.Elements()) > 0 {
+		// v10+ doesn't echo individual dhcp_relay_server_1..5 fields on read-back.
+		// Trust the write: preserve user's configured servers since the update succeeded.
+		// TODO: Remove this workaround when go-unifi supports array-based DHCP relay fields.
+	} else {
+		dhcpRelayServers, diags := types.ListValueFrom(ctx, types.StringType, apiServers)
+		if diags.HasError() {
+			return diags
+		}
+		d.DhcpRelayServers = dhcpRelayServers
 	}
-	d.DhcpRelayServers = dhcpRelayServers
 	// TODO end of deprecated
 	dhcpRelayObj, dhcpRelayObjDiags := types.ObjectValueFrom(ctx, dhcpRelayModel.AttributeTypes(), &dhcpRelayModel)
 	diags.Append(dhcpRelayObjDiags...)
@@ -1213,7 +1217,29 @@ func NewUsgResource() resource.Resource {
 			return client.GetSettingUsg(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingUsg(ctx, site, body.(*unifi.SettingUsg))
+			input := body.(*unifi.SettingUsg)
+			result, err := client.UpdateSettingUsg(ctx, site, input)
+			if err != nil {
+				return nil, err
+			}
+			// v10+ API does not echo dhcp_relay_server_1..5 on read-back.
+			// Preserve the values we sent since the write succeeded.
+			if result.DHCPRelayServer1 == "" && input.DHCPRelayServer1 != "" {
+				result.DHCPRelayServer1 = input.DHCPRelayServer1
+			}
+			if result.DHCPRelayServer2 == "" && input.DHCPRelayServer2 != "" {
+				result.DHCPRelayServer2 = input.DHCPRelayServer2
+			}
+			if result.DHCPRelayServer3 == "" && input.DHCPRelayServer3 != "" {
+				result.DHCPRelayServer3 = input.DHCPRelayServer3
+			}
+			if result.DHCPRelayServer4 == "" && input.DHCPRelayServer4 != "" {
+				result.DHCPRelayServer4 = input.DHCPRelayServer4
+			}
+			if result.DHCPRelayServer5 == "" && input.DHCPRelayServer5 != "" {
+				result.DHCPRelayServer5 = input.DHCPRelayServer5
+			}
+			return result, nil
 		},
 	)
 	return r

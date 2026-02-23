@@ -102,6 +102,14 @@ func ResourcePortProfile() *schema.Resource {
 				Optional:     true,
 				Default:      "native",
 				ValidateFunc: validation.StringInSlice([]string{"all", "native", "customize", "disabled"}, false),
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// The UniFi controller normalizes "native" to "customize" internally.
+					// Suppress the diff when config says "native" but API returned "customize".
+					if old == "customize" && new == "native" {
+						return true
+					}
+					return false
+				},
 			},
 			"full_duplex": {
 				Description: "Enable full-duplex mode when auto-negotiation is disabled. Full duplex allows simultaneous two-way communication.",

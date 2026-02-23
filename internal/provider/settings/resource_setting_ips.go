@@ -2,6 +2,8 @@ package settings
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/go-unifi/unifi/features"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
@@ -398,56 +400,70 @@ func (d *ipsModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	}
 
 	//Handle AdBlockedNetworks - extract network IDs from AdBlockingConfigurations
-	adBlockedNetworks := make([]string, 0, len(model.AdBlockingConfigurations))
-	for _, config := range model.AdBlockingConfigurations {
-		adBlockedNetworks = append(adBlockedNetworks, config.NetworkID)
+	if len(model.AdBlockingConfigurations) > 0 {
+		adBlockedNetworks := make([]string, 0, len(model.AdBlockingConfigurations))
+		for _, config := range model.AdBlockingConfigurations {
+			adBlockedNetworks = append(adBlockedNetworks, config.NetworkID)
+		}
+		adBlockedNetworksList, diags := types.ListValueFrom(ctx, types.StringType, adBlockedNetworks)
+		if diags.HasError() {
+			return diags
+		}
+		d.AdBlockedNetworks = adBlockedNetworksList
+	} else if d.AdBlockedNetworks.IsNull() || d.AdBlockedNetworks.IsUnknown() {
+		d.AdBlockedNetworks = ut.EmptyList(types.StringType)
 	}
-
-	adBlockedNetworksList, diags := types.ListValueFrom(ctx, types.StringType, adBlockedNetworks)
-	if diags.HasError() {
-		return diags
-	}
-	d.AdBlockedNetworks = adBlockedNetworksList
+	// else: preserve existing plan value — v10+ API does not echo ad_blocking_configurations on read-back
 
 	// Handle DNSFilters
-	dnsFilters := make([]DNSFilterModel, 0)
+	if len(model.DNSFilters) > 0 {
+		dnsFilters := make([]DNSFilterModel, 0)
 
-	for _, filter := range model.DNSFilters {
-		dnsFilter := DNSFilterModel{
-			Description: types.StringValue(filter.Description),
-			Filter:      types.StringValue(filter.Filter),
-			Name:        types.StringValue(filter.Name),
-			NetworkID:   types.StringValue(filter.NetworkID),
+		for _, filter := range model.DNSFilters {
+			dnsFilter := DNSFilterModel{
+				Description: types.StringValue(filter.Description),
+				Filter:      types.StringValue(filter.Filter),
+				Name:        types.StringValue(filter.Name),
+				NetworkID:   types.StringValue(filter.NetworkID),
+			}
+
+			allowedSites, diags := types.ListValueFrom(ctx, types.StringType, filter.AllowedSites)
+			if diags.HasError() {
+				return diags
+			}
+			dnsFilter.AllowedSites = allowedSites
+
+			blockedSites, diags := types.ListValueFrom(ctx, types.StringType, filter.BlockedSites)
+			if diags.HasError() {
+				return diags
+			}
+			dnsFilter.BlockedSites = blockedSites
+
+			blockedTlds, diags := types.ListValueFrom(ctx, types.StringType, filter.BlockedTld)
+			if diags.HasError() {
+				return diags
+			}
+			dnsFilter.BlockedTld = blockedTlds
+
+			dnsFilters = append(dnsFilters, dnsFilter)
 		}
 
-		allowedSites, diags := types.ListValueFrom(ctx, types.StringType, filter.AllowedSites)
+		dnsFiltersList, diags := types.ListValueFrom(ctx, types.ObjectType{
+			AttrTypes: (&DNSFilterModel{}).AttributeTypes(),
+		}, dnsFilters)
 		if diags.HasError() {
 			return diags
 		}
-		dnsFilter.AllowedSites = allowedSites
-
-		blockedSites, diags := types.ListValueFrom(ctx, types.StringType, filter.BlockedSites)
+		d.DNSFilters = dnsFiltersList
+	} else if d.DNSFilters.IsNull() || d.DNSFilters.IsUnknown() {
+		d.DNSFilters, diags = types.ListValueFrom(ctx, types.ObjectType{
+			AttrTypes: (&DNSFilterModel{}).AttributeTypes(),
+		}, []DNSFilterModel{})
 		if diags.HasError() {
 			return diags
 		}
-		dnsFilter.BlockedSites = blockedSites
-
-		blockedTlds, diags := types.ListValueFrom(ctx, types.StringType, filter.BlockedTld)
-		if diags.HasError() {
-			return diags
-		}
-		dnsFilter.BlockedTld = blockedTlds
-
-		dnsFilters = append(dnsFilters, dnsFilter)
 	}
-
-	dnsFiltersList, diags := types.ListValueFrom(ctx, types.ObjectType{
-		AttrTypes: (&DNSFilterModel{}).AttributeTypes(),
-	}, dnsFilters)
-	if diags.HasError() {
-		return diags
-	}
-	d.DNSFilters = dnsFiltersList
+	// else: preserve existing plan value — v10+ API does not echo dns_filters on read-back
 
 	// Handle honeypot
 	honeypotModels := make([]HoneypotModel, 0, len(model.Honeypot))
@@ -842,6 +858,86 @@ func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 	}
 }
 
+// settingIpsNoOmit wraps SettingIps and overrides slice fields to serialize without
+// omitempty. Go's encoding/json uses the outermost field when names collide, so these
+// fields shadow the embedded struct's omitempty-tagged fields. This ensures empty slices
+// are sent as `[]` instead of being omitted, which is required for v10+ controllers
+// that treat absent fields as "clear this value".
+type settingIpsNoOmit struct {
+	*unifi.SettingIps
+	AdBlockingConfigurations []unifi.SettingIpsAdBlockingConfigurations `json:"ad_blocking_configurations"`
+	DNSFilters               []unifi.SettingIpsDNSFilters               `json:"dns_filters"`
+	EnabledCategories        []string                                    `json:"enabled_categories"`
+	EnabledNetworks          []string                                    `json:"enabled_networks"`
+	Suppression              unifi.SettingIpsSuppression                 `json:"suppression"`
+}
+
+// updateSettingIps sends a PUT request with slice fields serialized without omitempty.
+// It returns the input model (trust-the-write) because v10+ controllers do not echo
+// ad_blocking_configurations, dns_filters, and other slice fields in the API response.
+// Only the ID is extracted from the response to ensure proper resource tracking.
+func updateSettingIps(ctx context.Context, client *base.Client, site string, s *unifi.SettingIps) (*unifi.SettingIps, error) {
+	s.Key = "ips"
+
+	// Ensure nil slices become empty slices so JSON serializes them as [].
+	if s.AdBlockingConfigurations == nil {
+		s.AdBlockingConfigurations = []unifi.SettingIpsAdBlockingConfigurations{}
+	}
+	if s.DNSFilters == nil {
+		s.DNSFilters = []unifi.SettingIpsDNSFilters{}
+	}
+	if s.EnabledCategories == nil {
+		s.EnabledCategories = []string{}
+	}
+	if s.EnabledNetworks == nil {
+		s.EnabledNetworks = []string{}
+	}
+	if s.Suppression.Alerts == nil {
+		s.Suppression.Alerts = []unifi.SettingIpsAlerts{}
+	}
+	if s.Suppression.Whitelist == nil {
+		s.Suppression.Whitelist = []unifi.SettingIpsWhitelist{}
+	}
+
+	wrapper := settingIpsNoOmit{
+		SettingIps:               s,
+		AdBlockingConfigurations: s.AdBlockingConfigurations,
+		DNSFilters:               s.DNSFilters,
+		EnabledCategories:        s.EnabledCategories,
+		EnabledNetworks:          s.EnabledNetworks,
+		Suppression:              s.Suppression,
+	}
+
+	// Use the same response pattern as go-unifi's SetSetting (setting.go:102-137).
+	var respBody struct {
+		Meta json.RawMessage   `json:"meta"`
+		Data []json.RawMessage `json:"data"`
+	}
+	err := client.Put(ctx, fmt.Sprintf("s/%s/set/setting/ips", site), wrapper, &respBody)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract the ID from the response so the resource is properly tracked.
+	type settingMeta struct {
+		Key string `json:"key"`
+		ID  string `json:"_id"`
+	}
+	for _, d := range respBody.Data {
+		var sm settingMeta
+		if err := json.Unmarshal(d, &sm); err != nil {
+			continue
+		}
+		if sm.Key == "ips" {
+			if sm.ID != "" {
+				s.ID = sm.ID
+			}
+			return s, nil
+		}
+	}
+	return nil, fmt.Errorf("ips setting not found in response")
+}
+
 func NewIpsResource() resource.Resource {
 	r := &ipsResource{}
 	r.GenericResource = NewSettingResource(
@@ -851,7 +947,7 @@ func NewIpsResource() resource.Resource {
 			return client.GetSettingIps(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingIps(ctx, site, body.(*unifi.SettingIps))
+			return updateSettingIps(ctx, client, site, body.(*unifi.SettingIps))
 		},
 	)
 	return r

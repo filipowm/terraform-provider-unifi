@@ -90,8 +90,18 @@ func ResourceAccount() *schema.Resource {
 			"network_id": {
 				Description: "The ID of the network (VLAN) to assign to clients authenticating with this account. This is used in " +
 					"conjunction with the tunnel attributes to provide VLAN assignment via RADIUS.",
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"vlan"},
+			},
+			"vlan": {
+				Description: "The VLAN ID to assign to clients authenticating with this account. " +
+					"This sets the VLAN directly via RADIUS attributes instead of referencing a network. " +
+					"Cannot be used together with `network_id`.",
+				Type:          schema.TypeInt,
+				Optional:      true,
+				ValidateFunc:  validation.IntBetween(1, 4094),
+				ConflictsWith: []string{"network_id"},
 			},
 		},
 	}
@@ -190,6 +200,7 @@ func resourceAccountSetResourceData(resp *unifi.Account, d *schema.ResourceData,
 	d.Set("tunnel_type", resp.TunnelType)
 	d.Set("tunnel_medium_type", resp.TunnelMediumType)
 	d.Set("network_id", resp.NetworkID)
+	d.Set("vlan", resp.VLAN)
 	return nil
 }
 
@@ -200,5 +211,6 @@ func resourceAccountGetResourceData(d *schema.ResourceData) (*unifi.Account, err
 		TunnelType:       d.Get("tunnel_type").(int),
 		TunnelMediumType: d.Get("tunnel_medium_type").(int),
 		NetworkID:        d.Get("network_id").(string),
+		VLAN:             d.Get("vlan").(int),
 	}, nil
 }

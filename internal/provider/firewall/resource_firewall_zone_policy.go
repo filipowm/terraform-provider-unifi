@@ -1,7 +1,9 @@
 package firewall
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/go-unifi/unifi/features"
@@ -9,7 +11,6 @@ import (
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
-	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -27,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"maps"
 )
 
@@ -36,6 +38,7 @@ var (
 	_ resource.ResourceWithConfigValidators = &firewallZonePolicyResource{}
 	_ resource.ResourceWithImportState      = &firewallZonePolicyResource{}
 	_ resource.ResourceWithModifyPlan       = &firewallZonePolicyResource{}
+	_ resource.ResourceWithUpgradeState     = &firewallZonePolicyResource{}
 	_ base.Resource                         = &firewallZonePolicyResource{}
 )
 
@@ -67,11 +70,11 @@ func mergedTargetAttributes(additional map[string]schema.Attribute) map[string]s
 			Computed:            true,
 			Default:             booldefault.StaticBool(false),
 		},
-		"port": schema.Int32Attribute{
-			MarkdownDescription: "Source port.",
+		"port": schema.StringAttribute{
+			MarkdownDescription: "Port number or port range (e.g. `443` or `80-443`).",
 			Optional:            true,
-			Validators: []validator.Int32{
-				int32validator.Between(1, 65535),
+			Validators: []validator.String{
+				stringvalidator.RegexMatches(validators.PortRangeRegexp, "must be a valid port number or port range"),
 			},
 		},
 		"port_group_id": schema.StringAttribute{
@@ -92,7 +95,7 @@ type FirewallPolicyTargetModel struct {
 	IPs                types.List   `tfsdk:"ips"`
 	MatchOppositeIPs   types.Bool   `tfsdk:"match_opposite_ips"`
 	MatchOppositePorts types.Bool   `tfsdk:"match_opposite_ports"`
-	Port               types.Int32  `tfsdk:"port"`
+	Port               types.String `tfsdk:"port"`
 	PortGroupID        types.String `tfsdk:"port_group_id"`
 	ZoneID             types.String `tfsdk:"zone_id"`
 }
@@ -103,20 +106,20 @@ func (m *FirewallPolicyTargetModel) AttributeTypes() map[string]attr.Type {
 		"ips":                  types.ListType{ElemType: types.StringType},
 		"match_opposite_ips":   types.BoolType,
 		"match_opposite_ports": types.BoolType,
-		"port":                 types.Int32Type,
+		"port":                 types.StringType,
 		"port_group_id":        types.StringType,
 		"zone_id":              types.StringType,
 	}
 }
 
-func NewFirewallPolicyTargetModel(ipGroupId string, ips []string, matchOppositeIps, matchOppositePorts bool, port int, portGroupId, zoneId string) *FirewallPolicyTargetModel {
+func NewFirewallPolicyTargetModel(ipGroupId string, ips []string, matchOppositeIps, matchOppositePorts bool, port string, portGroupId, zoneId string) *FirewallPolicyTargetModel {
 	diags := diag.Diagnostics{}
 	m := &FirewallPolicyTargetModel{
 		IPGroupID:          ut.StringOrNull(ipGroupId),
 		IPs:                types.ListNull(types.StringType),
 		MatchOppositeIPs:   types.BoolValue(matchOppositeIps),
 		MatchOppositePorts: types.BoolValue(matchOppositePorts),
-		Port:               ut.Int32OrNull(port),
+		Port:               ut.StringOrNull(port),
 		PortGroupID:        ut.StringOrNull(portGroupId),
 		ZoneID:             types.StringValue(zoneId),
 	}
@@ -288,7 +291,7 @@ func (m *FirewallZonePolicyModel) AsUnifiModel(ctx context.Context) (interface{}
 
 		if ut.IsDefined(source.Port) {
 			unifiSource.PortMatchingType = "SPECIFIC"
-			unifiSource.Port = int(source.Port.ValueInt32())
+			unifiSource.Port = source.Port.ValueString()
 		}
 
 		if len(source.ClientMACs.Elements()) > 0 {
@@ -340,7 +343,7 @@ func (m *FirewallZonePolicyModel) AsUnifiModel(ctx context.Context) (interface{}
 
 		if ut.IsDefined(destination.Port) {
 			unifiDestination.PortMatchingType = "SPECIFIC"
-			unifiDestination.Port = int(destination.Port.ValueInt32())
+			unifiDestination.Port = destination.Port.ValueString()
 		}
 
 		if len(destination.AppCategoryIDs.Elements()) > 0 {
@@ -564,6 +567,57 @@ func (r *firewallZonePolicyResource) ConfigValidators(ctx context.Context) []res
 	}
 }
 
+func (r *firewallZonePolicyResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		// V0→V1: port changed from Int32 to String in source and destination
+		// to support port ranges (e.g. "80-443"). The go-unifi SDK changed the
+		// Port field from int to string in v1.8.1.
+		0: {
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				if req.RawState.JSON == nil {
+					return
+				}
+
+				// Decode with UseNumber to preserve numeric precision.
+				dec := json.NewDecoder(bytes.NewReader(req.RawState.JSON))
+				dec.UseNumber()
+
+				var rawState map[string]interface{}
+				if err := dec.Decode(&rawState); err != nil {
+					resp.Diagnostics.AddError("Unable to Unmarshal Prior State", err.Error())
+					return
+				}
+
+				// Convert port from number to string in source and destination.
+				for _, key := range []string{"source", "destination"} {
+					if target, ok := rawState[key].(map[string]interface{}); ok {
+						if port, exists := target["port"]; exists && port != nil {
+							if n, ok := port.(json.Number); ok {
+								target["port"] = n.String()
+							}
+						}
+					}
+				}
+
+				upgraded, err := json.Marshal(rawState)
+				if err != nil {
+					resp.Diagnostics.AddError("Unable to Marshal Upgraded State", err.Error())
+					return
+				}
+
+				schemaType := resp.State.Schema.Type().TerraformType(ctx)
+				upgradedValue, err := tftypes.ValueFromJSON(upgraded, schemaType)
+				if err != nil {
+					resp.Diagnostics.AddError("Unable to Parse Upgraded State", err.Error())
+					return
+				}
+
+				resp.State.Raw = upgradedValue
+			},
+		},
+	}
+}
+
 func (r *firewallZonePolicyResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	site, diags := r.GetClient().ResolveSiteFromConfig(ctx, req.Config)
 	if diags.HasError() {
@@ -600,6 +654,7 @@ func NewFirewallZonePolicyResource() resource.Resource {
 // Schema defines the schema for the resource
 func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version: 1,
 		MarkdownDescription: "The `unifi_firewall_zone_policy` resource manages firewall policies between zones in the UniFi controller. " +
 			"This resource allows you to create, update, and delete policies that define allowed or blocked traffic between zones.\n\n" +
 			"!> This is experimental feature, that requires UniFi OS 9.0.0 or later and Zone Based Firewall feature enabled. " +

@@ -45,6 +45,22 @@ func TestAccAccount_mac(t *testing.T) {
 	})
 }
 
+func TestAccAccount_vlan(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	AcceptanceTest(t, AcceptanceTestCase{
+		Steps: []resource.TestStep{
+			{
+				Config: testAccAccountConfigWithVlan(name, "secure", 100),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_account.test", "name", name),
+					resource.TestCheckResourceAttr("unifi_account.test", "vlan", "100"),
+				),
+			},
+			pt.ImportStep("unifi_account.test"),
+		},
+	})
+}
+
 func testAccAccountConfig(name, password string) string {
 	return fmt.Sprintf(`
 resource "unifi_account" "test" {
@@ -52,4 +68,14 @@ resource "unifi_account" "test" {
 	password = "%[2]s"
 }
 `, name, password)
+}
+
+func testAccAccountConfigWithVlan(name, password string, vlan int) string {
+	return fmt.Sprintf(`
+resource "unifi_account" "test" {
+	name     = "%[1]s"
+	password = "%[2]s"
+	vlan     = %[3]d
+}
+`, name, password, vlan)
 }

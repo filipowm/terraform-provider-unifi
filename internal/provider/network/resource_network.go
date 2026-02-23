@@ -34,8 +34,7 @@ var (
 	wanV6NetworkGroupRegexp   = regexp.MustCompile("wan[2]?")
 	validateWANV6NetworkGroup = validation.StringMatch(wanV6NetworkGroupRegexp, "invalid WANv6 network group")
 
-	ipV6InterfaceTypeRegexp   = regexp.MustCompile("none|pd|static")
-	validateIpV6InterfaceType = validation.StringMatch(ipV6InterfaceTypeRegexp, "invalid IPv6 interface type")
+	validateIpV6InterfaceType = validation.StringInSlice([]string{"none", "pd", "static", "single_network"}, false)
 
 	// This is a slightly larger range than the UI, it includes some reserved ones, so could be tightened up.
 	validateVLANID = validation.IntBetween(0, 4096)
@@ -294,7 +293,8 @@ func ResourceNetwork() *schema.Resource {
 				Description: "Specifies the IPv6 connection type. Must be one of:\n" +
 					"* `none` - IPv6 disabled (default)\n" +
 					"* `static` - Static IPv6 addressing\n" +
-					"* `pd` - Prefix Delegation from upstream\n\n" +
+					"* `pd` - Prefix Delegation from upstream\n" +
+					"* `single_network` - Single network IPv6 (uses the WAN's IPv6 /64 directly on the LAN)\n\n" +
 					"Choose based on your IPv6 deployment strategy and ISP capabilities.",
 				Type:         schema.TypeString,
 				Optional:     true,
@@ -529,6 +529,14 @@ func ResourceNetwork() *schema.Resource {
 				Optional:     true,
 				ValidateFunc: validation.IntBetween(1, 128),
 			},
+			"firewall_zone_id": {
+				Description: "The ID of the firewall zone to associate with this network. " +
+					"If not specified, the controller's default zone assignment will be preserved. " +
+					"Changing this affects which firewall zone policies apply to traffic on this network.",
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -641,6 +649,8 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		WANIPV6:         d.Get("wan_ipv6").(string),
 		WANGatewayV6:    d.Get("wan_gateway_v6").(string),
 		WANPrefixlen:    d.Get("wan_prefixlen").(int),
+
+		FirewallZoneID: d.Get("firewall_zone_id").(string),
 
 		// this is kinda hacky but ¯\_(ツ)_/¯
 		WANDNS1: append(wanDNS, "")[0],
@@ -771,6 +781,7 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("wan_type", wanType)
 	d.Set("wan_username", resp.WANUsername)
 	d.Set("x_wan_password", resp.XWANPassword)
+	d.Set("firewall_zone_id", resp.FirewallZoneID)
 
 	return nil
 }
@@ -800,17 +811,35 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*base.Client)
 
+	site := d.Get("site").(string)
+	if site == "" {
+		site = c.Site
+	}
+
 	req, err := resourceNetworkGetResourceData(d, meta)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	req.ID = d.Id()
-	site := d.Get("site").(string)
-	if site == "" {
-		site = c.Site
-	}
 	req.SiteID = site
+
+	// Preserve firewall_zone_id from current state when user hasn't explicitly set it.
+	// The go-unifi Network.FirewallZoneID has no omitempty, so an empty string would
+	// be sent to the API and interpreted as "remove from zone", destroying zone-based
+	// firewall rules.
+	//
+	// Although firewall_zone_id is Optional+Computed (so d.Get usually returns the
+	// state value), we fetch from the API as defense-in-depth: the controller may
+	// have assigned a zone server-side (e.g. zone-based firewall migration) that
+	// isn't yet reflected in Terraform state.
+	if req.FirewallZoneID == "" && !d.HasChange("firewall_zone_id") {
+		current, err := c.GetNetwork(ctx, site, d.Id())
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		req.FirewallZoneID = current.FirewallZoneID
+	}
 
 	resp, err := c.UpdateNetwork(ctx, site, req)
 	if err != nil {

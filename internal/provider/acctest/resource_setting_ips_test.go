@@ -88,7 +88,8 @@ func TestAccSettingIps_adBlocking(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr("unifi_setting_ips.test", "ad_blocked_networks.*", "network2"),
 				),
 			},
-			pt.ImportStepWithSite("unifi_setting_ips.test"),
+			// v10+ API does not return ad_blocking_configurations on read-back, so import cannot recover them.
+			pt.ImportStepWithSite("unifi_setting_ips.test", "ad_blocked_networks"),
 			{
 				Config: testAccSettingIpsConfig_adBlockingUpdated(),
 				Check: resource.ComposeTestCheckFunc(
@@ -97,7 +98,7 @@ func TestAccSettingIps_adBlocking(t *testing.T) {
 					resource.TestCheckTypeSetElemAttr("unifi_setting_ips.test", "ad_blocked_networks.*", "network3"),
 				),
 			},
-			pt.ImportStepWithSite("unifi_setting_ips.test"),
+			pt.ImportStepWithSite("unifi_setting_ips.test", "ad_blocked_networks"),
 		},
 	})
 }
@@ -157,7 +158,8 @@ func TestAccSettingIps_dnsFilters(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "dns_filters.0.blocked_tld.#", "1"),
 				),
 			},
-			pt.ImportStepWithSite("unifi_setting_ips.test"),
+			// v10+ API does not return dns_filters on read-back, so import cannot recover them.
+			pt.ImportStepWithSite("unifi_setting_ips.test", "dns_filters"),
 			{
 				Config: testAccSettingIpsConfig_dnsFiltersUpdated(t),
 				Check: resource.ComposeTestCheckFunc(
@@ -169,7 +171,7 @@ func TestAccSettingIps_dnsFilters(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "dns_filters.1.filter", "none"),
 				),
 			},
-			pt.ImportStepWithSite("unifi_setting_ips.test"),
+			pt.ImportStepWithSite("unifi_setting_ips.test", "dns_filters"),
 		},
 	})
 }
@@ -234,7 +236,8 @@ func TestAccSettingIps_comprehensive(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.whitelist.#", "1"),
 				),
 			},
-			pt.ImportStepWithSite("unifi_setting_ips.test"),
+			// v10+ API does not return ad_blocking_configurations or dns_filters on read-back.
+			pt.ImportStepWithSite("unifi_setting_ips.test", "ad_blocked_networks", "dns_filters"),
 		},
 	})
 }

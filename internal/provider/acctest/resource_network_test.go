@@ -666,3 +666,93 @@ resource "unifi_network" "test" {
 }
 `, name, subnet, vlan, mdns)
 }
+
+func TestAccNetwork_ipv6SingleNetwork(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkConfigIPv6InterfaceType(name, subnet, vlan, "single_network"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "ipv6_interface_type", "single_network"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+		},
+	})
+}
+
+func TestAccNetwork_firewallZonePreserved(t *testing.T) {
+	pt.SkipIfEnvLocalMissing(t, "Skipping, because test environment does not support firewall zones")
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: ">= 8.0",
+		Steps: []resource.TestStep{
+			// Step 1: Create network, let controller auto-assign a firewall zone.
+			{
+				Config: testAccNetworkConfigWithDomain(name, subnet, vlan, "initial.local"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_network.test", "firewall_zone_id"),
+				),
+			},
+			// Step 2: Update an unrelated field (domain_name). The firewall_zone_id
+			// should be preserved by the read-modify-write logic in our bug fix.
+			{
+				Config: testAccNetworkConfigWithDomain(name, subnet, vlan, "updated.local"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "domain_name", "updated.local"),
+					resource.TestCheckResourceAttrSet("unifi_network.test", "firewall_zone_id"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+		},
+	})
+}
+
+func testAccNetworkConfigIPv6InterfaceType(name string, subnet *net.IPNet, vlan int, ipv6Type string) string {
+	return fmt.Sprintf(`
+locals {
+	subnet  = "%[2]s"
+	vlan_id = %[3]d
+}
+
+resource "unifi_network" "test" {
+	name    = "%[1]s"
+	purpose = "corporate"
+
+	subnet        = local.subnet
+	vlan_id       = local.vlan_id
+	dhcp_start    = cidrhost(local.subnet, 6)
+	dhcp_stop     = cidrhost(local.subnet, 254)
+	dhcp_enabled  = true
+	domain_name   = "foo.local"
+
+	ipv6_interface_type = "%[4]s"
+}
+`, name, subnet, vlan, ipv6Type)
+}
+
+func testAccNetworkConfigWithDomain(name string, subnet *net.IPNet, vlan int, domain string) string {
+	return fmt.Sprintf(`
+locals {
+	subnet  = "%[2]s"
+	vlan_id = %[3]d
+}
+
+resource "unifi_network" "test" {
+	name    = "%[1]s"
+	purpose = "corporate"
+
+	subnet        = local.subnet
+	vlan_id       = local.vlan_id
+	dhcp_start    = cidrhost(local.subnet, 6)
+	dhcp_stop     = cidrhost(local.subnet, 254)
+	dhcp_enabled  = true
+	domain_name   = "%[4]s"
+}
+`, name, subnet, vlan, domain)
+}
