@@ -124,8 +124,6 @@ func TestAccNetwork_dhcp_boot(t *testing.T) {
 }
 
 func TestAccNetwork_v6(t *testing.T) {
-	t.Skip("FIXME")
-
 	name := acctest.RandomWithPrefix("tfacc")
 	subnet1, vlan1 := pt.GetTestVLAN(t)
 	subnet2, vlan2 := pt.GetTestVLAN(t)
@@ -642,6 +640,7 @@ resource "unifi_network" "test" {
 	subnet        = local.subnet
 	vlan_id       = local.vlan_id
 
+	ipv6_interface_type = "static"
 	ipv6_static_subnet  = "%[4]s"
 
 	dhcp_v6_dns_auto = false

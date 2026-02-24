@@ -305,8 +305,9 @@ func ResourceNetwork() *schema.Resource {
 				Description: "The static IPv6 subnet in CIDR notation (e.g., '2001:db8::/64') when using static IPv6.\n" +
 					"Only applicable when `ipv6_interface_type` is 'static'.\n" +
 					"Must be a valid IPv6 subnet allocated to your organization.",
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:             schema.TypeString,
+				Optional:         true,
+				DiffSuppressFunc: utils.CidrDiffSuppress,
 			},
 			"ipv6_pd_interface": {
 				Description: "The WAN interface to use for IPv6 Prefix Delegation. Options:\n" +
