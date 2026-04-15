@@ -147,11 +147,13 @@ func ResourceFirewallRule() *schema.Resource {
 			"src_network_type": {
 				Description: "The type of source network address. Valid values are:\n" +
 					"  * `ADDRv4` - Single IPv4 address\n" +
-					"  * `NETv4` - IPv4 network in CIDR notation",
+					"  * `NETv4` - IPv4 network in CIDR notation\n" +
+					"  * `ADDRv6` - Single IPv6 address\n" +
+					"  * `NETv6` - IPv6 network in CIDR notation",
 				Type:         schema.TypeString,
 				Optional:     true,
 				Default:      "NETv4",
-				ValidateFunc: validation.StringInSlice([]string{"ADDRv4", "NETv4"}, false),
+				ValidateFunc: validation.StringInSlice([]string{"ADDRv4", "NETv4", "ADDRv6", "NETv6"}, false),
 			},
 			"src_firewall_group_ids": {
 				Description: "A list of firewall group IDs to use as sources. Groups can contain:\n" +
@@ -203,11 +205,13 @@ func ResourceFirewallRule() *schema.Resource {
 			"dst_network_type": {
 				Description: "The type of destination network address. Valid values are:\n" +
 					"  * `ADDRv4` - Single IPv4 address\n" +
-					"  * `NETv4` - IPv4 network in CIDR notation",
+					"  * `NETv4` - IPv4 network in CIDR notation\n" +
+					"  * `ADDRv6` - Single IPv6 address\n" +
+					"  * `NETv6` - IPv6 network in CIDR notation",
 				Type:         schema.TypeString,
 				Optional:     true,
 				Default:      "NETv4",
-				ValidateFunc: validation.StringInSlice([]string{"ADDRv4", "NETv4"}, false),
+				ValidateFunc: validation.StringInSlice([]string{"ADDRv4", "NETv4", "ADDRv6", "NETv6"}, false),
 			},
 			"dst_firewall_group_ids": {
 				Description: "A list of firewall group IDs to use as destinations. Groups can contain IP addresses, networks, or port numbers. " +
