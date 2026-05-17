@@ -49,7 +49,7 @@ func mergedTargetAttributes(additional map[string]schema.Attribute) map[string]s
 			ElementType:         types.StringType,
 			Validators: []validator.List{
 				listvalidator.ValueStringsAre(
-					validators.IPv4(),
+					stringvalidator.Any(validators.IPv4(), validators.IPv6()),
 				),
 			},
 		},
