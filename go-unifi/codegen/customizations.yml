@@ -1,0 +1,541 @@
+---
+customizations:
+  client:
+    imports:
+      - "io"
+    excludeResources:
+      - "DescribedFeature"
+      - "Dpi*"
+      - "FirewallZoneMatrix"
+    functions:
+      - name: "Login"
+        comment: "Login logs in to the controller. Useful only for user/password authentication."
+        returns:
+          - "error"
+      - name: "Logout"
+        comment: "Logout logs out from the controller."
+        returns:
+          - "error"
+      - name: "BaseURL"
+        comment: "BaseURL returns the base URL of the controller."
+        returns:
+          - "string"
+      - name: "Version"
+        comment: "Version returns the version of the UniFi Controller API."
+        returns:
+          - "string"
+      - name: "Do"
+        comment: "Do sends a request to the controller."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "method"
+            type: "string"
+          - name: "apiPath"
+            type: "string"
+          - name: "reqBody"
+            type: "interface{}"
+          - name: "respBody"
+            type: "interface{}"
+        returns:
+          - "error"
+      - name: "Get"
+        comment: "Get sends a GET request to the controller."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "apiPath"
+            type: "string"
+          - name: "reqBody"
+            type: "interface{}"
+          - name: "respBody"
+            type: "interface{}"
+        returns:
+          - "error"
+      - name: "Post"
+        comment: "Post sends a POST request to the controller."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "apiPath"
+            type: "string"
+          - name: "reqBody"
+            type: "interface{}"
+          - name: "respBody"
+            type: "interface{}"
+        returns:
+          - "error"
+      - name: "Put"
+        comment: "Put sends a PUT request to the controller."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "apiPath"
+            type: "string"
+          - name: "reqBody"
+            type: "interface{}"
+          - name: "respBody"
+            type: "interface{}"
+        returns:
+          - "error"
+      - name: "Delete"
+        comment: "Delete sends a DELETE request to the controller."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "apiPath"
+            type: "string"
+          - name: "reqBody"
+            type: "interface{}"
+          - name: "respBody"
+            type: "interface{}"
+        returns:
+          - "error"
+
+
+      - name: "AdoptDevice"
+        comment: "AdoptDevice adopts a device by MAC address."
+        resourceName: "Device"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "mac"
+            type: "string"
+        returns:
+          - "error"
+      - name: "ForgetDevice"
+        comment: "ForgetDevice forgets a device by MAC address."
+        resourceName: "Device"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "mac"
+            type: "string"
+        returns:
+          - "error"
+      - name: "GetDeviceByMAC"
+        resourceName: "Device"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "mac"
+            type: "string"
+        returns:
+          - "*Device"
+          - "error"
+      - name: "ReorderFirewallRules"
+        resourceName: "FirewallRule"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "ruleset"
+            type: "string"
+          - name: "reorder"
+            type: "[]FirewallRuleIndexUpdate"
+        returns:
+          - "error"
+      - name: "GetSetting"
+        resourceName: "Setting"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "key"
+            type: "string"
+        returns:
+          - "*Setting"
+          - "interface{}"
+          - "error"
+      - name: "ListSites"
+        resourceName: "Site"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+        returns:
+          - "[]Site"
+          - "error"
+      - name: "GetSite"
+        resourceName: "Site"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "id"
+            type: "string"
+        returns:
+          - "*Site"
+          - "error"
+      - name: "CreateSite"
+        resourceName: "Site"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "description"
+            type: "string"
+        returns:
+          - "[]Site"
+          - "error"
+      - name: "DeleteSite"
+        resourceName: "Site"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "id"
+            type: "string"
+        returns:
+          - "[]Site"
+          - "error"
+      - name: "UpdateSite"
+        resourceName: "Site"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "name"
+            type: "string"
+          - name: "description"
+            type: "string"
+        returns:
+          - "[]Site"
+          - "error"
+      - name: "GetSystemInfo"
+        resourceName: "SysInfo"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "id"
+            type: "string"
+        returns:
+          - "*SysInfo"
+          - "error"
+      - name: "GetSystemInformation"
+        resourceName: "SysInfo"
+        returns:
+          - "*SysInfo"
+          - "error"
+      - name: "GetUserByMAC"
+        resourceName: "User"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "mac"
+            type: "string"
+        returns:
+          - "*User"
+          - "error"
+      - name: "BlockUserByMAC"
+        resourceName: "User"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "mac"
+            type: "string"
+        returns:
+          - "error"
+      - name: "UnblockUserByMAC"
+        resourceName: "User"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "mac"
+            type: "string"
+        returns:
+          - "error"
+      - name: "DeleteUserByMAC"
+        resourceName: "User"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "mac"
+            type: "string"
+        returns:
+          - "error"
+      - name: "KickUserByMAC"
+        resourceName: "User"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "mac"
+            type: "string"
+        returns:
+          - "error"
+      - name: "OverrideUserFingerprint"
+        resourceName: "User"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "mac"
+            type: "string"
+          - name: "devIdOverride"
+            type: "int"
+        returns:
+          - "error"
+      - name: "ListFirewallZoneMatrix"
+        resourceName: "FirewallZoneMatrix"
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+        returns:
+          - "[]FirewallZoneMatrix"
+          - "error"
+      - name: "ListFeatures"
+        resourceName: "DescribedFeature"
+        comment: "ListFeatures returns all features of the UniFi controller."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+        returns:
+          - "[]DescribedFeature"
+          - "error"
+      - name: "GetFeature"
+        resourceName: "DescribedFeature"
+        comment: "GetFeature returns a specific feature by it's name. Name is case-insensitive."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "name"
+            type: "string"
+        returns:
+          - "*DescribedFeature"
+          - "error"
+      - name: "IsFeatureEnabled"
+        resourceName: "DescribedFeature"
+        comment: "IsFeatureEnabled returns if a specific feature is enabled by it's name. Name is case-insensitive."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "name"
+            type: "string"
+        returns:
+          - "bool"
+          - "error"
+      - name: "UploadPortalFile"
+        resourceName: "PortalFile"
+        comment: "UploadPortalFile uploads a Hotspot Portal file to the controller."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "filepath"
+            type: "string"
+        returns:
+          - "*PortalFile"
+          - "error"
+      - name: "UploadPortalFileFromReader"
+        resourceName: "PortalFile"
+        comment: "UploadPortalFileFromReader uploads a Hotspot Portal file using io.Reader to the controller."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "reader"
+            type: "io.Reader"
+          - name: "filename"
+            type: "string"
+        returns:
+          - "*PortalFile"
+          - "error"
+      - name: "DeletePortalFile"
+        resourceName: "PortalFile"
+        comment: "DeletePortalFile deletes a Hotspot Portal file from the controller."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "id"
+            type: "string"
+        returns:
+          - "error"
+      - name: "ListPortalFiles"
+        resourceName: "PortalFile"
+        comment: "ListPortalFiles lists all Hotspot Portal files on the controller."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+        returns:
+          - "[]PortalFile"
+          - "error"
+      - name: "GetPortalFile"
+        resourceName: "PortalFile"
+        comment: "GetPortalFile returns a specific Hotspot Portal file by it's ID."
+        params:
+          - name: "ctx"
+            type: "context.Context"
+          - name: "site"
+            type: "string"
+          - name: "id"
+            type: "string"
+        returns:
+          - "*PortalFile"
+          - "error"
+  resources:
+    Account:
+      fields:
+        IP:
+          omitEmpty: true
+        NetworkID:
+          omitEmpty: true
+    APGroup:
+      resourcePath: "apgroups"
+    ChannelPlan:
+      fields:
+        Channel:
+          ifFieldType: "string"
+          customUnmarshalType: "numberOrString"
+        BackupChannel:
+          ifFieldType: "string"
+          customUnmarshalType: "numberOrString"
+        TxPower:
+          ifFieldType: "string"
+          customUnmarshalType: "numberOrString"
+    DNSRecord:
+      resourcePath: "static-dns"
+    DescribedFeature:
+      resourcePath: "described-features?includeSystemFeatures=true"  # TODO hack to get all features, because query params in requests are not yet supported
+    Device:
+      fields:
+        _all:
+          omitEmpty: true
+        X:
+          fieldType: "float64"
+        Y:
+          fieldType: "float64"
+        StpPriority:
+          fieldType: "string"
+          customUnmarshalType: "numberOrString"
+        Ht:
+          fieldType: "int"
+        Channel:
+          customUnmarshalType: "numberOrString"
+          ifFieldType: "string"
+        BackupChannel:
+          customUnmarshalType: "numberOrString"
+          ifFieldType: "string"
+        TxPower:
+          customUnmarshalType: "numberOrString"
+          ifFieldType: "string"
+        LteExtAnt:
+          customUnmarshalType: "booleanishString"
+        LtePoe:
+          customUnmarshalType: "booleanishString"
+        PortOverrides:
+          omitEmpty: false
+    FirewallZone:
+      resourcePath: "firewall/zone"
+      fields:
+        NetworkIDs:
+          omitEmpty: false
+    FirewallZoneMatrix:
+      resourcePath: "firewall/zone-matrix"
+    FirewallZonePolicy:
+      resourcePath: "firewall-policies"
+      fields:
+        IPGroupID:
+          omitEmpty: true
+        PortGroupID:
+          omitEmpty: true
+        Date:
+          fieldType: "string"
+          customUnmarshalType: ""
+        DateStart:
+          fieldType: "string"
+          customUnmarshalType: ""
+        DateEnd:
+          fieldType: "string"
+          customUnmarshalType: ""
+    Network:
+      fields:
+        InternetAccessEnabled:
+          ifFieldType: "bool"
+          customUnmarshalType: "*bool"
+          customUnmarshalFunc: "emptyBoolToTrue"
+        IntraNetworkAccessEnabled:
+          ifFieldType: "bool"
+          customUnmarshalType: "*bool"
+          customUnmarshalFunc: "emptyBoolToTrue"
+        WANUsername:
+          omitEmpty: true
+        XWANPassword:
+          omitEmpty: true
+    SettingGuestAccess:
+      fields:
+        AllowedSubnet:
+          jsonPath: "allowed_subnet"
+        PortalCustomizedBgImageFilename:
+          omitEmpty: false
+        PortalCustomizedLogoFilename:
+          omitEmpty: false
+        RestrictedSubnet:
+          jsonPath: "restricted_subnet"
+        GoogleDomain:
+          omitEmpty: false
+        Expire:
+          fieldType: "int"
+          customUnmarshalType: "emptyStringInt"
+        RestrictedDNSServers:
+          omitEmpty: false
+    SettingIps:
+      fields:
+        Honeypot:
+          omitEmpty: false
+    SettingMgmt:
+      fields:
+        AutoUpgradeHour:
+          omitEmpty: false
+        XSshKeys:
+          omitEmpty: false
+    SettingRsyslogd:
+      fields:
+        Contents:
+          omitEmpty: false
+        IP:
+          omitEmpty: false
+        NetconsoleHost:
+          omitEmpty: false
+    SettingUsg:
+      fields:
+        GeoIPFilteringCountries:
+          omitEmpty: false
+    User:
+      fields:
+        Blocked:
+          fieldType: "bool"
+        LastSeen:
+          fieldType: "int"
+          customUnmarshalType: "emptyStringInt"
+    WLAN:
+      fields:
+        ScheduleWithDuration:
+          omitEmpty: false

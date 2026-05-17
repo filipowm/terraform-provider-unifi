@@ -1,0 +1,9 @@
+# Cache
+/fields/v*.*.*/
+/codegen/v*.*.*/
+
+# goreleaser
+/dist/
+
+.idea
+*.iml

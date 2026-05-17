@@ -1,0 +1,35 @@
+---
+name: "Generate Unifi structures"
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: "write"
+  pull-requests: "write"
+
+jobs:
+  fields:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v4"
+
+      - uses: "actions/setup-go@v5"
+
+      - name: "Generate new client structures"
+        run: 'go generate unifi/codegen.go'
+
+      - name: "Read Unifi version marker"
+        id: "unifi_version"
+        uses: "juliangruber/read-file-action@v1"
+        with:
+          path: "./.unifi-version"
+          trim: "true"
+
+      # TODO: Automatically merge the PR if tests pass.
+      - uses: "peter-evans/create-pull-request@v7"
+        with:
+          delete-branch: true
+          title: "feat: update to the controller version ${{ steps.unifi_version.outputs.content }}"
+          commit-message: "feat: update to the controller version ${{ steps.unifi_version.outputs.content }}"

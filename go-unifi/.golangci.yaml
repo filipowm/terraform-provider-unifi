@@ -1,0 +1,35 @@
+---
+linters:
+  enable-all: true
+  disable:
+    - 'depguard'
+    - 'mnd'
+    - 'nlreturn'
+    - 'tagliatelle'
+    - 'ireturn'
+
+    # Temporary
+    - 'cyclop'
+    - 'dupl'
+    - 'err113'
+    - 'exhaustruct'
+    - 'forbidigo'
+    - 'funlen'
+    - 'gochecknoglobals'
+    - 'gocognit'
+    - 'goconst'
+    - 'gocritic'
+    - 'gocyclo'
+    - 'godox'
+    - 'gosec'
+    - 'lll'
+    - 'maintidx'
+    - 'nestif'
+    - 'revive'
+    - 'stylecheck'
+    - 'varnamelen'
+    - 'wrapcheck'
+    - 'wsl'
+
+    # Deprecated
+    - 'exportloopref'

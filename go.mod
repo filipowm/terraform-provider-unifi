@@ -2,7 +2,7 @@ module github.com/filipowm/terraform-provider-unifi
 
 go 1.23.5
 
-//replace github.com/filipowm/go-unifi v1.8.0 => ../go-unifi
+replace github.com/filipowm/go-unifi v1.8.0 => ./go-unifi
 // replace github.com/hashicorp/terraform-plugin-docs => ../../hashicorp/terraform-plugin-docs
 // replace github.com/hashicorp/terraform-plugin-sdk/v2 => ../../hashicorp/terraform-plugin-sdk
 

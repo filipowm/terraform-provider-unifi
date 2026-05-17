@@ -1,0 +1,86 @@
+---
+name: "Continuous Integration"
+on:
+  pull_request: {}
+  push:
+    branches:
+      - 'main'
+    tags:
+      - 'v*'
+
+permissions:
+  contents: "read"
+
+jobs:
+  build:
+    name: "Build"
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@v4'
+      - uses: 'actions/setup-go@v5'
+      - run: 'go build ./...'
+
+  test:
+    name: "Test"
+    needs: 'build'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@v4'
+      - uses: 'actions/setup-go@v5'
+      - name: "Run tests"
+        run: "go test -cover -coverprofile=coverage.out -covermode atomic ./..."
+
+      - name: "Archive code coverage results"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "code-coverage"
+          path: "coverage.out"
+
+  coverage-report:
+    name: "Coverage Reporting"
+    needs: 'test'
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: "write"
+      actions: "read"
+      pull-requests: "write"
+    steps:
+      - uses: "fgrosse/go-coverage-report@v1.2.0"
+        name: "PR Coverage Report"
+        if: "${{ github.event_name == 'pull_request' }}"
+        with:
+          coverage-artifact-name: "code-coverage"
+          coverage-file-name: "coverage.out"
+
+  stringer:
+    needs: 'build'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@v4'
+      - uses: 'actions/setup-go@v5'
+
+      - run: 'go generate unifi/device.go'
+      - run: 'git diff --compact-summary --exit-code'
+
+  yamllint:
+    name: "YAML Lint"
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@v4'
+      - uses: 'ibiqlik/action-yamllint@v3'
+
+  lint:
+    name: "Lint"
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@v4'
+      - uses: 'actions/setup-go@v5'
+      - uses: 'golangci/golangci-lint-action@v6'
+
+  test-codegen:
+    name: "Test Codegen run"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v4"
+      - uses: "actions/setup-go@v5"
+      - run: "go generate unifi/codegen.go"

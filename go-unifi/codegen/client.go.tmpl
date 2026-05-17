@@ -1,0 +1,23 @@
+// Code generated from ace.jar fields *.json files
+// DO NOT EDIT.
+
+package unifi
+
+import (
+	"context"
+	{{ range $k, $v := .Imports }}"{{ $v }}"{{- end }}
+)
+
+type {{ .Name }} interface {
+
+    Logger
+
+    {{- range $k, $v := .Functions }}
+
+    {{ if $v.Comment }}// {{ $v.Comment }}{{ end }}
+    {{ $v.Signature }}
+
+    {{- end }}
+}
+
+

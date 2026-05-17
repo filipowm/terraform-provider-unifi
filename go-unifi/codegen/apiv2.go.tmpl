@@ -1,0 +1,119 @@
+{{- $structName := .StructName }}
+
+{{ define "field" }}
+	{{ .FieldName }} {{ if .IsArray }}[]{{end}}{{ .FieldType }} `json:"{{ .JSONName }}{{ if .OmitEmpty }},omitempty{{ end }}"{{if .FieldValidation }} {{ .FieldValidation }}{{ end }}` {{ if .FieldValidationComment }}// {{ .FieldValidationComment }}{{ end }} {{- end }}
+{{ define "field-customUnmarshalType" }}
+	{{- if eq .CustomUnmarshalType "" }}{{else}}
+			{{ .FieldName }} {{ if .IsArray }}[]{{end}}{{ .CustomUnmarshalType }} `json:"{{ .JSONName }}"`{{ end }} {{- end }}
+{{ define "typecast" }}
+	{{- if ne .CustomUnmarshalFunc "" }}
+		dst.{{ .FieldName }}= {{ .CustomUnmarshalFunc }}(aux.{{ .FieldName }})
+	{{- else if eq .CustomUnmarshalType "" }}{{else}}
+		{{- if .IsArray }}
+		dst.{{ .FieldName }}= make([]{{ .FieldType }}, len(aux.{{ .FieldName }}))
+		for i, v := range aux.{{ .FieldName }} {
+				dst.{{ .FieldName }}[i] = {{ .FieldType }}(v)
+		}
+		{{- else }}
+		dst.{{ .FieldName }} = {{ .FieldType }}(aux.{{ .FieldName }})
+		{{- end }}{{- end }}{{- end }}
+// Code generated from ace.jar fields *.json files
+// DO NOT EDIT.
+
+package unifi
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+)
+
+// just to fix compile issues with the import
+var (
+	_ context.Context
+	_ fmt.Formatter
+	_ json.Marshaler
+)
+
+{{ range $k, $v := .Types }}
+type {{ $k }} struct {
+	{{ range $fk, $fv := $v.Fields }}{{ if not $fv }}
+	{{ else }}{{- template "field" $fv }}{{ end }}{{ end }}
+}
+
+func (dst *{{ $k }}) UnmarshalJSON(b []byte) error {
+	type Alias {{ $k }}
+	aux := &struct {
+			{{- range $fk, $fv := $v.Fields }}{{ if not $fv }}
+			{{- else }}{{- template "field-customUnmarshalType" $fv }}{{ end }}{{- end }}
+
+		*Alias
+	}{
+		Alias: (*Alias)(dst),
+	}
+
+	err := json.Unmarshal(b, &aux)
+	if err != nil {
+		return fmt.Errorf("unable to unmarshal alias: %w", err)
+	}
+
+		{{- range $fk, $fv := $v.Fields }}{{ if not $fv }}
+		{{- else }}{{- template "typecast" $fv }}{{ end }}{{ end }}
+
+	return nil
+}
+{{ end }}
+
+func (c *client) list{{ .StructName }}(ctx context.Context, site string) ([]{{ .StructName }}, error) {
+	var respBody []{{ .StructName }}
+
+	err := c.Get(ctx, fmt.Sprintf("%s/site/%s/{{ .ResourcePath }}", c.apiPaths.ApiV2Path, site), nil, &respBody)
+	if err != nil {
+		return nil, err
+	}
+
+	return respBody, nil
+}
+
+func (c *client) get{{ .StructName }}(ctx context.Context, site, id string) (*{{ .StructName }}, error) {
+	var respBody {{ .StructName }}
+
+	err := c.Get(ctx, fmt.Sprintf("%s/site/%s/{{ .ResourcePath }}/%s", c.apiPaths.ApiV2Path, site, id), nil, &respBody)
+
+    if err != nil {
+        return nil, err
+    }
+    if respBody.ID == "" {
+        return nil, ErrNotFound
+    }
+	return &respBody, nil
+}
+
+func (c *client) delete{{ .StructName }}(ctx context.Context, site, id string) error {
+	err := c.Delete(ctx, fmt.Sprintf("%s/site/%s/{{ .ResourcePath }}/%s", c.apiPaths.ApiV2Path, site, id), struct{}{}, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *client) create{{ .StructName }}(ctx context.Context, site string, d *{{ .StructName }}) (*{{ .StructName }}, error) {
+	var respBody {{ .StructName }}
+
+	err := c.Post(ctx, fmt.Sprintf("%s/site/%s/{{ .ResourcePath }}", c.apiPaths.ApiV2Path, site), d, &respBody)
+	if err != nil {
+		return nil, err
+	}
+
+	return &respBody, nil
+}
+
+func (c *client) update{{ .StructName }}(ctx context.Context, site string, d *{{ .StructName }}) (*{{ .StructName }}, error) {
+	var respBody {{ .StructName }}
+
+	err := c.Put(ctx, fmt.Sprintf("%s/site/%s/{{ .ResourcePath }}/%s", c.apiPaths.ApiV2Path, site, d.ID), d, &respBody)
+	if err != nil {
+        return nil, err
+    }
+    return &respBody, nil
+}

@@ -161,6 +161,7 @@ type FirewallZonePolicyDestinationModel struct {
 	FirewallPolicyTargetModel
 	AppCategoryIDs types.List `tfsdk:"app_category_ids"`
 	AppIDs         types.List `tfsdk:"app_ids"`
+	NetworkIDs     types.List `tfsdk:"network_ids"`
 	Regions        types.List `tfsdk:"regions"`
 	WebDomains     types.List `tfsdk:"web_domains"`
 }
@@ -171,6 +172,9 @@ func (m *FirewallZonePolicyDestinationModel) AttributeTypes() map[string]attr.Ty
 			ElemType: types.StringType,
 		},
 		"app_ids": types.ListType{
+			ElemType: types.StringType,
+		},
+		"network_ids": types.ListType{
 			ElemType: types.StringType,
 		},
 		"regions": types.ListType{
@@ -366,6 +370,11 @@ func (m *FirewallZonePolicyModel) AsUnifiModel(ctx context.Context) (interface{}
 			unifiDestination.MatchingTarget = "REGION"
 			unifiDestination.MatchingTargetType = "SPECIFIC"
 		}
+		if len(destination.NetworkIDs.Elements()) > 0 {
+			diags.Append(ut.ListElementsAs(destination.NetworkIDs, &unifiDestination.NetworkIDs)...)
+			unifiDestination.MatchingTarget = "NETWORK"
+			unifiDestination.MatchingTargetType = "SPECIFIC"
+		}
 		if len(destination.WebDomains.Elements()) > 0 {
 			diags.Append(ut.ListElementsAs(destination.WebDomains, &unifiDestination.WebDomains)...)
 			unifiDestination.MatchingTarget = "WEB"
@@ -444,6 +453,7 @@ func (m *FirewallZonePolicyModel) mergeDestination(ctx context.Context, model *u
 		FirewallPolicyTargetModel: *NewFirewallPolicyTargetModel(model.Destination.IPGroupID, model.Destination.IPs, model.Destination.MatchOppositeIPs, model.Destination.MatchOppositePorts, model.Destination.Port, model.Destination.PortGroupID, model.Destination.ZoneID),
 		AppCategoryIDs:            types.ListNull(types.StringType),
 		AppIDs:                    types.ListNull(types.StringType),
+		NetworkIDs:                types.ListNull(types.StringType),
 		Regions:                   types.ListNull(types.StringType),
 		WebDomains:                types.ListNull(types.StringType),
 	}
@@ -456,6 +466,10 @@ func (m *FirewallZonePolicyModel) mergeDestination(ctx context.Context, model *u
 		apps, d := types.ListValueFrom(ctx, types.StringType, model.Destination.AppIDs)
 		diags.Append(d...)
 		destModel.AppIDs = apps
+	case "NETWORK":
+		networks, d := types.ListValueFrom(ctx, types.StringType, model.Destination.NetworkIDs)
+		diags.Append(d...)
+		destModel.NetworkIDs = networks
 	case "REGION":
 		regions, d := types.ListValueFrom(ctx, types.StringType, model.Destination.Regions)
 		diags.Append(d...)
@@ -824,6 +838,21 @@ func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.Sche
 							),
 						},
 					},
+					"network_ids": schema.ListAttribute{
+						MarkdownDescription: "List of destination network IDs.",
+						Optional:            true,
+						ElementType:         types.StringType,
+						Validators: []validator.List{
+							listvalidator.SizeAtLeast(1),
+							listvalidator.ConflictsWith(
+								path.MatchRoot("destination").AtName("app_category_ids"),
+								path.MatchRoot("destination").AtName("app_ids"),
+								path.MatchRoot("destination").AtName("ips"),
+								path.MatchRoot("destination").AtName("regions"),
+								path.MatchRoot("destination").AtName("web_domains"),
+							),
+						},
+					},
 					"web_domains": schema.ListAttribute{
 						MarkdownDescription: "List of web domains.",
 						Optional:            true,
@@ -837,6 +866,7 @@ func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.Sche
 								path.MatchRoot("destination").AtName("app_category_ids"),
 								path.MatchRoot("destination").AtName("app_ids"),
 								path.MatchRoot("destination").AtName("ips"),
+								path.MatchRoot("destination").AtName("network_ids"),
 								path.MatchRoot("destination").AtName("regions"),
 							),
 						},
