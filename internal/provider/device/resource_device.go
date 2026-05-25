@@ -70,6 +70,14 @@ func ResourceDevice() *schema.Resource {
 				Type:        schema.TypeBool,
 				Computed:    true,
 			},
+			"switch_vlan_enabled": {
+				Description: "Whether per-port VLAN configuration is enabled on the device. Required for `port_override` blocks with VLAN-tagging profiles (e.g. an IoT-VLAN `port_profile_id`) to actually take effect on access points that expose passthrough Ethernet ports (UAP-UHDIW and similar in-wall units). " +
+					"Switches honor port profile VLAN bindings unconditionally; APs ignore them unless this flag is true. " +
+					"Note: the underlying field uses `omitempty` so setting this to `false` has no effect — once enabled on a device, it can only be disabled via the UI.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+			},
 			"port_override": {
 				// TODO: this should really be a map or something when possible in the SDK
 				// see https://github.com/hashicorp/terraform-plugin-sdk/issues/62
@@ -490,6 +498,7 @@ func resourceDeviceSetResourceData(resp *unifi.Device, d *schema.ResourceData, s
 	d.Set("mac", resp.MAC)
 	d.Set("name", resp.Name)
 	d.Set("disabled", resp.Disabled)
+	d.Set("switch_vlan_enabled", resp.SwitchVLANEnabled)
 	d.Set("port_override", portOverrides)
 	d.Set("radio", radiosFromDevice(resp, d))
 	d.Set("ether_lighting", etherLightingFromDevice(resp, d))
@@ -620,9 +629,10 @@ func resourceDeviceGetResourceData(d *schema.ResourceData) (*unifi.Device, error
 	//TODO: pass Disabled once we figure out how to enable the device afterwards
 
 	return &unifi.Device{
-		MAC:           d.Get("mac").(string),
-		Name:          d.Get("name").(string),
-		PortOverrides: pos,
+		MAC:               d.Get("mac").(string),
+		Name:              d.Get("name").(string),
+		SwitchVLANEnabled: d.Get("switch_vlan_enabled").(bool),
+		PortOverrides:     pos,
 	}, nil
 }
 
