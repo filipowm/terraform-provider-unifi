@@ -92,3 +92,22 @@ func TestMergeRadios_MinRssiPairing(t *testing.T) {
 		t.Errorf("min_rssi pairing failed: %+v", na)
 	}
 }
+
+// Etherlighting overlay: declared fields apply; unset fields keep current values.
+func TestMergeEtherLighting_OverlaysOnlyNonZero(t *testing.T) {
+	current := unifi.DeviceEtherLighting{Mode: "speed", Brightness: 80, Behavior: "steady", LedMode: "etherlighting"}
+	got := mergeEtherLighting(current, map[string]interface{}{"mode": "network"})
+	if got.Mode != "network" {
+		t.Errorf("mode = %q, want network", got.Mode)
+	}
+	if got.Brightness != 80 || got.Behavior != "steady" || got.LedMode != "etherlighting" {
+		t.Errorf("unset fields clobbered: %+v", got)
+	}
+}
+
+func TestMergeEtherLighting_FromEmptyCurrent(t *testing.T) {
+	got := mergeEtherLighting(unifi.DeviceEtherLighting{}, map[string]interface{}{"mode": "network", "brightness": 60})
+	if got.Mode != "network" || got.Brightness != 60 || got.Behavior != "" {
+		t.Errorf("unexpected merge from empty: %+v", got)
+	}
+}
