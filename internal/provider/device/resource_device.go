@@ -165,6 +165,68 @@ func ResourceDevice() *schema.Resource {
 				},
 			},
 
+			"radio": {
+				Description: "Per-band radio configuration for access points. Each block configures ONE band " +
+					"(`ng` = 2.4GHz, `na` = 5GHz, `6e` = 6GHz). Only the bands you declare are managed — undeclared " +
+					"bands are left untouched (the provider read-modify-writes the device's full radio table to preserve " +
+					"them, so declaring just one band will not wipe the others). Common uses: disable a band " +
+					"(`tx_power_mode = \"disabled\"`), pin a channel/width, or set a minimum-RSSI client kick. Applies to " +
+					"access points; has no effect on switches.\n\n" +
+					"Note: like other device fields, only non-zero values are written, so a field cannot be set back to its " +
+					"zero value through Terraform — manage by overriding with explicit non-zero values.",
+				Type:     schema.TypeSet,
+				Optional: true,
+				Set:      radioSetHash,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Description:  "The radio band this block configures: `ng` (2.4GHz), `na` (5GHz), or `6e` (6GHz).",
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringInSlice([]string{"ng", "na", "6e"}, false),
+						},
+						"channel": {
+							Description: "The channel for this radio (band-specific), or `auto` to let the controller choose.",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Computed:    true,
+						},
+						"ht": {
+							Description:  "Channel width in MHz for this radio (e.g. 20, 40, 80, 160, 320).",
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.IntInSlice([]int{20, 40, 80, 160, 240, 320, 1080, 2160, 4320}),
+						},
+						"tx_power_mode": {
+							Description:  "Transmit-power mode: `auto`, `low`, `medium`, `high`, `custom`, or `disabled`. `disabled` turns the radio off (e.g. to suppress an unused 2.4GHz band on an in-wall AP).",
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.StringInSlice([]string{"auto", "low", "medium", "high", "custom", "disabled"}, false),
+						},
+						"tx_power": {
+							Description: "Custom transmit power in dBm, used when `tx_power_mode = \"custom\"`; otherwise leave unset.",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Computed:    true,
+						},
+						"min_rssi_enabled": {
+							Description: "Whether the minimum-RSSI client-disconnect threshold is enabled on this radio. Applied together with `min_rssi`.",
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Computed:    true,
+						},
+						"min_rssi": {
+							Description: "Minimum RSSI in dBm (negative) below which clients are disconnected, when `min_rssi_enabled` is true.",
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Computed:    true,
+						},
+					},
+				},
+			},
+
 			"allow_adoption": {
 				Description: "Whether to automatically adopt the device when creating this resource. When true:\n" +
 					"* The controller will attempt to adopt the device\n" +
@@ -284,6 +346,19 @@ func resourceDeviceUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	req.ID = d.Id()
 	req.SiteID = site
 
+	// Radio table is a controller-side array that UniFi replaces wholesale on
+	// PUT. To manage only the bands the user declares (and avoid wiping the
+	// others), read the device's current radio_table and overlay the declared
+	// bands onto it, sending the full merged list. When no radio blocks are
+	// declared, RadioTable stays nil (omitempty) and radios are left untouched.
+	if radios := d.Get("radio").(*schema.Set); radios.Len() > 0 {
+		current, err := c.GetDevice(ctx, site, d.Id())
+		if err != nil {
+			return diag.FromErr(fmt.Errorf("unable to read current device radio table for merge: %w", err))
+		}
+		req.RadioTable = mergeRadios(current.RadioTable, radios)
+	}
+
 	resp, err := c.UpdateDevice(ctx, site, req)
 	if err != nil {
 		return diag.FromErr(err)
@@ -365,8 +440,90 @@ func resourceDeviceSetResourceData(resp *unifi.Device, d *schema.ResourceData, s
 	d.Set("name", resp.Name)
 	d.Set("disabled", resp.Disabled)
 	d.Set("port_override", portOverrides)
+	d.Set("radio", radiosFromDevice(resp, d))
 
 	return nil
+}
+
+// radioSetHash keys the `radio` set by band only, so changes to Computed
+// fields (channel, ht, …) don't churn set membership during plan/apply.
+func radioSetHash(v interface{}) int {
+	m := v.(map[string]interface{})
+	return schema.HashString(m["name"].(string))
+}
+
+// radiosFromDevice returns radio state for only the bands the user manages
+// (present in config/state), so undeclared bands on the device never produce
+// a diff.
+func radiosFromDevice(resp *unifi.Device, d *schema.ResourceData) []map[string]interface{} {
+	managed := map[string]bool{}
+	for _, item := range d.Get("radio").(*schema.Set).List() {
+		managed[item.(map[string]interface{})["name"].(string)] = true
+	}
+	radios := make([]map[string]interface{}, 0, len(managed))
+	for _, r := range resp.RadioTable {
+		if managed[r.Radio] {
+			radios = append(radios, fromRadio(r))
+		}
+	}
+	return radios
+}
+
+func fromRadio(r unifi.DeviceRadioTable) map[string]interface{} {
+	return map[string]interface{}{
+		"name":             r.Radio,
+		"channel":          r.Channel,
+		"ht":               r.Ht,
+		"tx_power_mode":    r.TxPowerMode,
+		"tx_power":         r.TxPower,
+		"min_rssi":         r.MinRssi,
+		"min_rssi_enabled": r.MinRssiEnabled,
+	}
+}
+
+// mergeRadios overlays the declared radio blocks onto the device's current
+// radio_table, preserving every band's existing settings and changing only the
+// non-zero fields the user specified. Bands not present in `current` are
+// appended. The full merged list is returned so the wholesale-replace PUT keeps
+// all bands intact.
+func mergeRadios(current []unifi.DeviceRadioTable, set *schema.Set) []unifi.DeviceRadioTable {
+	byBand := map[string]unifi.DeviceRadioTable{}
+	order := make([]string, 0, len(current))
+	for _, r := range current {
+		byBand[r.Radio] = r
+		order = append(order, r.Radio)
+	}
+	for _, item := range set.List() {
+		m := item.(map[string]interface{})
+		band := m["name"].(string)
+		r, ok := byBand[band]
+		if !ok {
+			r = unifi.DeviceRadioTable{Radio: band}
+			order = append(order, band)
+		}
+		if v, _ := m["channel"].(string); v != "" {
+			r.Channel = v
+		}
+		if v, _ := m["ht"].(int); v != 0 {
+			r.Ht = v
+		}
+		if v, _ := m["tx_power_mode"].(string); v != "" {
+			r.TxPowerMode = v
+		}
+		if v, _ := m["tx_power"].(string); v != "" {
+			r.TxPower = v
+		}
+		if v, _ := m["min_rssi"].(int); v != 0 {
+			r.MinRssi = v
+			r.MinRssiEnabled = m["min_rssi_enabled"].(bool)
+		}
+		byBand[band] = r
+	}
+	out := make([]unifi.DeviceRadioTable, 0, len(order))
+	for _, b := range order {
+		out = append(out, byBand[b])
+	}
+	return out
 }
 
 func resourceDeviceGetResourceData(d *schema.ResourceData) (*unifi.Device, error) {
