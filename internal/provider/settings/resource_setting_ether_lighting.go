@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
@@ -64,10 +65,20 @@ func (d *etherLightingModel) AsUnifiModel(ctx context.Context) (interface{}, dia
 		if diags.HasError() {
 			return nil, diags
 		}
+		// A set of objects only dedupes on the whole object, so two entries
+		// sharing a network_id but differing in color_hex both survive and
+		// would forward conflicting colors for the same key. Reject that.
+		seen := make(map[string]struct{}, len(overrides))
 		model.NetworkOverrides = make([]unifi.SettingEtherLightingNetworkOverrides, 0, len(overrides))
 		for _, o := range overrides {
+			key := o.NetworkID.ValueString()
+			if _, dup := seen[key]; dup {
+				diags.AddError("Duplicate network_overrides entry", fmt.Sprintf("network_id %q appears more than once in network_overrides; each network may set only one color.", key))
+				return nil, diags
+			}
+			seen[key] = struct{}{}
 			model.NetworkOverrides = append(model.NetworkOverrides, unifi.SettingEtherLightingNetworkOverrides{
-				Key:         o.NetworkID.ValueString(),
+				Key:         key,
 				RawColorHex: o.ColorHex.ValueString(),
 			})
 		}
@@ -79,10 +90,17 @@ func (d *etherLightingModel) AsUnifiModel(ctx context.Context) (interface{}, dia
 		if diags.HasError() {
 			return nil, diags
 		}
+		seen := make(map[string]struct{}, len(overrides))
 		model.SpeedOverrides = make([]unifi.SettingEtherLightingSpeedOverrides, 0, len(overrides))
 		for _, o := range overrides {
+			key := o.Speed.ValueString()
+			if _, dup := seen[key]; dup {
+				diags.AddError("Duplicate speed_overrides entry", fmt.Sprintf("speed %q appears more than once in speed_overrides; each speed may set only one color.", key))
+				return nil, diags
+			}
+			seen[key] = struct{}{}
 			model.SpeedOverrides = append(model.SpeedOverrides, unifi.SettingEtherLightingSpeedOverrides{
-				Key:         o.Speed.ValueString(),
+				Key:         key,
 				RawColorHex: o.ColorHex.ValueString(),
 			})
 		}
