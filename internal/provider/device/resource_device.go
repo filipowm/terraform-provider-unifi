@@ -77,6 +77,13 @@ func ResourceDevice() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Computed: true,
+				// The controller ignores attempts to disable this (`omitempty` drops
+				// a `false` from the payload), so a `true` -> `false` change would
+				// otherwise read back as `true` and produce a perpetual diff.
+				// Suppress that one transition to match the API's write-once behavior.
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return old == "true" && new == "false"
+				},
 			},
 			"port_override": {
 				// TODO: this should really be a map or something when possible in the SDK
