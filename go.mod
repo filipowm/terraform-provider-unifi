@@ -1,6 +1,6 @@
 module github.com/filipowm/terraform-provider-unifi
 
-go 1.23.5
+go 1.24.0
 
 //replace github.com/filipowm/go-unifi v1.8.0 => ../go-unifi
 // replace github.com/hashicorp/terraform-plugin-docs => ../../hashicorp/terraform-plugin-docs
@@ -17,7 +17,7 @@ require (
 	github.com/hashicorp/terraform-plugin-framework v1.14.1
 	github.com/hashicorp/terraform-plugin-framework-validators v0.17.0
 	github.com/hashicorp/terraform-plugin-go v0.26.0
-	github.com/hashicorp/terraform-plugin-log v0.9.0
+	github.com/hashicorp/terraform-plugin-log v0.10.0
 	github.com/hashicorp/terraform-plugin-mux v0.18.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.36.1
 	github.com/hashicorp/terraform-plugin-testing v1.12.0
