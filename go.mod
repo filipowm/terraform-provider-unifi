@@ -12,7 +12,7 @@ require (
 	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/filipowm/go-unifi v1.8.0
 	github.com/golangci/golangci-lint v1.64.8
-	github.com/hashicorp/go-version v1.7.0
+	github.com/hashicorp/go-version v1.9.0
 	github.com/hashicorp/terraform-plugin-docs v0.21.0
 	github.com/hashicorp/terraform-plugin-framework v1.14.1
 	github.com/hashicorp/terraform-plugin-framework-validators v0.17.0
