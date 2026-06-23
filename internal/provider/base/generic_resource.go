@@ -14,6 +14,14 @@ type ResourceFunctions struct {
 	Create func(ctx context.Context, client *Client, site string, body interface{}) (interface{}, error)
 	Update func(ctx context.Context, client *Client, site string, body interface{}) (interface{}, error)
 	Delete func(ctx context.Context, client *Client, site string, id string) error
+
+	// ReadAfterWrite, when true, makes Create and Update populate the final
+	// state by performing a Read (Handlers.Read + Merge) against the persisted
+	// datastore instead of merging the write-operation response echo. This is
+	// opt-in because some resources are eventually consistent on create (an
+	// immediate post-create GET may 404). Defaults to false, which preserves
+	// the historical behavior of merging the write echo for all resources.
+	ReadAfterWrite bool
 }
 
 // GenericResource provides common functionality for all resources
@@ -120,6 +128,19 @@ func (b *GenericResource[T]) Create(ctx context.Context, req resource.CreateRequ
 	}
 	plan.Merge(ctx, res)
 	plan.SetSite(site)
+
+	// Opt-in read-after-write: re-read from the persisted datastore so the
+	// final state reflects the GET response rather than the (possibly
+	// eventually-consistent) write echo. Merge above already populated the ID
+	// so the Read handler can resolve the resource.
+	if b.Handlers.ReadAfterWrite && b.Handlers.Read != nil {
+		b.read(ctx, site, plan, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		plan.SetSite(site)
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
@@ -194,6 +215,18 @@ func (b *GenericResource[T]) Update(ctx context.Context, req resource.UpdateRequ
 	}
 	state.Merge(ctx, res)
 	state.SetSite(site)
+
+	// Opt-in read-after-write: re-read from the persisted datastore so the
+	// final state reflects the GET response rather than the (possibly
+	// eventually-consistent) write echo. State already carries the ID.
+	if b.Handlers.ReadAfterWrite && b.Handlers.Read != nil {
+		b.read(ctx, site, state, &resp.Diagnostics)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		state.SetSite(site)
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
