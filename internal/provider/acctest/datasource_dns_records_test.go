@@ -44,6 +44,7 @@ func TestDNSRecordsDataSource_basic(t *testing.T) {
 	configs = append(configs, testAccDnsRecordsDataSourceConfig(dependencies))
 	AcceptanceTest(t, AcceptanceTestCase{
 		MinVersion: base.ControllerVersionDnsRecords,
+		Lock:       dnsLock,
 		Steps: Steps{
 			{
 				Config: pt.ComposeConfig(configs...),
@@ -67,6 +68,7 @@ func TestDNSRecordsDataSource_basic(t *testing.T) {
 func TestDNSRecordsDataSource_noRecords(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		MinVersion: base.ControllerVersionDnsRecords,
+		Lock:       dnsLock,
 		Steps: Steps{
 			{
 				Config: testAccDnsRecordsDataSourceConfig(nil),
