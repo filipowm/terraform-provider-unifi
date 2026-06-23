@@ -157,7 +157,12 @@ func testAccCheckAPGroupDestroy(s *terraform.State) error {
 			continue
 		}
 
-		_, err := testClient.GetAPGroup(context.Background(), "default", rs.Primary.ID)
+		site := rs.Primary.Attributes["site"]
+		if site == "" {
+			site = "default"
+		}
+
+		_, err := testClient.GetAPGroup(context.Background(), site, rs.Primary.ID)
 		if err == nil {
 			return fmt.Errorf("AP Group %s still exists", rs.Primary.ID)
 		}
