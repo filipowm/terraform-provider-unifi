@@ -3,12 +3,12 @@
 page_title: "unifi_ap_group Data Source - terraform-provider-unifi"
 subcategory: ""
 description: |-
-  unifi_ap_group data source can be used to retrieve the ID for an AP group by name.
+  The unifi_ap_group data source can be used to retrieve the ID for an AP group by name.
 ---
 
 # unifi_ap_group (Data Source)
 
-`unifi_ap_group` data source can be used to retrieve the ID for an AP group by name.
+The `unifi_ap_group` data source can be used to retrieve the ID for an AP group by name.
 
 ## Example Usage
 
@@ -23,8 +23,8 @@ data "unifi_ap_group" "default" {
 ### Optional
 
 - `name` (String) The name of the AP group to look up, leave blank to look up the default AP group.
-- `site` (String) The name of the site the AP group is associated with.
+- `site` (String) The name of the UniFi site where this resource should be applied. If not specified, the default site will be used.
 
 ### Read-Only
 
-- `id` (String) The ID of this AP group.
+- `id` (String) The unique identifier of this resource.

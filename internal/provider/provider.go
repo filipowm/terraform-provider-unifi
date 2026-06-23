@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/apgroup"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/device"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/dns"
@@ -93,7 +92,6 @@ func New(version string) func() *schema.Provider {
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
-				"unifi_ap_group":       apgroup.DataAPGroup(),
 				"unifi_network":        network.DataNetwork(),
 				"unifi_port_profile":   device.DataPortProfile(),
 				"unifi_radius_profile": radius.DataRADIUSProfile(),
@@ -102,7 +100,6 @@ func New(version string) func() *schema.Provider {
 				"unifi_account":        radius.DataAccount(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				// TODO: "unifi_ap_group"
 				"unifi_device":         device.ResourceDevice(),
 				"unifi_dynamic_dns":    dns.ResourceDynamicDNS(),
 				"unifi_firewall_group": firewall.ResourceFirewallGroup(),
