@@ -493,6 +493,22 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	return diags
 }
 
+// ConsistentAfterWrite implements base.WriteConsistencyChecker so the
+// ReadAfterWrite poll can wait past the controller's eventual-consistency
+// window: the GET for dhcp_relay_servers (mapped to the scalar DHCPRelayServer1..5
+// API fields) can briefly return them empty right after a PUT. 'm' is the model
+// freshly read back from the controller; 'planned' carries the just-written
+// values. Only the eventually-consistent collection is checked so unrelated
+// differences never trigger a poll.
+func (m *usgModel) ConsistentAfterWrite(planned any) bool {
+	p, ok := planned.(*usgModel)
+	if !ok {
+		// Unknown planned type: don't block the poll.
+		return true
+	}
+	return listConsistentAfterWrite(m.DhcpRelayServers, p.DhcpRelayServers)
+}
+
 func (r *usgResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_setting_usg` resource manages advanced settings for UniFi Security Gateways (USG) and UniFi Dream Machines (UDM/UDM-Pro).\n\n" +

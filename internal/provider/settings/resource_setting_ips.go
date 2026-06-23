@@ -526,6 +526,39 @@ func (d *ipsModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	return diags
 }
 
+// listConsistentAfterWrite reports whether an eventually-consistent list read
+// back from the controller already reflects what was written. It returns false
+// only when 'planned' set a known, non-empty list but the value read back
+// ('read') came back empty/null — meaning the controller has not yet persisted
+// the collection. It backs the ReadAfterWrite consistency poll (see
+// base.WriteConsistencyChecker).
+func listConsistentAfterWrite(read, planned types.List) bool {
+	// Planned didn't set a known, non-empty list: nothing to wait for.
+	if planned.IsNull() || planned.IsUnknown() || len(planned.Elements()) == 0 {
+		return true
+	}
+	// Planned wanted elements; the read-back must already contain them.
+	return !read.IsNull() && !read.IsUnknown() && len(read.Elements()) > 0
+}
+
+// ConsistentAfterWrite implements base.WriteConsistencyChecker so the
+// ReadAfterWrite poll can wait past the controller's eventual-consistency
+// window: the GET for these IDS collections (ad_blocked_networks, dns_filters,
+// honeypots) can briefly return them empty right after a PUT. 'm' is the model
+// freshly read back from the controller; 'planned' carries the just-written
+// values. Only the eventually-consistent collections are checked so unrelated
+// differences never trigger a poll.
+func (m *ipsModel) ConsistentAfterWrite(planned any) bool {
+	p, ok := planned.(*ipsModel)
+	if !ok {
+		// Unknown planned type: don't block the poll.
+		return true
+	}
+	return listConsistentAfterWrite(m.AdBlockedNetworks, p.AdBlockedNetworks) &&
+		listConsistentAfterWrite(m.DNSFilters, p.DNSFilters) &&
+		listConsistentAfterWrite(m.Honeypots, p.Honeypots)
+}
+
 type ipsResource struct {
 	*base.GenericResource[*ipsModel]
 }
