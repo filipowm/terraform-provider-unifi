@@ -86,7 +86,7 @@ jobs:
           check-latest: false
 
       - name: Set up Terraform
-        uses: "hashicorp/setup-terraform@v3"
+        uses: "hashicorp/setup-terraform@v4"
 
       # Pre-pull the controller image so a transient Docker Hub hiccup (e.g. a
       # 429) doesn't fail the test step, and the cold pull is out of the test
@@ -130,7 +130,7 @@ jobs:
           check-latest: false
 
       - name: Set up Terraform
-        uses: "hashicorp/setup-terraform@v3"
+        uses: "hashicorp/setup-terraform@v4"
 
       # Pre-pull the controller image so a transient Docker Hub hiccup (e.g. a
       # 429) doesn't fail the test step, and the cold pull is out of the test
