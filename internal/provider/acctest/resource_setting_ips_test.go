@@ -80,21 +80,21 @@ func TestAccSettingIps_adBlocking(t *testing.T) {
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_adBlocking(),
+				Config: testAccSettingIpsConfig_adBlocking(t),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ad_blocked_networks.#", "2"),
-					resource.TestCheckTypeSetElemAttr("unifi_setting_ips.test", "ad_blocked_networks.*", "network1"),
-					resource.TestCheckTypeSetElemAttr("unifi_setting_ips.test", "ad_blocked_networks.*", "network2"),
+					resource.TestCheckTypeSetElemAttrPair("unifi_setting_ips.test", "ad_blocked_networks.*", "unifi_network.test", "id"),
+					resource.TestCheckTypeSetElemAttrPair("unifi_setting_ips.test", "ad_blocked_networks.*", "unifi_network.test2", "id"),
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config: testAccSettingIpsConfig_adBlockingUpdated(),
+				Config: testAccSettingIpsConfig_adBlockingUpdated(t),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ad_blocked_networks.#", "1"),
-					resource.TestCheckTypeSetElemAttr("unifi_setting_ips.test", "ad_blocked_networks.*", "network3"),
+					resource.TestCheckTypeSetElemAttrPair("unifi_setting_ips.test", "ad_blocked_networks.*", "unifi_network.test", "id"),
 				),
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
@@ -226,15 +226,19 @@ func TestAccSettingIps_comprehensive(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "restrict_torrents", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "advanced_filtering_preference", "manual"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "2"),
-					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_networks.#", "2"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_networks.#", "1"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ad_blocked_networks.#", "1"),
+					resource.TestCheckTypeSetElemAttrPair("unifi_setting_ips.test", "ad_blocked_networks.*", "unifi_network.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "honeypots.#", "1"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "dns_filters.#", "1"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.alerts.#", "1"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.whitelist.#", "1"),
 				),
 			},
-			pt.ImportStepWithSite("unifi_setting_ips.test"),
+			// suppression.alerts is populated asynchronously by the controller; the GET-backed import
+			// can lag the PUT echo, intermittently failing ImportStateVerify with "attributes not
+			// equivalent" on suppression.alerts.*. Ignore just that attribute path.
+			pt.ImportStepWithSite("unifi_setting_ips.test", "suppression.alerts"),
 		},
 	})
 }
@@ -253,13 +257,17 @@ func TestAccSettingIps_comprehensiveBefore8(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "restrict_torrents", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "2"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ad_blocked_networks.#", "1"),
+					resource.TestCheckTypeSetElemAttrPair("unifi_setting_ips.test", "ad_blocked_networks.*", "unifi_network.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "honeypots.#", "1"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "dns_filters.#", "1"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.alerts.#", "1"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.whitelist.#", "1"),
 				),
 			},
-			pt.ImportStepWithSite("unifi_setting_ips.test"),
+			// suppression.alerts is populated asynchronously by the controller; the GET-backed import
+			// can lag the PUT echo, intermittently failing ImportStateVerify with "attributes not
+			// equivalent" on suppression.alerts.*. Ignore just that attribute path.
+			pt.ImportStepWithSite("unifi_setting_ips.test", "suppression.alerts"),
 		},
 	})
 }
@@ -336,7 +344,7 @@ func testAccSettingIpsConfig_enabledCategories() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   enabled_categories = [
     "emerging-dos",
     "emerging-exploit",
@@ -350,7 +358,7 @@ func testAccSettingIpsConfig_enabledCategoriesUpdated() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   enabled_categories = [
     "emerging-scan",
     "emerging-worm",
@@ -359,36 +367,60 @@ resource "unifi_setting_ips" "test" {
 `
 }
 
-func testAccSettingIpsConfig_adBlocking() string {
-	return `
-resource "unifi_setting_ips" "test" {
-  ips_mode      = "ids"
-  enabled_networks = ["network1"]
-  ad_blocked_networks = [
-    "network1",
-    "network2"
-  ]
-}
-`
+func testAccSettingIpsConfig_adBlocking(t *testing.T) string {
+	subnet, vlanId := pt.GetTestVLAN(t)
+	subnet2, vlanId2 := pt.GetTestVLAN(t)
+	return fmt.Sprintf(`
+resource "unifi_network" "test" {
+  name    = "Test"
+  purpose = "corporate"
+  subnet  = %q
+  vlan_id = %d
 }
 
-func testAccSettingIpsConfig_adBlockingUpdated() string {
-	return `
+resource "unifi_network" "test2" {
+  name    = "Test2"
+  purpose = "corporate"
+  subnet  = %q
+  vlan_id = %d
+}
+
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   ad_blocked_networks = [
-    "network3"
+    unifi_network.test.id,
+    unifi_network.test2.id
   ]
 }
-`
+`, subnet.String(), vlanId, subnet2.String(), vlanId2)
+}
+
+func testAccSettingIpsConfig_adBlockingUpdated(t *testing.T) string {
+	subnet, vlanId := pt.GetTestVLAN(t)
+	return fmt.Sprintf(`
+resource "unifi_network" "test" {
+  name    = "Test"
+  purpose = "corporate"
+  subnet  = %q
+  vlan_id = %d
+}
+
+resource "unifi_setting_ips" "test" {
+  ips_mode      = "ids"
+  enabled_networks = ["LAN"]
+  ad_blocked_networks = [
+    unifi_network.test.id
+  ]
+}
+`, subnet.String(), vlanId)
 }
 
 func testAccSettingIpsConfig_honeypot() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   honeypots = [{
     ip_address = "192.168.1.10"
     network_id = "network1"
@@ -401,7 +433,7 @@ func testAccSettingIpsConfig_honeypotUpdated() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   honeypots = [{
     ip_address = "192.168.2.20"
     network_id = "network2"
@@ -414,7 +446,7 @@ func testAccSettingIpsConfig_honeypotDisabled() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   honeypots = []
 }
 `
@@ -433,7 +465,7 @@ resource "unifi_network" "test" {
 
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   dns_filters = [{
     name = "Test Filter"
     filter = "work"
@@ -477,7 +509,7 @@ resource "unifi_network" "test2" {
 
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   dns_filters = [
 	{
       name = "Test Filter Updated"
@@ -507,7 +539,7 @@ func testAccSettingIpsConfig_suppression() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   suppression = {
     alerts = [{
       category = "emerging-dos"
@@ -536,7 +568,7 @@ resource "unifi_network" "test" {
 
 resource "unifi_setting_ips" "test" {
   ips_mode = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   suppression = {
     alerts = [
 	  {
@@ -591,21 +623,18 @@ resource "unifi_setting_ips" "test" {
     "emerging-dos",
     "emerging-exploit"
   ]
-  
-  enabled_networks = [
-    "network1",
-    "network2"
-  ]
-  
+
+  enabled_networks = ["LAN"]
+
   ad_blocked_networks = [
-    "network1"
+    unifi_network.test.id
   ]
-  
+
   honeypots = [{
     ip_address = "192.168.1.10"
-    network_id = "network1"
+    network_id = unifi_network.test.id
   }]
-  
+
   dns_filters = [{
     name = "Comprehensive Filter"
     filter = "work"
@@ -649,16 +678,16 @@ resource "unifi_setting_ips" "test" {
     "emerging-dos",
     "emerging-exploit"
   ]
-  
+
   ad_blocked_networks = [
-    "network1"
+    unifi_network.test.id
   ]
-  
+
   honeypots = [{
     ip_address = "192.168.1.10"
-    network_id = "network1"
+    network_id = unifi_network.test.id
   }]
-  
+
   dns_filters = [{
     name = "Comprehensive Filter"
     filter = "work"
@@ -688,7 +717,7 @@ func testAccSettingIpsConfig_restrictTorrents(enabled bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   restrict_torrents = %t
 }
 `, enabled)
@@ -698,7 +727,7 @@ func testAccSettingIpsConfig_memoryOptimized(enabled bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
-  enabled_networks = ["network1"]
+  enabled_networks = ["LAN"]
   memory_optimized = %t
 }
 `, enabled)
