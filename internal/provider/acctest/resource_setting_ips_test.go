@@ -632,7 +632,7 @@ resource "unifi_setting_ips" "test" {
 
   honeypots = [{
     ip_address = "192.168.1.10"
-    network_id = unifi_network.test.id
+    network_id = "network1"
   }]
 
   dns_filters = [{
@@ -685,7 +685,7 @@ resource "unifi_setting_ips" "test" {
 
   honeypots = [{
     ip_address = "192.168.1.10"
-    network_id = unifi_network.test.id
+    network_id = "network1"
   }]
 
   dns_filters = [{
