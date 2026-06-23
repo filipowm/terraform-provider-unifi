@@ -6,11 +6,9 @@ import (
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -86,9 +84,6 @@ func (d *apGroupDatasource) Schema(_ context.Context, _ datasource.SchemaRequest
 			"name": schema.StringAttribute{
 				MarkdownDescription: "The name of the AP group to look up, leave blank to look up the default AP group.",
 				Optional:            true,
-				Validators: []validator.String{
-					stringvalidator.LengthAtLeast(1),
-				},
 			},
 		},
 	}
