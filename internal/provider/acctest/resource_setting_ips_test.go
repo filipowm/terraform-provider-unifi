@@ -75,6 +75,7 @@ func TestAccSettingIps_enabledCategories(t *testing.T) {
 }
 
 func TestAccSettingIps_adBlocking(t *testing.T) {
+	pt.SkipIfEnvLocalMissing(t, "Skipping: ad_blocked_networks requires an adopted gateway/IPS engine not available on the Docker test controller")
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 8.0",
 		Lock:              settingIpsLock,
@@ -140,6 +141,7 @@ func TestAccSettingIps_honeypot(t *testing.T) {
 }
 
 func TestAccSettingIps_dnsFilters(t *testing.T) {
+	pt.SkipIfEnvLocalMissing(t, "Skipping: dns_filters requires an adopted gateway/IPS engine not available on the Docker test controller")
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 8.0",
 		Lock:              settingIpsLock,
@@ -227,10 +229,7 @@ func TestAccSettingIps_comprehensive(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "advanced_filtering_preference", "manual"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "2"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_networks.#", "1"),
-					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ad_blocked_networks.#", "1"),
-					resource.TestCheckTypeSetElemAttrPair("unifi_setting_ips.test", "ad_blocked_networks.*", "unifi_network.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "honeypots.#", "1"),
-					resource.TestCheckResourceAttr("unifi_setting_ips.test", "dns_filters.#", "1"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.alerts.#", "1"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.whitelist.#", "1"),
 				),
@@ -256,10 +255,7 @@ func TestAccSettingIps_comprehensiveBefore8(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ips_mode", "ids"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "restrict_torrents", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "2"),
-					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ad_blocked_networks.#", "1"),
-					resource.TestCheckTypeSetElemAttrPair("unifi_setting_ips.test", "ad_blocked_networks.*", "unifi_network.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "honeypots.#", "1"),
-					resource.TestCheckResourceAttr("unifi_setting_ips.test", "dns_filters.#", "1"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.alerts.#", "1"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.whitelist.#", "1"),
 				),
@@ -605,20 +601,12 @@ resource "unifi_setting_ips" "test" {
 }
 
 func testAccSettingIpsConfig_comprehensive(t *testing.T) string {
-	subnet, vlanId := pt.GetTestVLAN(t)
-	return fmt.Sprintf(`
-resource "unifi_network" "test" {
-	name = "Test"
-	purpose = "corporate"
-	subnet = %q
-	vlan_id = %d
-}
-
+	return `
 resource "unifi_setting_ips" "test" {
   ips_mode = "ids"
   restrict_torrents = true
   advanced_filtering_preference = "manual"
-  
+
   enabled_categories = [
     "emerging-dos",
     "emerging-exploit"
@@ -626,24 +614,11 @@ resource "unifi_setting_ips" "test" {
 
   enabled_networks = ["LAN"]
 
-  ad_blocked_networks = [
-    unifi_network.test.id
-  ]
-
   honeypots = [{
     ip_address = "192.168.1.10"
     network_id = "network1"
   }]
 
-  dns_filters = [{
-    name = "Comprehensive Filter"
-    filter = "work"
-    description = "Comprehensive test filter"
-    network_id = unifi_network.test.id
-    allowed_sites = ["allowed.com"]
-    blocked_sites = ["blocked.com"]
-  }]
-  
   suppression = {
     alerts = [{
       category = "emerging-dos"
@@ -657,46 +632,25 @@ resource "unifi_setting_ips" "test" {
     }]
   }
 }
-`, subnet.String(), vlanId)
+`
 }
 
 func testAccSettingIpsConfig_comprehensiveBefore8(t *testing.T) string {
-	subnet, vlanId := pt.GetTestVLAN(t)
-	return fmt.Sprintf(`
-resource "unifi_network" "test" {
-	name = "Test"
-	purpose = "corporate"
-	subnet = %q
-	vlan_id = %d
-}
-
+	return `
 resource "unifi_setting_ips" "test" {
   ips_mode = "ids"
   restrict_torrents = true
-  
+
   enabled_categories = [
     "emerging-dos",
     "emerging-exploit"
   ]
 
-  ad_blocked_networks = [
-    unifi_network.test.id
-  ]
-
   honeypots = [{
     ip_address = "192.168.1.10"
     network_id = "network1"
   }]
 
-  dns_filters = [{
-    name = "Comprehensive Filter"
-    filter = "work"
-    description = "Comprehensive test filter"
-    network_id = unifi_network.test.id
-    allowed_sites = ["allowed.com"]
-    blocked_sites = ["blocked.com"]
-  }]
-  
   suppression = {
     alerts = [{
       category = "emerging-dos"
@@ -710,7 +664,7 @@ resource "unifi_setting_ips" "test" {
     }]
   }
 }
-`, subnet.String(), vlanId)
+`
 }
 
 func testAccSettingIpsConfig_restrictTorrents(enabled bool) string {
