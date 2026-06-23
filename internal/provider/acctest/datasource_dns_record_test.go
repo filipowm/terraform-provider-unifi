@@ -46,6 +46,7 @@ func TestDNSRecordDataSource_basic(t *testing.T) {
 
 			AcceptanceTest(t, AcceptanceTestCase{
 				MinVersion: base.ControllerVersionDnsRecords,
+				Lock:       dnsLock,
 
 				Steps: Steps{
 					{
