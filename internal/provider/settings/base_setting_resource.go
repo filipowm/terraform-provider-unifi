@@ -21,5 +21,11 @@ func NewSettingResource[T base.ResourceModel](
 			},
 			Create: updater,
 			Update: updater,
+			// Settings PUT responses (the write echo) are eventually
+			// consistent on the controller and can intermittently omit
+			// collection fields, causing "inconsistent result after apply".
+			// Re-read from the persisted datastore (GetSetting*) so post-apply
+			// state is reliable.
+			ReadAfterWrite: true,
 		})
 }
