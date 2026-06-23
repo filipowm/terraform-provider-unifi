@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/apgroup"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/dns"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/firewall"
@@ -175,6 +176,7 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 
 func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		apgroup.NewAPGroupResource,
 		dns.NewDnsRecordResource,
 		firewall.NewFirewallZoneResource,
 		firewall.NewFirewallZonePolicyResource,
@@ -200,6 +202,7 @@ func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource 
 
 func (p *unifiProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		apgroup.NewAPGroupDatasource,
 		dns.NewDnsRecordsDatasource,
 		dns.NewDnsRecordDatasource,
 		firewall.NewFirewallZoneDatasource,

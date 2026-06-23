@@ -1,8 +1,14 @@
 package acctest
 
 import (
+	"fmt"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"testing"
+)
+
+const (
+	testAPGroupDatasourceName = "data.unifi_ap_group.test"
+	defaultAPGroupName        = "All APs"
 )
 
 func TestAccDataAPGroup_default(t *testing.T) {
@@ -10,8 +16,21 @@ func TestAccDataAPGroup_default(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataAPGroupConfig_default,
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(testAPGroupDatasourceName, "name", defaultAPGroupName),
+				),
+			},
+		},
+	})
+}
+
+func TestAccDataAPGroup_byName(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDataAPGroupConfig(defaultAPGroupName),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(testAPGroupDatasourceName, "name", defaultAPGroupName),
 				),
 			},
 		},
@@ -19,6 +38,14 @@ func TestAccDataAPGroup_default(t *testing.T) {
 }
 
 const testAccDataAPGroupConfig_default = `
-data "unifi_ap_group" "default" {
+data "unifi_ap_group" "test" {
 }
 `
+
+func testAccDataAPGroupConfig(name string) string {
+	return fmt.Sprintf(`
+data "unifi_ap_group" "test" {
+	name = %q
+}
+`, name)
+}
