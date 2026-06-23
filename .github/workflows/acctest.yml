@@ -38,7 +38,11 @@ jobs:
   test:
     name: Matrix Test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Must exceed the total retry budget below (retry step: timeout_minutes 20 x
+    # max_attempts 3 = 60m) so attempts 2-3 can actually run on a timeout. A
+    # job-level timeout at/below a single attempt would kill the job during
+    # attempt 1, making retry_on:timeout a no-op.
+    timeout-minutes: 70
     strategy:
       fail-fast: false
       matrix:
