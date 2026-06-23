@@ -10,6 +10,7 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/settings"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -38,12 +39,13 @@ type unifiProvider struct {
 }
 
 type unifiProviderModel struct {
-	Username types.String `tfsdk:"username"`
-	Password types.String `tfsdk:"password"`
-	APIKey   types.String `tfsdk:"api_key"`
-	APIUrl   types.String `tfsdk:"api_url"`
-	Site     types.String `tfsdk:"site"`
-	Insecure types.Bool   `tfsdk:"allow_insecure"`
+	Username   types.String `tfsdk:"username"`
+	Password   types.String `tfsdk:"password"`
+	APIKey     types.String `tfsdk:"api_key"`
+	APIUrl     types.String `tfsdk:"api_url"`
+	Site       types.String `tfsdk:"site"`
+	Insecure   types.Bool   `tfsdk:"allow_insecure"`
+	MaxRetries types.Int64  `tfsdk:"http_max_retries"`
 }
 
 func (p *unifiProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -83,6 +85,13 @@ func (p *unifiProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp
 			"allow_insecure": schema.BoolAttribute{
 				MarkdownDescription: ProviderAllowInsecureDescription,
 				Optional:            true,
+			},
+			"http_max_retries": schema.Int64Attribute{
+				MarkdownDescription: ProviderMaxRetriesDescription,
+				Optional:            true,
+				Validators: []validator.Int64{
+					int64validator.AtLeast(0),
+				},
 			},
 		},
 	}
@@ -125,6 +134,7 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	apiUrl := utils.GetAnyStringEnv("UNIFI_API")
 	site := utils.GetAnyStringEnv("UNIFI_SITE")
 	insecure := utils.GetAnyBoolEnv("UNIFI_INSECURE")
+	maxRetries := utils.GetAnyIntEnv("UNIFI_MAX_RETRIES")
 
 	if !cfg.Username.IsNull() {
 		username = cfg.Username.ValueString()
@@ -144,6 +154,9 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	if !cfg.Insecure.IsNull() {
 		insecure = cfg.Insecure.ValueBool()
 	}
+	if !cfg.MaxRetries.IsNull() {
+		maxRetries = int(cfg.MaxRetries.ValueInt64())
+	}
 	if apiKey != "" && (username != "" || password != "") {
 		resp.Diagnostics.AddAttributeError(path.Root("api_key"), "Two authentication methods configured", "Only one of `username`/`password` or `api_key` can be set")
 	} else if apiKey == "" && (username == "" || password == "") {
@@ -159,12 +172,13 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 		site = "default" // set default site if not provided
 	}
 	c, err := base.NewClient(&base.ClientConfig{
-		Username: username,
-		Password: password,
-		ApiKey:   apiKey,
-		Url:      apiUrl,
-		Site:     site,
-		Insecure: insecure,
+		Username:   username,
+		Password:   password,
+		ApiKey:     apiKey,
+		Url:        apiUrl,
+		Site:       site,
+		Insecure:   insecure,
+		MaxRetries: maxRetries,
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create UniFi client", err.Error())

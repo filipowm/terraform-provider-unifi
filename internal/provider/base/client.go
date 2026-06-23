@@ -1,6 +1,7 @@
 package base
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -12,9 +13,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"io"
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -27,6 +30,11 @@ type ClientConfig struct {
 	Site           string
 	Insecure       bool
 	HttpConfigurer func() http.RoundTripper
+	// MaxRetries controls how many additional attempts the HTTP layer makes for
+	// transient controller responses (network errors, HTTP 5xx/429 and
+	// HTML-instead-of-JSON bodies). 0 (the default) disables retries entirely,
+	// preserving the historical behavior with zero overhead.
+	MaxRetries int
 }
 
 func NewClient(cfg *ClientConfig) (*Client, error) {
@@ -38,6 +46,23 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		HttpRoundTripperProvider: cfg.HttpConfigurer,
 		ValidationMode:           unifi.DisableValidation,
 		Logger:                   unifi.NewDefaultLogger(unifi.WarnLevel),
+	}
+	// Opt-in retrying transport for transient controller responses. When
+	// MaxRetries == 0 the provider is left untouched so behavior is identical to
+	// before this feature existed (the default).
+	if cfg.MaxRetries > 0 {
+		baseConfigurer := cfg.HttpConfigurer
+		insecure := cfg.Insecure
+		maxRetries := cfg.MaxRetries
+		config.HttpRoundTripperProvider = func() http.RoundTripper {
+			var next http.RoundTripper
+			if baseConfigurer != nil {
+				next = baseConfigurer()
+			} else {
+				next = CreateHttpTransport(insecure)
+			}
+			return newRetryRoundTripper(next, maxRetries)
+		}
 	}
 	if cfg.Username != "" && cfg.Password != "" {
 		config.User = cfg.Username
@@ -143,6 +168,127 @@ func CreateHttpTransport(insecure bool) http.RoundTripper {
 			InsecureSkipVerify: insecure,
 		},
 	}
+}
+
+// defaultRetryBackoff is the base delay between retry attempts. The effective
+// delay grows linearly with the attempt number.
+const defaultRetryBackoff = 500 * time.Millisecond
+
+// retryRoundTripper wraps an http.RoundTripper and retries requests that fail
+// with transient controller responses: network/connection errors, HTTP 5xx and
+// 429 status codes, and HTML-instead-of-JSON bodies (which the controller
+// occasionally returns under parallel load). It only retries idempotent
+// requests whose body can be replayed, so it never risks duplicate creates.
+type retryRoundTripper struct {
+	next       http.RoundTripper
+	maxRetries int
+	backoff    time.Duration
+}
+
+// newRetryRoundTripper returns a RoundTripper that retries transient failures.
+// When maxRetries <= 0 the original transport is returned unwrapped so there is
+// zero overhead and identical behavior to not using retries at all.
+func newRetryRoundTripper(next http.RoundTripper, maxRetries int) http.RoundTripper {
+	if maxRetries <= 0 {
+		return next
+	}
+	if next == nil {
+		next = http.DefaultTransport
+	}
+	return &retryRoundTripper{
+		next:       next,
+		maxRetries: maxRetries,
+		backoff:    defaultRetryBackoff,
+	}
+}
+
+// isIdempotentMethod reports whether it is safe to retry the given HTTP method
+// without risking unintended side effects (e.g. duplicate resource creation).
+func isIdempotentMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodPut, http.MethodDelete, http.MethodOptions:
+		return true
+	default:
+		return false
+	}
+}
+
+func (rt *retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Only retry idempotent requests. For non-idempotent methods (e.g. POST), or
+	// requests whose body cannot be replayed, pass through with a single attempt.
+	if !isIdempotentMethod(req.Method) || (req.Body != nil && req.GetBody == nil) {
+		return rt.next.RoundTrip(req)
+	}
+
+	var resp *http.Response
+	var err error
+	for attempt := 0; ; attempt++ {
+		// Ensure a fresh body for each attempt so the request can be replayed.
+		if req.GetBody != nil {
+			body, gerr := req.GetBody()
+			if gerr != nil {
+				if resp != nil {
+					return resp, err
+				}
+				return nil, gerr
+			}
+			req.Body = body
+		}
+
+		resp, err = rt.next.RoundTrip(req)
+
+		if (err == nil && !rt.shouldRetryResponse(resp)) || attempt >= rt.maxRetries {
+			return resp, err
+		}
+
+		// Drain and close the previous response body before retrying so the
+		// underlying connection can be reused.
+		if resp != nil && resp.Body != nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			_ = resp.Body.Close()
+		}
+
+		// Backoff while respecting the request context.
+		select {
+		case <-req.Context().Done():
+			return nil, req.Context().Err()
+		case <-time.After(rt.backoff * time.Duration(attempt+1)):
+		}
+	}
+}
+
+// shouldRetryResponse reports whether a (non-error) response is transient and
+// should be retried. It buffers the body when peeking for HTML content so the
+// caller still receives a fully-readable response when no retry happens.
+func (rt *retryRoundTripper) shouldRetryResponse(resp *http.Response) bool {
+	if resp == nil {
+		return false
+	}
+	if resp.StatusCode >= http.StatusInternalServerError || resp.StatusCode == http.StatusTooManyRequests {
+		return true
+	}
+	if strings.Contains(strings.ToLower(resp.Header.Get("Content-Type")), "text/html") {
+		return true
+	}
+	return responseBodyLooksLikeHTML(resp)
+}
+
+// responseBodyLooksLikeHTML buffers the response body, restores it so it remains
+// readable, and reports whether it begins with '<' (an HTML/XML document rather
+// than the expected JSON payload).
+func responseBodyLooksLikeHTML(resp *http.Response) bool {
+	if resp.Body == nil {
+		return false
+	}
+	data, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	resp.Body = io.NopCloser(bytes.NewReader(data))
+	resp.ContentLength = int64(len(data))
+	if err != nil {
+		return false
+	}
+	trimmed := bytes.TrimSpace(data)
+	return len(trimmed) > 0 && trimmed[0] == '<'
 }
 
 func checkClientConfigured(client *Client) diag.Diagnostics {
