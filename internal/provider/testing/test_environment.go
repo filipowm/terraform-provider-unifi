@@ -200,7 +200,9 @@ func (te *TestEnvironment) WaitUntilReady() error {
 	if st, _ := te.readStatus(ctx); st == TestEnvDown || st == TestEnvUnknown {
 		return fmt.Errorf("controller is not starting nor running. Use Start() first to Start the controller")
 	}
-	te.waitForController(ctx)
+	if err := te.waitForController(ctx); err != nil {
+		return err
+	}
 	if !te.isReady() {
 		return fmt.Errorf("controller is not ready within %s", te.timeout)
 	}
@@ -230,21 +232,26 @@ func (te *TestEnvironment) Start() error {
 	return nil
 }
 
-func (te *TestEnvironment) waitForController(ctx context.Context) {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		for {
-			if st, err := te.readStatus(ctx); err != nil {
-				return
-			} else if st == TestEnvReady {
-				wg.Done()
-				return
-			}
-			time.Sleep(1 * time.Second)
+// waitForController polls the controller status inline until it reports ready
+// or the context is done (deadline exceeded / cancelled). It always terminates:
+// transient readStatus errors are tolerated (the controller may restart Tomcat
+// mid-provisioning) and simply trigger another poll on the next tick, while the
+// context deadline guarantees a bounded wait and a clean error return.
+func (te *TestEnvironment) waitForController(ctx context.Context) error {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	for {
+		// Check readiness first so a controller that is already up returns
+		// immediately without waiting for the first tick.
+		if st, err := te.readStatus(ctx); err == nil && st == TestEnvReady {
+			return nil
 		}
-	}()
-	wg.Wait()
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("controller did not become ready: %w", context.Cause(ctx))
+		case <-ticker.C:
+		}
+	}
 }
 
 func (te *TestEnvironment) newTestClient() (unifi.Client, error) {
