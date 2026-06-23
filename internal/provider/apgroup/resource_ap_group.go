@@ -99,8 +99,8 @@ func NewAPGroupResource() resource.Resource {
 func (r *apGroupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_ap_group` resource manages Access Point groups in the UniFi controller.\n\n" +
-				"AP groups allow you to organize and manage multiple access points together. " +
-				"This resource allows you to create, update, and delete AP groups.",
+			"AP groups allow you to organize and manage multiple access points together. " +
+			"This resource allows you to create, update, and delete AP groups.",
 
 		Attributes: map[string]schema.Attribute{
 			"id":   ut.ID(),
