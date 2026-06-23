@@ -29,6 +29,9 @@ on:
     - cron: "0 13 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
