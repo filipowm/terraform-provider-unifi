@@ -92,7 +92,7 @@ jobs:
       # 429) doesn't fail the test step, and the cold pull is out of the test
       # timeout budget. testcontainers reuses the already-present image.
       - name: Pull UniFi controller image
-        uses: "nick-fields/retry@v3"
+        uses: "nick-fields/retry@v4"
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -100,7 +100,7 @@ jobs:
 
       # The acceptance tests sometimes timeout for some unknown reason.
       - name: TF acceptance tests
-        uses: "nick-fields/retry@v3"
+        uses: "nick-fields/retry@v4"
         with:
           timeout_minutes: 20
           max_attempts: 3
@@ -137,7 +137,7 @@ jobs:
       # timeout budget. testcontainers reuses the already-present image.
       - name: Pull UniFi controller image
         if: ${{ !matrix.unifi_download_url }}
-        uses: "nick-fields/retry@v3"
+        uses: "nick-fields/retry@v4"
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -145,7 +145,7 @@ jobs:
 
       # The acceptance tests sometimes timeout for some unknown reason.
       - name: TF acceptance tests
-        uses: "nick-fields/retry@v3"
+        uses: "nick-fields/retry@v4"
         with:
           timeout_minutes: 20
           max_attempts: 3
