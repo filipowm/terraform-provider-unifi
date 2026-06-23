@@ -2,10 +2,13 @@ package apgroup
 
 import (
 	"context"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	"github.com/filipowm/go-unifi/unifi"
@@ -20,17 +23,24 @@ import (
 type APGroupModel struct {
 	base.Model
 	Name       types.String `tfsdk:"name"`
-	DeviceMACs types.List   `tfsdk:"device_macs"`
+	DeviceMACs types.Set    `tfsdk:"device_macs"`
 }
 
 // AsUnifiModel converts the Terraform model to the UniFi API model
-func (m *APGroupModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
+func (m *APGroupModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 	var deviceMACs []string
 
-	diags.Append(ut.ListElementsAs(m.DeviceMACs, &deviceMACs)...)
+	diags.Append(m.DeviceMACs.ElementsAs(ctx, &deviceMACs, false)...)
 	if diags.HasError() {
 		return nil, diags
+	}
+
+	// Normalize to the controller's canonical MAC form (lowercase, colon)
+	// defensively, in case a value reaches here without passing through the
+	// plan modifier.
+	for i, mac := range deviceMACs {
+		deviceMACs[i] = utils.CleanMAC(mac)
 	}
 
 	return &unifi.APGroup{
@@ -53,7 +63,7 @@ func (m *APGroupModel) Merge(ctx context.Context, other interface{}) diag.Diagno
 	m.ID = types.StringValue(model.ID)
 	m.Name = types.StringValue(model.Name)
 
-	deviceMACs, d := types.ListValueFrom(ctx, types.StringType, model.DeviceMACs)
+	deviceMACs, d := types.SetValueFrom(ctx, types.StringType, model.DeviceMACs)
 	diags = append(diags, d...)
 	m.DeviceMACs = deviceMACs
 
@@ -112,13 +122,18 @@ func (r *apGroupResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					stringvalidator.LengthAtLeast(1),
 				},
 			},
-			"device_macs": schema.ListAttribute{
-				MarkdownDescription: "List of AP devices MAC addresses to include in this AP group.",
-				Required:            true,
-				ElementType:         types.StringType,
-				Validators: []validator.List{
-					listvalidator.SizeAtLeast(1),
-					listvalidator.ValueStringsAre(validators.Mac),
+			"device_macs": schema.SetAttribute{
+				MarkdownDescription: "Set of AP device MAC addresses to include in this AP group. " +
+					"MAC addresses are case-insensitive and may use `:` or `-` separators; " +
+					"they are normalized to lowercase, colon-separated form.",
+				Required:    true,
+				ElementType: types.StringType,
+				Validators: []validator.Set{
+					setvalidator.SizeAtLeast(1),
+					setvalidator.ValueStringsAre(validators.Mac),
+				},
+				PlanModifiers: []planmodifier.Set{
+					NormalizeMAC(),
 				},
 			},
 		},

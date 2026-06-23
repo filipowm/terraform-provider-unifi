@@ -29,7 +29,7 @@ func TestAccAPGroup_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(testAPGroupResourceName, "id"),
 					resource.TestCheckResourceAttr(testAPGroupResourceName, "site", "default"),
 					resource.TestCheckResourceAttr(testAPGroupResourceName, "name", rName),
-					pt.TestCheckListResourceAttr(testAPGroupResourceName, "device_macs", mac1),
+					pt.TestCheckSetResourceAttr(testAPGroupResourceName, "device_macs", mac1),
 				),
 				ConfigPlanChecks: pt.CheckResourceActions(testAPGroupResourceName, plancheck.ResourceActionCreate),
 			},
@@ -53,7 +53,7 @@ func TestAccAPGroup_update(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testAPGroupResourceName, "id"),
 					resource.TestCheckResourceAttr(testAPGroupResourceName, "name", rName),
-					pt.TestCheckListResourceAttr(testAPGroupResourceName, "device_macs", mac1),
+					pt.TestCheckSetResourceAttr(testAPGroupResourceName, "device_macs", mac1),
 				),
 			},
 			{
@@ -61,7 +61,9 @@ func TestAccAPGroup_update(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testAPGroupResourceName, "id"),
 					resource.TestCheckResourceAttr(testAPGroupResourceName, "name", updatedName),
-					pt.TestCheckListResourceAttr(testAPGroupResourceName, "device_macs", mac1, mac2),
+					// mac2 is supplied uppercase in config; the plan modifier
+					// normalizes it to the controller's lowercase, colon form.
+					pt.TestCheckSetResourceAttr(testAPGroupResourceName, "device_macs", mac1, strings.ToLower(mac2)),
 				),
 				ConfigPlanChecks: pt.CheckResourceActions(testAPGroupResourceName, plancheck.ResourceActionUpdate),
 			},
