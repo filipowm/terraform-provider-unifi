@@ -227,6 +227,49 @@ func ResourceDevice() *schema.Resource {
 				},
 			},
 
+			"ether_lighting": {
+				Description: "Etherlighting configuration for switches with per-port LEDs (e.g. USW Pro Max). " +
+					"`mode = \"network\"` colors each port's LED by the VLAN/network it serves (per-network colors come from " +
+					"the site-level Etherlighting palette); `mode = \"speed\"` colors by link speed. Only the fields you set " +
+					"are written — unset fields keep their controller-side values (read-modify-write overlay). Devices without " +
+					"Etherlighting hardware ignore this object.",
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"mode": {
+							Description:  "Color scheme: `network` (color by VLAN/network) or `speed` (color by link speed).",
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.StringInSlice([]string{"network", "speed"}, false),
+						},
+						"led_mode": {
+							Description:  "`etherlighting` (colored per-port LEDs) or `standard` (plain status LEDs).",
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.StringInSlice([]string{"etherlighting", "standard"}, false),
+						},
+						"behavior": {
+							Description:  "LED animation: `steady` or `breath`.",
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.StringInSlice([]string{"steady", "breath"}, false),
+						},
+						"brightness": {
+							Description:  "LED brightness, 1-100.",
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.IntBetween(1, 100),
+						},
+					},
+				},
+			},
+
 			"allow_adoption": {
 				Description: "Whether to automatically adopt the device when creating this resource. When true:\n" +
 					"* The controller will attempt to adopt the device\n" +
@@ -346,17 +389,25 @@ func resourceDeviceUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	req.ID = d.Id()
 	req.SiteID = site
 
-	// Radio table is a controller-side array that UniFi replaces wholesale on
-	// PUT. To manage only the bands the user declares (and avoid wiping the
-	// others), read the device's current radio_table and overlay the declared
-	// bands onto it, sending the full merged list. When no radio blocks are
-	// declared, RadioTable stays nil (omitempty) and radios are left untouched.
-	if radios := d.Get("radio").(*schema.Set); radios.Len() > 0 {
+	// Radio table and Etherlighting are controller-side structures managed
+	// with patch semantics: fetch the device's current config once and overlay
+	// only the declared fields, so undeclared bands/fields keep their
+	// controller-side values. (Radio table additionally needs the full merged
+	// array sent because UniFi replaces arrays wholesale on PUT.) When neither
+	// block is declared, nothing extra is sent (prior behavior).
+	radios := d.Get("radio").(*schema.Set)
+	etherLighting := d.Get("ether_lighting").([]interface{})
+	if radios.Len() > 0 || len(etherLighting) > 0 {
 		current, err := c.GetDevice(ctx, site, d.Id())
 		if err != nil {
-			return diag.FromErr(fmt.Errorf("unable to read current device radio table for merge: %w", err))
+			return diag.FromErr(fmt.Errorf("unable to read current device config for merge: %w", err))
 		}
-		req.RadioTable = mergeRadios(current.RadioTable, radios)
+		if radios.Len() > 0 {
+			req.RadioTable = mergeRadios(current.RadioTable, radios)
+		}
+		if len(etherLighting) > 0 {
+			req.EtherLighting = mergeEtherLighting(current.EtherLighting, etherLighting[0].(map[string]interface{}))
+		}
 	}
 
 	resp, err := c.UpdateDevice(ctx, site, req)
@@ -441,8 +492,42 @@ func resourceDeviceSetResourceData(resp *unifi.Device, d *schema.ResourceData, s
 	d.Set("disabled", resp.Disabled)
 	d.Set("port_override", portOverrides)
 	d.Set("radio", radiosFromDevice(resp, d))
+	d.Set("ether_lighting", etherLightingFromDevice(resp, d))
 
 	return nil
+}
+
+// etherLightingFromDevice returns ether_lighting state only when the user
+// declares the block, so unmanaged devices never produce a diff.
+func etherLightingFromDevice(resp *unifi.Device, d *schema.ResourceData) []map[string]interface{} {
+	if len(d.Get("ether_lighting").([]interface{})) == 0 {
+		return nil
+	}
+	return []map[string]interface{}{{
+		"mode":       resp.EtherLighting.Mode,
+		"led_mode":   resp.EtherLighting.LedMode,
+		"behavior":   resp.EtherLighting.Behavior,
+		"brightness": resp.EtherLighting.Brightness,
+	}}
+}
+
+// mergeEtherLighting overlays the declared ether_lighting fields onto the
+// device's current config, preserving any fields the user didn't set.
+func mergeEtherLighting(current unifi.DeviceEtherLighting, m map[string]interface{}) unifi.DeviceEtherLighting {
+	r := current
+	if v, _ := m["mode"].(string); v != "" {
+		r.Mode = v
+	}
+	if v, _ := m["led_mode"].(string); v != "" {
+		r.LedMode = v
+	}
+	if v, _ := m["behavior"].(string); v != "" {
+		r.Behavior = v
+	}
+	if v, _ := m["brightness"].(int); v != 0 {
+		r.Brightness = v
+	}
+	return r
 }
 
 // radioSetHash keys the `radio` set by band only, so changes to Computed
