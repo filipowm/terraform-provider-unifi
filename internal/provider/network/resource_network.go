@@ -554,16 +554,15 @@ func ResourceNetwork() *schema.Resource {
 					"Only applicable when `vpn_type` is 'wireguard-client'.",
 				Type:         schema.TypeString,
 				Optional:     true,
-				ValidateFunc: validateWANV6NetworkGroup,
+				ValidateFunc: validation.StringInSlice([]string{"wan", "wan2"}, false),
 			},
 			"wireguard_client_mode": {
-				Description: "How the WireGuard VPN client is configured. One of:\n" +
-					"* `manual` - Configure the peer with the individual `wireguard_client_*` arguments\n" +
-					"* `file` - Import a WireGuard configuration file (set via the controller)\n" +
+				Description: "How the WireGuard VPN client peer is configured. Currently only `manual` is supported, " +
+					"configuring the peer with the individual `wireguard_client_*` arguments. " +
 					"Only applicable when `vpn_type` is 'wireguard-client'.",
 				Type:         schema.TypeString,
 				Optional:     true,
-				ValidateFunc: validation.StringInSlice([]string{"manual", "file"}, false),
+				ValidateFunc: validation.StringInSlice([]string{"manual"}, false),
 			},
 			"wireguard_client_peer_ip": {
 				Description: "The remote WireGuard server's endpoint host or IP address that the gateway dials. " +
@@ -586,9 +585,11 @@ func ResourceNetwork() *schema.Resource {
 			},
 			"wireguard_client_preshared_key": {
 				Description: "An optional WireGuard pre-shared key (PSK) for an additional layer of symmetric-key " +
-					"security with the peer. Keep this value secret. Only applicable when `vpn_type` is 'wireguard-client'.",
+					"security with the peer. Keep this value secret. The controller may not return this value on read, " +
+					"so it is computed to avoid spurious drift. Only applicable when `vpn_type` is 'wireguard-client'.",
 				Type:      schema.TypeString,
 				Optional:  true,
+				Computed:  true,
 				Sensitive: true,
 			},
 			"wireguard_client_preshared_key_enabled": {
@@ -627,12 +628,14 @@ func ResourceNetwork() *schema.Resource {
 			},
 			"uid_vpn_custom_routing": {
 				Description: "The list of destination subnets (CIDR notation) routed through the VPN client tunnel " +
-					"when `vpn_client_default_route` is false. Only applicable when `purpose` is 'vpn-client'.",
+					"when `vpn_client_default_route` is false. Values are canonicalized to their network address " +
+					"(e.g. `10.0.0.1/16` becomes `10.0.0.0/16`). Only applicable when `purpose` is 'vpn-client'.",
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Schema{
-					Type:         schema.TypeString,
-					ValidateFunc: utils.CidrValidate,
+					Type:             schema.TypeString,
+					ValidateFunc:     utils.CidrValidate,
+					DiffSuppressFunc: utils.CidrDiffSuppress,
 				},
 			},
 		},
@@ -681,6 +684,11 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 	uidVPNCustomRouting, err := utils.ListToStringSlice(d.Get("uid_vpn_custom_routing").([]interface{}))
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert uid_vpn_custom_routing to string slice: %w", err)
+	}
+	// Canonicalize each route to its network address so config and controller-returned
+	// values stay consistent (matches the diff suppression on the schema).
+	for i, cidr := range uidVPNCustomRouting {
+		uidVPNCustomRouting[i] = utils.CidrZeroBased(cidr)
 	}
 
 	return &unifi.Network{
@@ -915,13 +923,28 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("wireguard_client_peer_ip", resp.WireguardClientPeerIP)
 	d.Set("wireguard_client_peer_port", resp.WireguardClientPeerPort)
 	d.Set("wireguard_client_peer_public_key", resp.WireguardClientPeerPublicKey)
-	d.Set("wireguard_client_preshared_key", resp.WireguardClientPresharedKey)
+	// Write-only secrets: the controller may omit these on read. Only overwrite state when a
+	// non-empty value is returned, otherwise the configured/generated secret would be blanked
+	// and the resource would drift on every refresh.
+	if resp.WireguardClientPresharedKey != "" {
+		d.Set("wireguard_client_preshared_key", resp.WireguardClientPresharedKey)
+	}
 	d.Set("wireguard_client_preshared_key_enabled", resp.WireguardClientPresharedKeyEnabled)
-	d.Set("x_wireguard_private_key", resp.XWireguardPrivateKey)
+	if resp.XWireguardPrivateKey != "" {
+		d.Set("x_wireguard_private_key", resp.XWireguardPrivateKey)
+	}
 	d.Set("wireguard_public_key", resp.WireguardPublicKey)
 	d.Set("vpn_client_default_route", resp.VPNClientDefaultRoute)
 	d.Set("vpn_client_pull_dns", resp.VPNClientPullDNS)
-	d.Set("uid_vpn_custom_routing", resp.UidVPNCustomRouting)
+	customRouting := make([]string, len(resp.UidVPNCustomRouting))
+	for i, cidr := range resp.UidVPNCustomRouting {
+		if canonical := utils.CidrZeroBased(cidr); canonical != "" {
+			customRouting[i] = canonical
+		} else {
+			customRouting[i] = cidr
+		}
+	}
+	d.Set("uid_vpn_custom_routing", customRouting)
 
 	return nil
 }
