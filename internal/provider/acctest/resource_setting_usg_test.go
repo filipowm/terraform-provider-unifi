@@ -53,6 +53,7 @@ func TestAccSettingUsg_mdns_v7(t *testing.T) {
 }
 
 func TestAccSettingUsg_dhcpRelayServers(t *testing.T) {
+	pt.SkipIfEnvLocalMissing(t, "Skipping: dhcp_relay_servers requires an adopted gateway not available on the Docker test controller")
 	AcceptanceTest(t, AcceptanceTestCase{
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
@@ -277,6 +278,7 @@ func TestAccSettingUsg_dhcpConfig(t *testing.T) {
 }
 
 func TestAccSettingUsg_dhcpRelayConfig(t *testing.T) {
+	pt.SkipIfEnvLocalMissing(t, "Skipping: dhcp_relay_servers requires an adopted gateway not available on the Docker test controller")
 	AcceptanceTest(t, AcceptanceTestCase{
 		Lock: &settingUsgLock,
 		Steps: []resource.TestStep{
@@ -873,7 +875,6 @@ resource "unifi_setting_usg" "test" {
 	agents_packets = "forward"
 	hop_count = 5
   }
-  dhcp_relay_servers = ["10.1.2.3", "10.1.2.4"]
 
   // Network Tools
   echo_server = "echo.example.com"

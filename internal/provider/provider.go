@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/apgroup"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/device"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/dns"
@@ -32,6 +31,11 @@ const (
 	ProviderAllowInsecureDescription = "Skip verification of TLS certificates of API requests. You may need to set this to `true` " +
 		"if you are using your local API without setting up a signed certificate. Can be specified with the " +
 		"`UNIFI_INSECURE` environment variable."
+	ProviderMaxRetriesDescription = "Maximum number of additional attempts the provider makes when the controller returns a " +
+		"transient response (network/connection errors, HTTP 5xx or 429 status codes, or an HTML body instead of JSON, " +
+		"which can happen under parallel load). Only idempotent requests (`GET`, `HEAD`, `PUT`, `DELETE`, `OPTIONS`) are " +
+		"retried. Defaults to `0`, which disables retries and preserves the default behavior. Can be specified with the " +
+		"`UNIFI_MAX_RETRIES` environment variable."
 )
 
 func init() {
@@ -91,9 +95,14 @@ func New(version string) func() *schema.Provider {
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("UNIFI_INSECURE", false),
 				},
+				"http_max_retries": {
+					Description: ProviderMaxRetriesDescription,
+					Type:        schema.TypeInt,
+					Optional:    true,
+					DefaultFunc: schema.EnvDefaultFunc("UNIFI_MAX_RETRIES", 0),
+				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
-				"unifi_ap_group":       apgroup.DataAPGroup(),
 				"unifi_network":        network.DataNetwork(),
 				"unifi_port_profile":   device.DataPortProfile(),
 				"unifi_radius_profile": radius.DataRADIUSProfile(),
@@ -102,7 +111,6 @@ func New(version string) func() *schema.Provider {
 				"unifi_account":        radius.DataAccount(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				// TODO: "unifi_ap_group"
 				"unifi_device":         device.ResourceDevice(),
 				"unifi_dynamic_dns":    dns.ResourceDynamicDNS(),
 				"unifi_firewall_group": firewall.ResourceFirewallGroup(),
@@ -145,13 +153,16 @@ func configure(v string, p *schema.Provider) schema.ConfigureContextFunc {
 		baseURL := d.Get("api_url").(string)
 		site := d.Get("site").(string)
 		insecure := d.Get("allow_insecure").(bool)
+		maxRetries := d.Get("http_max_retries").(int)
 
 		c, err := base.NewClient(&base.ClientConfig{
-			Username: user,
-			Password: pass,
-			ApiKey:   apiKey,
-			Url:      baseURL,
-			Site:     site,
+			Username:   user,
+			Password:   pass,
+			ApiKey:     apiKey,
+			Url:        baseURL,
+			Site:       site,
+			Insecure:   insecure,
+			MaxRetries: maxRetries,
 			HttpConfigurer: func() http.RoundTripper {
 				return createHTTPTransport(insecure, "unifi")
 			},

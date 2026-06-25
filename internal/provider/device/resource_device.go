@@ -70,6 +70,21 @@ func ResourceDevice() *schema.Resource {
 				Type:        schema.TypeBool,
 				Computed:    true,
 			},
+			"switch_vlan_enabled": {
+				Description: "Whether per-port VLAN configuration is enabled on the device. Required for `port_override` blocks with VLAN-tagging profiles (e.g. an IoT-VLAN `port_profile_id`) to actually take effect on access points that expose passthrough Ethernet ports (UAP-UHDIW and similar in-wall units). " +
+					"Switches honor port profile VLAN bindings unconditionally; APs ignore them unless this flag is true. " +
+					"Note: the underlying field uses `omitempty` so setting this to `false` has no effect — once enabled on a device, it can only be disabled via the UI.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+				// The controller ignores attempts to disable this (`omitempty` drops
+				// a `false` from the payload), so a `true` -> `false` change would
+				// otherwise read back as `true` and produce a perpetual diff.
+				// Suppress that one transition to match the API's write-once behavior.
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return old == "true" && new == "false"
+				},
+			},
 			"port_override": {
 				// TODO: this should really be a map or something when possible in the SDK
 				// see https://github.com/hashicorp/terraform-plugin-sdk/issues/62
@@ -160,6 +175,111 @@ func ResourceDevice() *schema.Resource {
 								}
 								return false
 							},
+						},
+					},
+				},
+			},
+
+			"radio": {
+				Description: "Per-band radio configuration for access points. Each block configures ONE band " +
+					"(`ng` = 2.4GHz, `na` = 5GHz, `6e` = 6GHz). Only the bands you declare are managed — undeclared " +
+					"bands are left untouched (the provider read-modify-writes the device's full radio table to preserve " +
+					"them, so declaring just one band will not wipe the others). Common uses: disable a band " +
+					"(`tx_power_mode = \"disabled\"`), pin a channel/width, or set a minimum-RSSI client kick. Applies to " +
+					"access points; has no effect on switches.\n\n" +
+					"Note: like other device fields, only non-zero values are written, so a field cannot be set back to its " +
+					"zero value through Terraform — manage by overriding with explicit non-zero values.",
+				Type:     schema.TypeSet,
+				Optional: true,
+				Set:      radioSetHash,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Description:  "The radio band this block configures: `ng` (2.4GHz), `na` (5GHz), or `6e` (6GHz).",
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringInSlice([]string{"ng", "na", "6e"}, false),
+						},
+						"channel": {
+							Description: "The channel for this radio (band-specific), or `auto` to let the controller choose.",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Computed:    true,
+						},
+						"ht": {
+							Description:  "Channel width in MHz for this radio (e.g. 20, 40, 80, 160, 320).",
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.IntInSlice([]int{20, 40, 80, 160, 240, 320, 1080, 2160, 4320}),
+						},
+						"tx_power_mode": {
+							Description:  "Transmit-power mode: `auto`, `low`, `medium`, `high`, `custom`, or `disabled`. `disabled` turns the radio off (e.g. to suppress an unused 2.4GHz band on an in-wall AP).",
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.StringInSlice([]string{"auto", "low", "medium", "high", "custom", "disabled"}, false),
+						},
+						"tx_power": {
+							Description: "Custom transmit power in dBm, used when `tx_power_mode = \"custom\"`; otherwise leave unset.",
+							Type:        schema.TypeString,
+							Optional:    true,
+							Computed:    true,
+						},
+						"min_rssi_enabled": {
+							Description: "Whether the minimum-RSSI client-disconnect threshold is enabled on this radio. Applied together with `min_rssi`.",
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Computed:    true,
+						},
+						"min_rssi": {
+							Description: "Minimum RSSI in dBm (negative) below which clients are disconnected, when `min_rssi_enabled` is true.",
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Computed:    true,
+						},
+					},
+				},
+			},
+
+			"ether_lighting": {
+				Description: "Etherlighting configuration for switches with per-port LEDs (e.g. USW Pro Max). " +
+					"`mode = \"network\"` colors each port's LED by the VLAN/network it serves (per-network colors come from " +
+					"the site-level Etherlighting palette); `mode = \"speed\"` colors by link speed. Only the fields you set " +
+					"are written — unset fields keep their controller-side values (read-modify-write overlay). Devices without " +
+					"Etherlighting hardware ignore this object.",
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"mode": {
+							Description:  "Color scheme: `network` (color by VLAN/network) or `speed` (color by link speed).",
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.StringInSlice([]string{"network", "speed"}, false),
+						},
+						"led_mode": {
+							Description:  "`etherlighting` (colored per-port LEDs) or `standard` (plain status LEDs).",
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.StringInSlice([]string{"etherlighting", "standard"}, false),
+						},
+						"behavior": {
+							Description:  "LED animation: `steady` or `breath`.",
+							Type:         schema.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.StringInSlice([]string{"steady", "breath"}, false),
+						},
+						"brightness": {
+							Description:  "LED brightness, 1-100.",
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.IntBetween(1, 100),
 						},
 					},
 				},
@@ -284,6 +404,27 @@ func resourceDeviceUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	req.ID = d.Id()
 	req.SiteID = site
 
+	// Radio table and Etherlighting are controller-side structures managed
+	// with patch semantics: fetch the device's current config once and overlay
+	// only the declared fields, so undeclared bands/fields keep their
+	// controller-side values. (Radio table additionally needs the full merged
+	// array sent because UniFi replaces arrays wholesale on PUT.) When neither
+	// block is declared, nothing extra is sent (prior behavior).
+	radios := d.Get("radio").(*schema.Set)
+	etherLighting := d.Get("ether_lighting").([]interface{})
+	if radios.Len() > 0 || len(etherLighting) > 0 {
+		current, err := c.GetDevice(ctx, site, d.Id())
+		if err != nil {
+			return diag.FromErr(fmt.Errorf("unable to read current device config for merge: %w", err))
+		}
+		if radios.Len() > 0 {
+			req.RadioTable = mergeRadios(current.RadioTable, radios)
+		}
+		if len(etherLighting) > 0 {
+			req.EtherLighting = mergeEtherLighting(current.EtherLighting, etherLighting[0].(map[string]interface{}))
+		}
+	}
+
 	resp, err := c.UpdateDevice(ctx, site, req)
 	if err != nil {
 		return diag.FromErr(err)
@@ -364,9 +505,126 @@ func resourceDeviceSetResourceData(resp *unifi.Device, d *schema.ResourceData, s
 	d.Set("mac", resp.MAC)
 	d.Set("name", resp.Name)
 	d.Set("disabled", resp.Disabled)
+	d.Set("switch_vlan_enabled", resp.SwitchVLANEnabled)
 	d.Set("port_override", portOverrides)
+	d.Set("radio", radiosFromDevice(resp, d))
+	d.Set("ether_lighting", etherLightingFromDevice(resp, d))
 
 	return nil
+}
+
+// etherLightingFromDevice returns ether_lighting state only when the user
+// declares the block, so unmanaged devices never produce a diff.
+func etherLightingFromDevice(resp *unifi.Device, d *schema.ResourceData) []map[string]interface{} {
+	if len(d.Get("ether_lighting").([]interface{})) == 0 {
+		return nil
+	}
+	return []map[string]interface{}{{
+		"mode":       resp.EtherLighting.Mode,
+		"led_mode":   resp.EtherLighting.LedMode,
+		"behavior":   resp.EtherLighting.Behavior,
+		"brightness": resp.EtherLighting.Brightness,
+	}}
+}
+
+// mergeEtherLighting overlays the declared ether_lighting fields onto the
+// device's current config, preserving any fields the user didn't set.
+func mergeEtherLighting(current unifi.DeviceEtherLighting, m map[string]interface{}) unifi.DeviceEtherLighting {
+	r := current
+	if v, _ := m["mode"].(string); v != "" {
+		r.Mode = v
+	}
+	if v, _ := m["led_mode"].(string); v != "" {
+		r.LedMode = v
+	}
+	if v, _ := m["behavior"].(string); v != "" {
+		r.Behavior = v
+	}
+	if v, _ := m["brightness"].(int); v != 0 {
+		r.Brightness = v
+	}
+	return r
+}
+
+// radioSetHash keys the `radio` set by band only, so changes to Computed
+// fields (channel, ht, …) don't churn set membership during plan/apply.
+func radioSetHash(v interface{}) int {
+	m := v.(map[string]interface{})
+	return schema.HashString(m["name"].(string))
+}
+
+// radiosFromDevice returns radio state for only the bands the user manages
+// (present in config/state), so undeclared bands on the device never produce
+// a diff.
+func radiosFromDevice(resp *unifi.Device, d *schema.ResourceData) []map[string]interface{} {
+	managed := map[string]bool{}
+	for _, item := range d.Get("radio").(*schema.Set).List() {
+		managed[item.(map[string]interface{})["name"].(string)] = true
+	}
+	radios := make([]map[string]interface{}, 0, len(managed))
+	for _, r := range resp.RadioTable {
+		if managed[r.Radio] {
+			radios = append(radios, fromRadio(r))
+		}
+	}
+	return radios
+}
+
+func fromRadio(r unifi.DeviceRadioTable) map[string]interface{} {
+	return map[string]interface{}{
+		"name":             r.Radio,
+		"channel":          r.Channel,
+		"ht":               r.Ht,
+		"tx_power_mode":    r.TxPowerMode,
+		"tx_power":         r.TxPower,
+		"min_rssi":         r.MinRssi,
+		"min_rssi_enabled": r.MinRssiEnabled,
+	}
+}
+
+// mergeRadios overlays the declared radio blocks onto the device's current
+// radio_table, preserving every band's existing settings and changing only the
+// non-zero fields the user specified. Bands not present in `current` are
+// appended. The full merged list is returned so the wholesale-replace PUT keeps
+// all bands intact.
+func mergeRadios(current []unifi.DeviceRadioTable, set *schema.Set) []unifi.DeviceRadioTable {
+	byBand := map[string]unifi.DeviceRadioTable{}
+	order := make([]string, 0, len(current))
+	for _, r := range current {
+		byBand[r.Radio] = r
+		order = append(order, r.Radio)
+	}
+	for _, item := range set.List() {
+		m := item.(map[string]interface{})
+		band := m["name"].(string)
+		r, ok := byBand[band]
+		if !ok {
+			r = unifi.DeviceRadioTable{Radio: band}
+			order = append(order, band)
+		}
+		if v, _ := m["channel"].(string); v != "" {
+			r.Channel = v
+		}
+		if v, _ := m["ht"].(int); v != 0 {
+			r.Ht = v
+		}
+		if v, _ := m["tx_power_mode"].(string); v != "" {
+			r.TxPowerMode = v
+		}
+		if v, _ := m["tx_power"].(string); v != "" {
+			r.TxPower = v
+		}
+		if v, _ := m["min_rssi"].(int); v != 0 {
+			r.MinRssi = v
+			r.MinRssiEnabled = m["min_rssi_enabled"].(bool)
+		}
+		byBand[band] = r
+	}
+	out := make([]unifi.DeviceRadioTable, 0, len(order))
+	for _, b := range order {
+		out = append(out, byBand[b])
+	}
+	return out
 }
 
 func resourceDeviceGetResourceData(d *schema.ResourceData) (*unifi.Device, error) {
@@ -378,9 +636,10 @@ func resourceDeviceGetResourceData(d *schema.ResourceData) (*unifi.Device, error
 	//TODO: pass Disabled once we figure out how to enable the device afterwards
 
 	return &unifi.Device{
-		MAC:           d.Get("mac").(string),
-		Name:          d.Get("name").(string),
-		PortOverrides: pos,
+		MAC:               d.Get("mac").(string),
+		Name:              d.Get("name").(string),
+		SwitchVLANEnabled: d.Get("switch_vlan_enabled").(bool),
+		PortOverrides:     pos,
 	}, nil
 }
 

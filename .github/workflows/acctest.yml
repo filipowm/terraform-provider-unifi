@@ -29,54 +29,125 @@ on:
     - cron: "0 13 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  test:
-    name: Matrix Test
+  # Lightweight planning job (no Docker). Computes the controller-version
+  # matrix and the per-event UNIFI_ACCTEST_SCOPE so the heavy jobs below
+  # stay thin and event-aware:
+  #   * pull_request -> reduced 5-version matrix, scope=matrix (version-gated
+  #     tests only); a separate core job covers the version-independent suite.
+  #   * schedule / push (main, tags) / workflow_dispatch -> full 20-version
+  #     matrix, scope=all (zero coverage loss on release-gating runs).
+  config:
+    name: Configure matrix
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        unifi_version:
-          - "v6.5"
-          - "v6"
-          - "v7.0"
-          - "v7.1"
-          - "v7.2"
-          - "v7.3"
-          - "v7.4"
-          - "v7.5"
-          - "v7"
-          - "v8.0"
-          - "v8.1"
-          - "v8.2"
-          - "v8.3"
-          - "v8.4"
-          - "v8.5"
-          - "v8.6"
-          - "v8"
-          - "v9.0"
-          - "v9"
-          - "latest"
+    outputs:
+      versions: ${{ steps.set.outputs.versions }}
+      scope: ${{ steps.set.outputs.scope }}
+    steps:
+      - name: Compute matrix and scope
+        id: set
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo 'versions=["v6.5","v7","v8.4","v9","latest"]' >> "$GITHUB_OUTPUT"
+            echo 'scope=matrix' >> "$GITHUB_OUTPUT"
+          else
+            echo 'versions=["v6.5","v6","v7.0","v7.1","v7.2","v7.3","v7.4","v7.5","v7","v8.0","v8.1","v8.2","v8.3","v8.4","v8.5","v8.6","v8","v9.0","v9","latest"]' >> "$GITHUB_OUTPUT"
+            echo 'scope=all' >> "$GITHUB_OUTPUT"
+          fi
+
+  # Version-independent tests, run once per pull request. On non-PR events the
+  # full matrix below runs with scope=all and already covers these, so this
+  # job is intentionally PR-only.
+  core:
+    name: Core Test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      UNIFI_ACCTEST_SCOPE: core
+      UNIFI_VERSION: "latest"
+    # Must exceed the total retry budget below (retry step: timeout_minutes 20 x
+    # max_attempts 3 = 60m) so attempts 2-3 can actually run on a timeout. A
+    # job-level timeout at/below a single attempt would kill the job during
+    # attempt 1, making retry_on:timeout a no-op.
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
-          check-latest: true
+          check-latest: false
 
       - name: Set up Terraform
         uses: "hashicorp/setup-terraform@v3"
+
+      # Pre-pull the controller image so a transient Docker Hub hiccup (e.g. a
+      # 429) doesn't fail the test step, and the cold pull is out of the test
+      # timeout budget. testcontainers reuses the already-present image.
+      - name: Pull UniFi controller image
+        uses: "nick-fields/retry@v3"
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: docker pull jacobalberty/unifi:${{ env.UNIFI_VERSION }}
+
       # The acceptance tests sometimes timeout for some unknown reason.
       - name: TF acceptance tests
         uses: "nick-fields/retry@v3"
         with:
           timeout_minutes: 20
           max_attempts: 3
-          command: export TF_PLUGIN_CACHE_DIR=$(mktemp -d) && make testacc TEST_TIMEOUT=1h UNIFI_STDOUT=true UNIFI_VERSION=${{ matrix.unifi_download_url && 'beta' || matrix.unifi_version }} UNIFI_DOWNLOAD_URL=${{ matrix.unifi_download_url }}
+          command: make testacc TEST_TIMEOUT=1h UNIFI_STDOUT=true UNIFI_VERSION=${{ env.UNIFI_VERSION }}
+          retry_on: "timeout"
+
+  test:
+    name: Matrix Test
+    needs: config
+    runs-on: ubuntu-latest
+    env:
+      UNIFI_ACCTEST_SCOPE: ${{ needs.config.outputs.scope }}
+    # Must exceed the total retry budget below (retry step: timeout_minutes 20 x
+    # max_attempts 3 = 60m) so attempts 2-3 can actually run on a timeout. A
+    # job-level timeout at/below a single attempt would kill the job during
+    # attempt 1, making retry_on:timeout a no-op.
+    timeout-minutes: 70
+    strategy:
+      fail-fast: false
+      matrix:
+        unifi_version: ${{ fromJson(needs.config.outputs.versions) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: "go.mod"
+          check-latest: false
+
+      - name: Set up Terraform
+        uses: "hashicorp/setup-terraform@v3"
+
+      # Pre-pull the controller image so a transient Docker Hub hiccup (e.g. a
+      # 429) doesn't fail the test step, and the cold pull is out of the test
+      # timeout budget. testcontainers reuses the already-present image.
+      - name: Pull UniFi controller image
+        if: ${{ !matrix.unifi_download_url }}
+        uses: "nick-fields/retry@v3"
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: docker pull jacobalberty/unifi:${{ matrix.unifi_version }}
+
+      # The acceptance tests sometimes timeout for some unknown reason.
+      - name: TF acceptance tests
+        uses: "nick-fields/retry@v3"
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          command: make testacc TEST_TIMEOUT=1h UNIFI_STDOUT=true UNIFI_VERSION=${{ matrix.unifi_download_url && 'beta' || matrix.unifi_version }} UNIFI_DOWNLOAD_URL=${{ matrix.unifi_download_url }}
           retry_on: "timeout"
