@@ -666,3 +666,49 @@ resource "unifi_network" "test" {
 }
 `, name, subnet, vlan, mdns)
 }
+
+func TestAccNetwork_wireguardVPNClient(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		// TODO: CheckDestroy: ,
+		Steps: []resource.TestStep{
+			{
+				Config: testWireguardVPNClientNetworkConfig(name, "203.0.113.10", 51820, "uTjB2mAJ5fT0pQ9X3wYc1nZ7vK4hL6sD8gE0rI+OaW="),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.wg_test", "purpose", "vpn-client"),
+					resource.TestCheckResourceAttr("unifi_network.wg_test", "vpn_type", "wireguard-client"),
+					resource.TestCheckResourceAttr("unifi_network.wg_test", "wireguard_interface", "wan"),
+					resource.TestCheckResourceAttr("unifi_network.wg_test", "wireguard_client_peer_ip", "203.0.113.10"),
+					resource.TestCheckResourceAttr("unifi_network.wg_test", "wireguard_client_peer_port", "51820"),
+					resource.TestCheckResourceAttr("unifi_network.wg_test", "vpn_client_default_route", "false"),
+					resource.TestCheckResourceAttr("unifi_network.wg_test", "uid_vpn_custom_routing.0", "10.200.0.0/24"),
+					resource.TestCheckResourceAttr("unifi_network.wg_test", "uid_vpn_custom_routing.1", "10.0.0.0/16"),
+					// The controller derives the gateway's public key from its (generated) private key.
+					resource.TestCheckResourceAttrSet("unifi_network.wg_test", "wireguard_public_key"),
+				),
+			},
+			// Sensitive, controller-managed secrets are not guaranteed to be returned on read.
+			pt.ImportStep("unifi_network.wg_test", "x_wireguard_private_key", "wireguard_client_preshared_key"),
+		},
+	})
+}
+
+func testWireguardVPNClientNetworkConfig(name string, peerIP string, peerPort int, peerPublicKey string) string {
+	return fmt.Sprintf(`
+resource "unifi_network" "wg_test" {
+	name     = "%[1]s"
+	purpose  = "vpn-client"
+	vpn_type = "wireguard-client"
+
+	wireguard_interface              = "wan"
+	wireguard_client_mode            = "manual"
+	wireguard_client_peer_ip         = "%[2]s"
+	wireguard_client_peer_port       = %[3]d
+	wireguard_client_peer_public_key = "%[4]s"
+
+	vpn_client_default_route = false
+	uid_vpn_custom_routing   = ["10.200.0.0/24", "10.0.0.0/16"]
+}
+`, name, peerIP, peerPort, peerPublicKey)
+}

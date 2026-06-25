@@ -67,6 +67,7 @@ resource "unifi_network" "wan" {
 * `guest` - Isolated network for guest access with limited permissions
 * `wan` - External network connection (WAN uplink)
 * `vlan-only` - VLAN network without DHCP services
+* `vpn-client` - Site-to-site VPN client connection (see the `vpn_type` and `wireguard_client_*` arguments to configure a WireGuard VPN client)
 
 ### Optional
 
@@ -199,10 +200,15 @@ Must be a valid IPv6 subnet allocated to your organization.
 * Commonly used for guest networks or IoT devices Defaults to `false`.
 - `site` (String) The name of the site to associate the network with.
 - `subnet` (String) The IPv4 subnet for this network in CIDR notation (e.g., '192.168.1.0/24'). This defines the network's address space and determines the range of IP addresses available for DHCP.
+- `uid_vpn_custom_routing` (List of String) The list of destination subnets (CIDR notation) routed through the VPN client tunnel when `vpn_client_default_route` is false. Only applicable when `purpose` is 'vpn-client'.
+- `upnp_lan_enabled` (Boolean) Whether clients on THIS network are allowed to request UPnP/NAT-PMP port mappings. Per-network opt-in that complements the gateway-global UPnP toggle (`unifi_setting_usg.upnp_enabled`): UPnP must be enabled globally AND on a given network for that network's devices to self-map WAN ports. Leave false on untrusted networks (IoT, Guest, …) so a compromised device cannot open inbound holes in the firewall; enable only on networks whose devices you trust to manage their own port mappings.
 - `vlan_id` (Number) The VLAN ID for this network. Valid range is 0-4096. Common uses:
 * 1-4094: Standard VLAN range for network segmentation
 * 0: Untagged/native VLAN
 * >4094: Reserved for special purposes
+- `vpn_client_default_route` (Boolean) When true, route all of the gateway's internet traffic through the VPN client tunnel. When false (default), only the destinations in `uid_vpn_custom_routing` are routed through the tunnel. Only applicable when `purpose` is 'vpn-client'.
+- `vpn_client_pull_dns` (Boolean) When true, use DNS servers advertised by the VPN peer for traffic on the tunnel. Only applicable when `purpose` is 'vpn-client'.
+- `vpn_type` (String) The VPN type for a `vpn-client` network. Currently `wireguard-client` is supported, which connects the gateway to a remote WireGuard server. Only applicable when `purpose` is 'vpn-client'.
 - `wan_dhcp_v6_pd_size` (Number) The IPv6 prefix size to request from ISP. Must be between 48 and 64.
 Only applicable when `wan_type_v6` is 'dhcpv6'.
 - `wan_dns` (List of String) List of IPv4 DNS servers for WAN interface. Examples:
@@ -251,14 +257,26 @@ Choose based on your ISP's requirements.
 * Required for PPPoE connections
 * May be needed for some ISP configurations
 * Cannot contain spaces or special characters
+- `wireguard_client_mode` (String) How the WireGuard VPN client is configured. One of:
+* `manual` - Configure the peer with the individual `wireguard_client_*` arguments
+* `file` - Import a WireGuard configuration file (set via the controller)
+Only applicable when `vpn_type` is 'wireguard-client'.
+- `wireguard_client_peer_ip` (String) The remote WireGuard server's endpoint host or IP address that the gateway dials. Only applicable when `vpn_type` is 'wireguard-client'.
+- `wireguard_client_peer_port` (Number) The remote WireGuard server's listen port (e.g. 51820). Only applicable when `vpn_type` is 'wireguard-client'.
+- `wireguard_client_peer_public_key` (String) The remote WireGuard server's public key (the peer the gateway connects to). Only applicable when `vpn_type` is 'wireguard-client'.
+- `wireguard_client_preshared_key` (String, Sensitive) An optional WireGuard pre-shared key (PSK) for an additional layer of symmetric-key security with the peer. Keep this value secret. Only applicable when `vpn_type` is 'wireguard-client'.
+- `wireguard_client_preshared_key_enabled` (Boolean) Whether a WireGuard pre-shared key is used with the peer. Only applicable when `vpn_type` is 'wireguard-client'.
+- `wireguard_interface` (String) The WAN interface the WireGuard tunnel egresses from. One of `wan` or `wan2`. Only applicable when `vpn_type` is 'wireguard-client'.
 - `x_wan_password` (String) Password for WAN authentication.
 * Required for PPPoE connections
 * May be needed for some ISP configurations
 * Must be kept secret
+- `x_wireguard_private_key` (String, Sensitive) The gateway's own WireGuard private key for this VPN client. If omitted, the controller generates a key pair and exposes the public key via `wireguard_public_key`. Keep this value secret. Only applicable when `vpn_type` is 'wireguard-client'.
 
 ### Read-Only
 
 - `id` (String) The ID of the network.
+- `wireguard_public_key` (String) The gateway's own WireGuard public key for this VPN client, derived from its private key. Add this key as a peer on the remote WireGuard server. Only set when `vpn_type` is 'wireguard-client'.
 
 ## Import
 
