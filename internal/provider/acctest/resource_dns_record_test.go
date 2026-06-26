@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
@@ -15,6 +16,12 @@ import (
 )
 
 const testDnsRecordResourceName = "unifi_dns_record.test"
+
+// dnsLock serializes all DNS record + DNS data-source acceptance tests. The
+// unifi_dns_records data source returns ALL records on the site, so tests that
+// create or count records must not run concurrently or global counts become
+// non-deterministic.
+var dnsLock = &sync.Mutex{}
 
 type dnsRecordTestCase struct {
 	name       string
@@ -90,6 +97,7 @@ func TestDNSRecord_basic(t *testing.T) {
 
 			AcceptanceTest(t, AcceptanceTestCase{
 				MinVersion:   base.ControllerVersionDnsRecords,
+				Lock:         dnsLock,
 				Steps:        steps,
 				CheckDestroy: testAccCheckDNSRecordDestroy,
 			})
@@ -122,6 +130,7 @@ func TestDNSRecord_SRV(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			AcceptanceTest(t, AcceptanceTestCase{
 				MinVersion:   base.ControllerVersionDnsRecords,
+				Lock:         dnsLock,
 				CheckDestroy: testAccCheckDNSRecordDestroy,
 				Steps: Steps{
 					{
@@ -153,6 +162,7 @@ func TestDNSRecord_Update(t *testing.T) {
 
 	AcceptanceTest(t, AcceptanceTestCase{
 		MinVersion:   base.ControllerVersionDnsRecords,
+		Lock:         dnsLock,
 		CheckDestroy: testAccCheckDNSRecordDestroy,
 		Steps: Steps{
 			{

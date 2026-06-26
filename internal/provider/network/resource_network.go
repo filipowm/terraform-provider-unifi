@@ -290,6 +290,17 @@ func ResourceNetwork() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
+			"upnp_lan_enabled": {
+				Description: "Whether clients on THIS network are allowed to request UPnP/NAT-PMP port mappings. " +
+					"Per-network opt-in that complements the gateway-global UPnP toggle " +
+					"(`unifi_setting_usg.upnp_enabled`): UPnP must be enabled globally AND on a given network for that " +
+					"network's devices to self-map WAN ports. Leave false on untrusted networks (IoT, Guest, …) so a " +
+					"compromised device cannot open inbound holes in the firewall; enable only on networks whose devices " +
+					"you trust to manage their own port mappings.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+			},
 			"ipv6_interface_type": {
 				Description: "Specifies the IPv6 connection type. Must be one of:\n" +
 					"* `none` - IPv6 disabled (default)\n" +
@@ -589,6 +600,7 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		DHCPRelayEnabled:  d.Get("dhcp_relay_enabled").(bool),
 		DomainName:        d.Get("domain_name").(string),
 		IGMPSnooping:      d.Get("igmp_snooping").(bool),
+		UpnpLanEnabled:    d.Get("upnp_lan_enabled").(bool),
 		MdnsEnabled:       d.Get("multicast_dns").(bool),
 		Enabled:           d.Get("enabled").(bool),
 
@@ -749,6 +761,7 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("domain_name", resp.DomainName)
 	d.Set("enabled", resp.Enabled)
 	d.Set("igmp_snooping", resp.IGMPSnooping)
+	d.Set("upnp_lan_enabled", resp.UpnpLanEnabled)
 	d.Set("internet_access_enabled", resp.InternetAccessEnabled)
 	d.Set("network_isolation_enabled", resp.NetworkIsolationEnabled)
 

@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -42,6 +43,27 @@ func AcceptanceTest(t *testing.T, testCase AcceptanceTestCase) {
 	if len(testCase.Steps) == 0 {
 		t.Fatal("missing test steps")
 	}
+
+	// Core/matrix scope gating. UNIFI_ACCTEST_SCOPE selects which subset of tests this
+	// binary runs so CI can split version-independent tests (run once, on "latest") from
+	// version-specific tests (run across the controller matrix):
+	//   - "core"           -> run only version-INDEPENDENT tests (skip version-gated ones).
+	//   - "matrix"         -> run only version-SPECIFIC tests (skip version-independent ones).
+	//   - "all"/unset/else -> run everything (default; preserves local `make testacc` and full/release CI).
+	// A test case is "version-gated" iff it pins a controller version via MinVersion or
+	// VersionConstraint. The skip happens here, before resource.ParallelTest, so it occurs
+	// before any controller interaction (PreCheck / provider configuration / API calls).
+	gated := testCase.MinVersion != nil || testCase.VersionConstraint != ""
+	scope := strings.ToLower(strings.TrimSpace(os.Getenv("UNIFI_ACCTEST_SCOPE")))
+	if scope == "core" && gated {
+		t.Skip("skipped in core scope: version-gated test runs in the matrix job")
+		return
+	}
+	if scope == "matrix" && !gated {
+		t.Skip("skipped in matrix scope: version-independent test runs in the core job")
+		return
+	}
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			pt.PreCheck(t)
