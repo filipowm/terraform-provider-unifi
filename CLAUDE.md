@@ -17,7 +17,7 @@ terraform-plugin-mux v0.18.0 · terraform-plugin-testing v1.12.0 · go-unifi v1.
   Everything in `docs/` is generated — never hand-edit it. Details: `.claude/rules/docs-generation.md`.
 - **Commits MUST follow Conventional Commits** (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`,
   `build(deps):`). Release notes and labels are derived from them.
-- use skills from `terraform-plugin-development` plugin when making any changes, according to the changes being implemented
+- use skills from `terraform-provider-development` plugin when making any changes, according to the changes being implemented
 
 ## Architecture
 
