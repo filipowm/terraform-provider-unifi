@@ -1,0 +1,15 @@
+{
+  "extraKnownMarketplaces" : {
+      "hashicorp": {
+          "autoUpdate" : true,
+          "source" : {
+              "source" : "github",
+              "repo" : "hashicorp/agent-skills"
+          }
+      }
+  },
+  "enabledPlugins": {
+    "terraform-provider-development@hashicorp": true,
+    "context7@claude-plugins-official": true
+  }
+}
