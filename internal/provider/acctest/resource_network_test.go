@@ -674,7 +674,7 @@ func TestAccNetwork_wireguardVPNClient(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testWireguardVPNClientNetworkConfig(name, "203.0.113.10", 51820, "uTjB2mAJ5fT0pQ9X3wYc1nZ7vK4hL6sD8gE0rI+OaW="),
+				Config: testWireguardVPNClientNetworkConfig(name, "203.0.113.10", 51820, "0WvUlUyZZ0yTUibNCAdBrQ6XJd+8V37zmk/j8y/V9g4="),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_network.wg_test", "purpose", "vpn-client"),
 					resource.TestCheckResourceAttr("unifi_network.wg_test", "vpn_type", "wireguard-client"),
