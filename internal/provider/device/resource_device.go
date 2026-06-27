@@ -685,24 +685,44 @@ func toPortOverride(data map[string]interface{}) (unifi.DevicePortOverrides, err
 	poeMode := data["poe_mode"].(string)
 	aggregateNumPorts := data["aggregate_num_ports"].(int)
 
-	return unifi.DevicePortOverrides{
-		PortIDX:           idx,
-		Name:              name,
-		PortProfileID:     profileID,
-		OpMode:            opMode,
-		PoeMode:           poeMode,
-		AggregateNumPorts: aggregateNumPorts,
-	}, nil
+	po := unifi.DevicePortOverrides{
+		PortIDX:       idx,
+		Name:          name,
+		PortProfileID: profileID,
+		OpMode:        opMode,
+		PoeMode:       poeMode,
+	}
+
+	// go-unifi v1.9 tracks the current controller API, which expresses a LAG
+	// as an explicit member list (`aggregate_members`) instead of the legacy
+	// starting-port count (`aggregate_num_ports`). Translate the schema's
+	// count into the equivalent contiguous member range — N sequential ports
+	// starting at this port — which matches the documented schema semantics
+	// ("All ports in the LAG must be sequential"), so existing practitioner
+	// configs keep working unchanged. When unset (0), leave the slice nil so
+	// the field is omitted from the payload entirely.
+	if aggregateNumPorts > 0 {
+		members := make([]int, aggregateNumPorts)
+		for i := range members {
+			members[i] = idx + i
+		}
+		po.AggregateMembers = members
+	}
+
+	return po, nil
 }
 
 func fromPortOverride(po unifi.DevicePortOverrides) (map[string]interface{}, error) {
 	return map[string]interface{}{
-		"number":              po.PortIDX,
-		"name":                po.Name,
-		"port_profile_id":     po.PortProfileID,
-		"op_mode":             po.OpMode,
-		"poe_mode":            po.PoeMode,
-		"aggregate_num_ports": po.AggregateNumPorts,
+		"number":          po.PortIDX,
+		"name":            po.Name,
+		"port_profile_id": po.PortProfileID,
+		"op_mode":         po.OpMode,
+		"poe_mode":        po.PoeMode,
+		// Inverse of the translation in toPortOverride: the member-list
+		// length is the LAG port count (0 / unset round-trips as an empty
+		// list, preserving the previous zero-value behavior).
+		"aggregate_num_ports": len(po.AggregateMembers),
 	}, nil
 }
 
