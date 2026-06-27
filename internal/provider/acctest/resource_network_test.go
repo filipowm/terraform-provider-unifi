@@ -684,7 +684,10 @@ func TestAccNetwork_wireguardVPNClient(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_network.wg_test", "vpn_client_default_route", "false"),
 					resource.TestCheckResourceAttr("unifi_network.wg_test", "uid_vpn_custom_routing.0", "10.200.0.0/24"),
 					resource.TestCheckResourceAttr("unifi_network.wg_test", "uid_vpn_custom_routing.1", "10.0.0.0/16"),
-					// The controller derives the gateway's public key from its (generated) private key.
+					// The tunnel interface address must round-trip exactly (no LAN +1 offset).
+					resource.TestCheckResourceAttr("unifi_network.wg_test", "subnet", "10.255.255.2/32"),
+					// The provider derives the gateway's public key from the generated private
+					// key (the controller returns null), so it must be present.
 					resource.TestCheckResourceAttrSet("unifi_network.wg_test", "wireguard_public_key"),
 				),
 			},
@@ -700,6 +703,11 @@ resource "unifi_network" "wg_test" {
 	name     = "%[1]s"
 	purpose  = "vpn-client"
 	vpn_type = "wireguard-client"
+
+	# The controller requires a tunnel interface address and interface DNS for a
+	# WireGuard VPN client; it rejects the create otherwise.
+	subnet   = "10.255.255.2/32"
+	dhcp_dns = ["1.1.1.1"]
 
 	wireguard_interface              = "wan"
 	wireguard_client_mode            = "manual"

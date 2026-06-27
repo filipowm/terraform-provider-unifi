@@ -208,7 +208,7 @@ Must be a valid IPv6 subnet allocated to your organization.
 * >4094: Reserved for special purposes
 - `vpn_client_default_route` (Boolean) When true, route all of the gateway's internet traffic through the VPN client tunnel. When false (default), only the destinations in `uid_vpn_custom_routing` are routed through the tunnel. Only applicable when `purpose` is 'vpn-client'.
 - `vpn_client_pull_dns` (Boolean) When true, use DNS servers advertised by the VPN peer for traffic on the tunnel. Only applicable when `purpose` is 'vpn-client'.
-- `vpn_type` (String) The VPN type for a `vpn-client` network. Currently `wireguard-client` is supported, which connects the gateway to a remote WireGuard server. Only applicable when `purpose` is 'vpn-client'.
+- `vpn_type` (String) The VPN type for a `vpn-client` network. Currently `wireguard-client` is supported, which connects the gateway to a remote WireGuard server. Only applicable when `purpose` is 'vpn-client'. A `wireguard-client` network also requires `subnet` (the tunnel interface address, e.g. `10.0.0.2/32`) and `dhcp_dns` (interface DNS) — the controller rejects the create without them.
 - `wan_dhcp_v6_pd_size` (Number) The IPv6 prefix size to request from ISP. Must be between 48 and 64.
 Only applicable when `wan_type_v6` is 'dhcpv6'.
 - `wan_dns` (List of String) List of IPv4 DNS servers for WAN interface. Examples:
@@ -273,7 +273,7 @@ Choose based on your ISP's requirements.
 ### Read-Only
 
 - `id` (String) The ID of the network.
-- `wireguard_public_key` (String) The gateway's own WireGuard public key for this VPN client, derived from its private key. Add this key as a peer on the remote WireGuard server. Only set when `vpn_type` is 'wireguard-client'.
+- `wireguard_public_key` (String) The gateway's own WireGuard public key for this VPN client. The controller does not return it, so the provider derives it from the private key (Curve25519). Add this key as a peer on the remote WireGuard server. Only set when `vpn_type` is 'wireguard-client'.
 
 ## Import
 

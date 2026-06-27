@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"golang.org/x/crypto/curve25519"
 )
 
 var (
@@ -546,7 +547,9 @@ func ResourceNetwork() *schema.Resource {
 			},
 			"vpn_type": {
 				Description: "The VPN type for a `vpn-client` network. Currently `wireguard-client` is supported, " +
-					"which connects the gateway to a remote WireGuard server. Only applicable when `purpose` is 'vpn-client'.",
+					"which connects the gateway to a remote WireGuard server. Only applicable when `purpose` is " +
+					"'vpn-client'. A `wireguard-client` network also requires `subnet` (the tunnel interface address, " +
+					"e.g. `10.0.0.2/32`) and `dhcp_dns` (interface DNS) — the controller rejects the create without them.",
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.StringInSlice([]string{"wireguard-client"}, false),
@@ -610,8 +613,9 @@ func ResourceNetwork() *schema.Resource {
 				Sensitive: true,
 			},
 			"wireguard_public_key": {
-				Description: "The gateway's own WireGuard public key for this VPN client, derived from its private key. " +
-					"Add this key as a peer on the remote WireGuard server. Only set when `vpn_type` is 'wireguard-client'.",
+				Description: "The gateway's own WireGuard public key for this VPN client. The controller does not " +
+					"return it, so the provider derives it from the private key (Curve25519). Add this key as a peer " +
+					"on the remote WireGuard server. Only set when `vpn_type` is 'wireguard-client'.",
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -712,11 +716,19 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		}
 	}
 
+	// For a LAN the `subnet` is the gateway address, so CidrOneBased applies the
+	// +1 host offset. A vpn-client's subnet is the tunnel interface address, which
+	// must be sent verbatim — the +1 would corrupt it and cause perpetual drift.
+	ipSubnet := utils.CidrOneBased(d.Get("subnet").(string))
+	if d.Get("purpose").(string) == "vpn-client" {
+		ipSubnet = utils.CidrZeroBased(d.Get("subnet").(string))
+	}
+
 	return &unifi.Network{
 		Name:              d.Get("name").(string),
 		Purpose:           d.Get("purpose").(string),
 		VLAN:              vlan,
-		IPSubnet:          utils.CidrOneBased(d.Get("subnet").(string)),
+		IPSubnet:          ipSubnet,
 		NetworkGroup:      d.Get("network_group").(string),
 		DHCPDStart:        d.Get("dhcp_start").(string),
 		DHCPDStop:         d.Get("dhcp_stop").(string),
@@ -818,6 +830,26 @@ func generateWireguardPrivateKey() (string, error) {
 	key[31] &= 127
 	key[31] |= 64
 	return base64.StdEncoding.EncodeToString(key[:]), nil
+}
+
+// wireguardPublicKey derives the base64 WireGuard public key from a base64
+// private key via Curve25519 scalar-base multiplication (matching `wg pubkey`).
+// The controller stores the private key but returns a null public key, so the
+// provider computes it to populate wireguard_public_key — the value you add as a
+// peer on the remote WireGuard server.
+func wireguardPublicKey(privateKeyB64 string) (string, error) {
+	priv, err := base64.StdEncoding.DecodeString(privateKeyB64)
+	if err != nil {
+		return "", err
+	}
+	if len(priv) != 32 {
+		return "", fmt.Errorf("WireGuard private key must be 32 bytes, got %d", len(priv))
+	}
+	pub, err := curve25519.X25519(priv, curve25519.Basepoint)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(pub), nil
 }
 
 func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData, site string) diag.Diagnostics {
@@ -969,7 +1001,21 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	if resp.XWireguardPrivateKey != "" {
 		d.Set("x_wireguard_private_key", resp.XWireguardPrivateKey)
 	}
-	d.Set("wireguard_public_key", resp.WireguardPublicKey)
+	// The controller returns a null public key, so derive it from the private key
+	// (the response value, or the one we generated and stored in state).
+	wgPublicKey := resp.WireguardPublicKey
+	if wgPublicKey == "" {
+		wgPrivateKey := resp.XWireguardPrivateKey
+		if wgPrivateKey == "" {
+			wgPrivateKey = d.Get("x_wireguard_private_key").(string)
+		}
+		if wgPrivateKey != "" {
+			if derived, err := wireguardPublicKey(wgPrivateKey); err == nil {
+				wgPublicKey = derived
+			}
+		}
+	}
+	d.Set("wireguard_public_key", wgPublicKey)
 	d.Set("vpn_client_default_route", resp.VPNClientDefaultRoute)
 	d.Set("vpn_client_pull_dns", resp.VPNClientPullDNS)
 	customRouting := make([]string, len(resp.UidVPNCustomRouting))
