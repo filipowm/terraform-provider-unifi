@@ -163,6 +163,26 @@ func TestAccWLAN_wlan_band(t *testing.T) {
 	})
 }
 
+func TestAccWLAN_wlan_bands(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		Steps: []resource.TestStep{
+			{
+				Config: testAccWLANConfig_wlan_bands(name, subnet, vlan),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_wlan.test", "wlan_bands.#", "2"),
+					resource.TestCheckTypeSetElemAttr("unifi_wlan.test", "wlan_bands.*", "2g"),
+					resource.TestCheckTypeSetElemAttr("unifi_wlan.test", "wlan_bands.*", "5g"),
+					resource.TestCheckResourceAttr("unifi_wlan.test", "wlan_band", "both"),
+				),
+			},
+			pt.ImportStep("unifi_wlan.test"),
+		},
+	})
+}
+
 func TestAccWLAN_no2ghz_oui(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	subnet, vlan := pt.GetTestVLAN(t)
@@ -454,6 +474,21 @@ resource "unifi_wlan" "test" {
 	user_group_id     = data.unifi_user_group.default.id
 	security          = "wpapsk"
 	wlan_band         = "5g"
+	multicast_enhance = true
+}
+`, name)
+}
+
+func testAccWLANConfig_wlan_bands(name string, subnet *net.IPNet, vlan int) string {
+	return testAccWLANBaseConfig(name, subnet, vlan) + fmt.Sprintf(`
+resource "unifi_wlan" "test" {
+	name              = "%[1]s-wpapsk"
+	network_id        = unifi_network.test.id
+	passphrase        = "12345678"
+	ap_group_ids      = [data.unifi_ap_group.default.id]
+	user_group_id     = data.unifi_user_group.default.id
+	security          = "wpapsk"
+	wlan_bands        = ["2g", "5g"]
 	multicast_enhance = true
 }
 `, name)
