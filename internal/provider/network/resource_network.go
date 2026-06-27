@@ -2,6 +2,8 @@ package network
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
@@ -599,8 +601,8 @@ func ResourceNetwork() *schema.Resource {
 				Optional: true,
 			},
 			"x_wireguard_private_key": {
-				Description: "The gateway's own WireGuard private key for this VPN client. If omitted, the controller " +
-					"generates a key pair and exposes the public key via `wireguard_public_key`. Keep this value secret. " +
+				Description: "The gateway's own WireGuard private key for this VPN client. If omitted, a key pair is " +
+					"generated for you and the public key is exposed via `wireguard_public_key`. Keep this value secret. " +
 					"Only applicable when `vpn_type` is 'wireguard-client'.",
 				Type:      schema.TypeString,
 				Optional:  true,
@@ -691,6 +693,25 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		uidVPNCustomRouting[i] = utils.CidrZeroBased(cidr)
 	}
 
+	// The UniFi controller requires the gateway's own WireGuard private key in the
+	// create payload — it does NOT generate one server-side, and an omitted key is
+	// rejected with api.err.WireguardMissingPrivateKey. Mirror the UI, which generates
+	// the key client-side: when x_wireguard_private_key is left unset for a
+	// wireguard-client network, generate one here and persist it to state so it stays
+	// stable across refreshes (the controller does not return it on read).
+	vpnType := d.Get("vpn_type").(string)
+	xWireguardPrivateKey := d.Get("x_wireguard_private_key").(string)
+	if vpnType == "wireguard-client" && xWireguardPrivateKey == "" {
+		generated, genErr := generateWireguardPrivateKey()
+		if genErr != nil {
+			return nil, fmt.Errorf("unable to generate WireGuard private key: %w", genErr)
+		}
+		xWireguardPrivateKey = generated
+		if setErr := d.Set("x_wireguard_private_key", generated); setErr != nil {
+			return nil, fmt.Errorf("unable to persist generated WireGuard private key: %w", setErr)
+		}
+	}
+
 	return &unifi.Network{
 		Name:              d.Get("name").(string),
 		Purpose:           d.Get("purpose").(string),
@@ -769,7 +790,7 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 
 		// WireGuard VPN client (purpose = "vpn-client", vpn_type = "wireguard-client").
 		// wireguard_public_key is computed (derived by the controller), so it is not sent here.
-		VPNType:                            d.Get("vpn_type").(string),
+		VPNType:                            vpnType,
 		WireguardInterface:                 d.Get("wireguard_interface").(string),
 		WireguardClientMode:                d.Get("wireguard_client_mode").(string),
 		WireguardClientPeerIP:              d.Get("wireguard_client_peer_ip").(string),
@@ -777,11 +798,26 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		WireguardClientPeerPublicKey:       d.Get("wireguard_client_peer_public_key").(string),
 		WireguardClientPresharedKey:        d.Get("wireguard_client_preshared_key").(string),
 		WireguardClientPresharedKeyEnabled: d.Get("wireguard_client_preshared_key_enabled").(bool),
-		XWireguardPrivateKey:               d.Get("x_wireguard_private_key").(string),
+		XWireguardPrivateKey:               xWireguardPrivateKey,
 		VPNClientDefaultRoute:              d.Get("vpn_client_default_route").(bool),
 		VPNClientPullDNS:                   d.Get("vpn_client_pull_dns").(bool),
 		UidVPNCustomRouting:                uidVPNCustomRouting,
 	}, nil
+}
+
+// generateWireguardPrivateKey returns a base64-encoded Curve25519 private key in the
+// same format as `wg genkey` and the UniFi UI: 32 random bytes, clamped per the
+// Curve25519 requirements. Used to mint the gateway's own key when the user omits
+// x_wireguard_private_key, since the controller will not generate one itself.
+func generateWireguardPrivateKey() (string, error) {
+	var key [32]byte
+	if _, err := rand.Read(key[:]); err != nil {
+		return "", err
+	}
+	key[0] &= 248
+	key[31] &= 127
+	key[31] |= 64
+	return base64.StdEncoding.EncodeToString(key[:]), nil
 }
 
 func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData, site string) diag.Diagnostics {

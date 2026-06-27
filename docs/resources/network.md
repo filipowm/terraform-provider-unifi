@@ -268,7 +268,7 @@ Choose based on your ISP's requirements.
 * Required for PPPoE connections
 * May be needed for some ISP configurations
 * Must be kept secret
-- `x_wireguard_private_key` (String, Sensitive) The gateway's own WireGuard private key for this VPN client. If omitted, the controller generates a key pair and exposes the public key via `wireguard_public_key`. Keep this value secret. Only applicable when `vpn_type` is 'wireguard-client'.
+- `x_wireguard_private_key` (String, Sensitive) The gateway's own WireGuard private key for this VPN client. If omitted, a key pair is generated for you and the public key is exposed via `wireguard_public_key`. Keep this value secret. Only applicable when `vpn_type` is 'wireguard-client'.
 
 ### Read-Only
 
