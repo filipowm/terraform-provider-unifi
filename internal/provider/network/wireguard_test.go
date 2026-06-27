@@ -7,7 +7,7 @@ import (
 
 // TestWireguardPublicKey verifies the Curve25519 derivation against a reference
 // (private, public) pair computed independently with Python's `cryptography`
-// X25519 implementation — i.e. the same value `wg pubkey` would produce.
+// X25519 implementation (the same value `wg pubkey` would produce).
 func TestWireguardPublicKey(t *testing.T) {
 	const priv = "80dbJvq14felsz3JzyP4u/hELE3FOX+wHhm2KxsCr8E="
 	const wantPub = "0WvUlUyZZ0yTUibNCAdBrQ6XJd+8V37zmk/j8y/V9g4="

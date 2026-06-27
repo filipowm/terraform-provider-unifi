@@ -549,7 +549,7 @@ func ResourceNetwork() *schema.Resource {
 				Description: "The VPN type for a `vpn-client` network. Currently `wireguard-client` is supported, " +
 					"which connects the gateway to a remote WireGuard server. Only applicable when `purpose` is " +
 					"'vpn-client'. A `wireguard-client` network also requires `subnet` (the tunnel interface address, " +
-					"e.g. `10.0.0.2/32`) and `dhcp_dns` (interface DNS) — the controller rejects the create without them.",
+					"e.g. `10.0.0.2/32`) and `dhcp_dns` (interface DNS); the controller rejects the create without them.",
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.StringInSlice([]string{"wireguard-client"}, false),
@@ -693,12 +693,10 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 	}
 	// Canonicalize each route to its network address so config and controller-returned
 	// values stay consistent (matches the diff suppression on the schema).
-	for i, cidr := range uidVPNCustomRouting {
-		uidVPNCustomRouting[i] = utils.CidrZeroBased(cidr)
-	}
+	uidVPNCustomRouting = utils.CidrListZeroBased(uidVPNCustomRouting)
 
 	// The UniFi controller requires the gateway's own WireGuard private key in the
-	// create payload — it does NOT generate one server-side, and an omitted key is
+	// create payload; it does NOT generate one server-side, and an omitted key is
 	// rejected with api.err.WireguardMissingPrivateKey. Mirror the UI, which generates
 	// the key client-side: when x_wireguard_private_key is left unset for a
 	// wireguard-client network, generate one here and persist it to state so it stays
@@ -718,10 +716,11 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 
 	// For a LAN the `subnet` is the gateway address, so CidrOneBased applies the
 	// +1 host offset. A vpn-client's subnet is the tunnel interface address, which
-	// must be sent verbatim — the +1 would corrupt it and cause perpetual drift.
-	ipSubnet := utils.CidrOneBased(d.Get("subnet").(string))
+	// must be sent verbatim (the +1 would corrupt it and cause perpetual drift).
+	subnet := d.Get("subnet").(string)
+	ipSubnet := utils.CidrOneBased(subnet)
 	if d.Get("purpose").(string) == "vpn-client" {
-		ipSubnet = utils.CidrZeroBased(d.Get("subnet").(string))
+		ipSubnet = utils.CidrZeroBased(subnet)
 	}
 
 	return &unifi.Network{
@@ -801,7 +800,7 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		WANDNS4: append(wanDNS, "", "", "", "")[3],
 
 		// WireGuard VPN client (purpose = "vpn-client", vpn_type = "wireguard-client").
-		// wireguard_public_key is computed (derived by the controller), so it is not sent here.
+		// wireguard_public_key is computed (the provider derives it on read), so it is not sent here.
 		VPNType:                            vpnType,
 		WireguardInterface:                 d.Get("wireguard_interface").(string),
 		WireguardClientMode:                d.Get("wireguard_client_mode").(string),
@@ -835,7 +834,7 @@ func generateWireguardPrivateKey() (string, error) {
 // wireguardPublicKey derives the base64 WireGuard public key from a base64
 // private key via Curve25519 scalar-base multiplication (matching `wg pubkey`).
 // The controller stores the private key but returns a null public key, so the
-// provider computes it to populate wireguard_public_key — the value you add as a
+// provider computes it to populate wireguard_public_key, the value you add as a
 // peer on the remote WireGuard server.
 func wireguardPublicKey(privateKeyB64 string) (string, error) {
 	priv, err := base64.StdEncoding.DecodeString(privateKeyB64)
@@ -1003,30 +1002,22 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	}
 	// The controller returns a null public key, so derive it from the private key
 	// (the response value, or the one we generated and stored in state).
+	// The controller returns a null public key. wireguardPublicKey errors on an
+	// empty/short key, so the err==nil check already skips the no-key case.
 	wgPublicKey := resp.WireguardPublicKey
 	if wgPublicKey == "" {
 		wgPrivateKey := resp.XWireguardPrivateKey
 		if wgPrivateKey == "" {
 			wgPrivateKey = d.Get("x_wireguard_private_key").(string)
 		}
-		if wgPrivateKey != "" {
-			if derived, err := wireguardPublicKey(wgPrivateKey); err == nil {
-				wgPublicKey = derived
-			}
+		if derived, err := wireguardPublicKey(wgPrivateKey); err == nil {
+			wgPublicKey = derived
 		}
 	}
 	d.Set("wireguard_public_key", wgPublicKey)
 	d.Set("vpn_client_default_route", resp.VPNClientDefaultRoute)
 	d.Set("vpn_client_pull_dns", resp.VPNClientPullDNS)
-	customRouting := make([]string, len(resp.UidVPNCustomRouting))
-	for i, cidr := range resp.UidVPNCustomRouting {
-		if canonical := utils.CidrZeroBased(cidr); canonical != "" {
-			customRouting[i] = canonical
-		} else {
-			customRouting[i] = cidr
-		}
-	}
-	d.Set("uid_vpn_custom_routing", customRouting)
+	d.Set("uid_vpn_custom_routing", utils.CidrListZeroBased(resp.UidVPNCustomRouting))
 
 	return nil
 }
