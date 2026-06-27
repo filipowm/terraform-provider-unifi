@@ -10,7 +10,7 @@ require (
 	github.com/apparentlymart/go-cidr v1.1.0
 	github.com/biter777/countries v1.7.5
 	github.com/deckarep/golang-set/v2 v2.8.0
-	github.com/filipowm/go-unifi v1.9.1
+	github.com/filipowm/go-unifi v1.9.2
 	github.com/golangci/golangci-lint v1.64.8
 	github.com/hashicorp/go-version v1.9.0
 	github.com/hashicorp/terraform-plugin-docs v0.21.0
@@ -394,7 +394,7 @@ require (
 	golang.org/x/exp/typeparams v0.0.0-20250218142911-aa4b98e5adaa // indirect
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/net v0.50.0 // indirect
-	golang.org/x/oauth2 v0.27.0 // indirect
+	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
