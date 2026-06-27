@@ -12,4 +12,4 @@ jobs:
       contents: "read"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "bcoe/conventional-release-labels@v1"
+      - uses: bcoe/conventional-release-labels@886f696738527c7be444262c327c89436dfb95a8 # v1.3.1

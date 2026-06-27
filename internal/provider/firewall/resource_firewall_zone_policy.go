@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"maps"
+	"strconv"
 )
 
 var (
@@ -111,6 +112,18 @@ func (m *FirewallPolicyTargetModel) AttributeTypes() map[string]attr.Type {
 
 func NewFirewallPolicyTargetModel(ipGroupId string, ips []string, matchOppositeIps, matchOppositePorts bool, port string, portGroupId, zoneId string) *FirewallPolicyTargetModel {
 	diags := diag.Diagnostics{}
+	// go-unifi v1.9 models `port` as a string, because the controller API
+	// accepts port ranges and comma-separated lists (`8000-8010,9443`). The
+	// schema attribute is (still) an Int32, so parse single-port values and
+	// surface anything non-numeric (a UI-configured range) as null — the
+	// schema cannot represent it. Widening the attribute to a string type
+	// to fully support ranges is a separate, practitioner-visible change.
+	portNum := 0
+	if port != "" {
+		if parsed, err := strconv.Atoi(port); err == nil {
+			portNum = parsed
+		}
+	}
 	m := &FirewallPolicyTargetModel{
 		IPGroupID:          ut.StringOrNull(ipGroupId),
 		IPs:                types.ListNull(types.StringType),
