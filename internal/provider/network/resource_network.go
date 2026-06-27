@@ -837,23 +837,19 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 		return nil // no config (e.g. on destroy) — nothing to validate
 	}
 
-	vpnStringFields := []string{
+	// Every field that only belongs on a vpn-client network.
+	vpnFields := []string{
 		"vpn_type", "wireguard_interface", "wireguard_client_mode",
 		"wireguard_client_peer_ip", "wireguard_client_peer_public_key",
 		"x_wireguard_private_key", "wireguard_client_preshared_key",
+		"wireguard_client_peer_port", "uid_vpn_custom_routing",
 	}
 
 	if d.Get("purpose").(string) != "vpn-client" {
-		for _, k := range vpnStringFields {
-			if rawConfigStringSet(raw, k) {
+		for _, k := range vpnFields {
+			if rawConfigSet(raw, k) {
 				return fmt.Errorf("%q is only valid when purpose = %q", k, "vpn-client")
 			}
-		}
-		if d.Get("wireguard_client_peer_port").(int) != 0 {
-			return fmt.Errorf("%q is only valid when purpose = %q", "wireguard_client_peer_port", "vpn-client")
-		}
-		if rawConfigListSet(raw, "uid_vpn_custom_routing") {
-			return fmt.Errorf("%q is only valid when purpose = %q", "uid_vpn_custom_routing", "vpn-client")
 		}
 		return nil
 	}
@@ -861,7 +857,7 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 	if d.Get("vpn_type").(string) != "wireguard-client" {
 		return fmt.Errorf("%q is required when purpose = %q (only %q is supported)", "vpn_type", "vpn-client", "wireguard-client")
 	}
-	if !rawConfigStringSet(raw, "subnet") {
+	if !rawConfigSet(raw, "subnet") {
 		return fmt.Errorf("%q (the tunnel interface address, e.g. 10.0.0.2/32) is required for a wireguard-client network", "subnet")
 	}
 	// The tunnel address must be a /32 host address: CidrZeroBased zeroes the host
@@ -875,23 +871,22 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 			return fmt.Errorf("%q must be a /32 tunnel interface address (e.g. 10.0.0.2/32)", "subnet")
 		}
 	}
-	if !rawConfigListSet(raw, "dhcp_dns") {
+	if !rawConfigSet(raw, "dhcp_dns") {
 		return fmt.Errorf("%q (interface DNS) is required for a wireguard-client network", "dhcp_dns")
 	}
-	for _, k := range []string{"wireguard_client_peer_ip", "wireguard_client_peer_public_key"} {
-		if !rawConfigStringSet(raw, k) {
+	for _, k := range []string{"wireguard_client_peer_ip", "wireguard_client_peer_public_key", "wireguard_client_peer_port"} {
+		if !rawConfigSet(raw, k) {
 			return fmt.Errorf("%q is required when vpn_type = %q", k, "wireguard-client")
 		}
-	}
-	if d.Get("wireguard_client_peer_port").(int) == 0 {
-		return fmt.Errorf("%q is required when vpn_type = %q", "wireguard_client_peer_port", "wireguard-client")
 	}
 	return nil
 }
 
-// rawConfigStringSet reports whether string attribute name is set (non-null and
-// non-empty) in the raw config, treating an unknown/interpolated value as set.
-func rawConfigStringSet(raw cty.Value, name string) bool {
+// rawConfigSet reports whether attribute name is set in the raw config: non-null,
+// and for a known value non-empty (string), non-zero (number), or non-empty
+// (collection). An unknown/interpolated value (e.g. var.x) counts as set, so it
+// is not mistaken for unset at plan time.
+func rawConfigSet(raw cty.Value, name string) bool {
 	if !raw.Type().HasAttribute(name) {
 		return false
 	}
@@ -902,23 +897,14 @@ func rawConfigStringSet(raw cty.Value, name string) bool {
 	if !v.IsKnown() {
 		return true
 	}
-	return v.AsString() != ""
-}
-
-// rawConfigListSet reports whether list attribute name is set (non-null and
-// non-empty) in the raw config, treating an unknown value as set.
-func rawConfigListSet(raw cty.Value, name string) bool {
-	if !raw.Type().HasAttribute(name) {
-		return false
+	switch {
+	case v.Type() == cty.String:
+		return v.AsString() != ""
+	case v.Type() == cty.Number:
+		return !v.RawEquals(cty.Zero)
+	default: // list / set / tuple / map
+		return v.LengthInt() > 0
 	}
-	v := raw.GetAttr(name)
-	if v.IsNull() {
-		return false
-	}
-	if !v.IsKnown() {
-		return true
-	}
-	return v.LengthInt() > 0
 }
 
 // generateWireguardPrivateKey returns a base64-encoded Curve25519 private key in the
