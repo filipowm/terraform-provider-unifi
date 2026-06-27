@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/filipowm/go-unifi/unifi"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -71,8 +72,7 @@ func TestPortOverrideAggregateRoundTrip(t *testing.T) {
 	out, err := fromPortOverride(po)
 	require.NoError(t, err)
 	assert.Equal(t, in["aggregate_num_ports"], out["aggregate_num_ports"])
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-)
+}
 
 func radioSet(items ...map[string]interface{}) *schema.Set {
 	raw := make([]interface{}, len(items))
