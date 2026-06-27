@@ -736,7 +736,12 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("purpose", resp.Purpose)
 	d.Set("vlan_id", vlan)
 	d.Set("subnet", utils.CidrZeroBased(resp.IPSubnet))
-	d.Set("network_group", resp.NetworkGroup)
+
+	networkGroup := resp.NetworkGroup
+	if resp.Purpose == "wan" && networkGroup == "" {
+		networkGroup = "LAN"
+	}
+	d.Set("network_group", networkGroup)
 
 	d.Set("dhcp_dns", dhcpDNS)
 	d.Set("dhcp_enabled", resp.DHCPDEnabled)
@@ -759,7 +764,12 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("upnp_lan_enabled", resp.UpnpLanEnabled)
 	d.Set("internet_access_enabled", resp.InternetAccessEnabled)
 	d.Set("network_isolation_enabled", resp.NetworkIsolationEnabled)
-	d.Set("ipv6_interface_type", resp.IPV6InterfaceType)
+
+	ipv6InterfaceType := resp.IPV6InterfaceType
+	if resp.Purpose == "wan" && ipv6InterfaceType == "" {
+		ipv6InterfaceType = "none"
+	}
+	d.Set("ipv6_interface_type", ipv6InterfaceType)
 	d.Set("ipv6_pd_interface", resp.IPV6PDInterface)
 	d.Set("ipv6_pd_prefixid", resp.IPV6PDPrefixid)
 	d.Set("ipv6_pd_start", resp.IPV6PDStart)

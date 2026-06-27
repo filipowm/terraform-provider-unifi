@@ -79,20 +79,20 @@ jobs:
     # attempt 1, making retry_on:timeout a no-op.
     timeout-minutes: 70
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: "go.mod"
           check-latest: false
 
       - name: Set up Terraform
-        uses: "hashicorp/setup-terraform@v3"
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
 
       # Pre-pull the controller image so a transient Docker Hub hiccup (e.g. a
       # 429) doesn't fail the test step, and the cold pull is out of the test
       # timeout budget. testcontainers reuses the already-present image.
       - name: Pull UniFi controller image
-        uses: "nick-fields/retry@v3"
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -100,7 +100,7 @@ jobs:
 
       # The acceptance tests sometimes timeout for some unknown reason.
       - name: TF acceptance tests
-        uses: "nick-fields/retry@v3"
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         with:
           timeout_minutes: 20
           max_attempts: 3
@@ -123,21 +123,21 @@ jobs:
       matrix:
         unifi_version: ${{ fromJson(needs.config.outputs.versions) }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: "go.mod"
           check-latest: false
 
       - name: Set up Terraform
-        uses: "hashicorp/setup-terraform@v3"
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
 
       # Pre-pull the controller image so a transient Docker Hub hiccup (e.g. a
       # 429) doesn't fail the test step, and the cold pull is out of the test
       # timeout budget. testcontainers reuses the already-present image.
       - name: Pull UniFi controller image
         if: ${{ !matrix.unifi_download_url }}
-        uses: "nick-fields/retry@v3"
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -145,7 +145,7 @@ jobs:
 
       # The acceptance tests sometimes timeout for some unknown reason.
       - name: TF acceptance tests
-        uses: "nick-fields/retry@v3"
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         with:
           timeout_minutes: 20
           max_attempts: 3
