@@ -169,6 +169,16 @@ func TestAccWLAN_wlan_bands(t *testing.T) {
 
 	AcceptanceTest(t, AcceptanceTestCase{
 		Steps: []resource.TestStep{
+			// Start on the legacy single-band field, then switch to wlan_bands.
+			// This exercises the wlan_band -> wlan_bands handoff in
+			// resourceWLANGetResourceData and proves the stale Computed array
+			// from the first step is not echoed back over the new config.
+			{
+				Config: testAccWLANConfig_wlan_band(name, subnet, vlan),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_wlan.test", "wlan_band", "5g"),
+				),
+			},
 			{
 				Config: testAccWLANConfig_wlan_bands(name, subnet, vlan),
 				Check: resource.ComposeTestCheckFunc(
