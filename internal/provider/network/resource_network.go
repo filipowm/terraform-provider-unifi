@@ -13,7 +13,6 @@ import (
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -899,9 +898,9 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 	// clobbering a zone managed via unifi_firewall_zone.networks. Plain d.Get is
 	// insufficient here: for an Optional+Computed string it returns the stale state
 	// value when config is null, which would re-send (and fight) an externally-managed
-	// zone. rawConfigSet inspects d.GetRawConfig() and treats null and empty-string as
+	// zone. utils.IsRawConfigSet inspects d.GetRawConfig() and treats null and empty-string as
 	// "not set" (the StringIsNotEmpty validator already rejects an explicit "").
-	if raw := d.GetRawConfig(); rawConfigSet(raw, "firewall_zone_id") {
+	if raw := d.GetRawConfig(); utils.IsRawConfigSet(raw, "firewall_zone_id") {
 		n.FirewallZoneID = d.Get("firewall_zone_id").(string)
 	}
 
@@ -928,7 +927,7 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 
 	if d.Get("purpose").(string) != "vpn-client" {
 		for _, k := range vpnFields {
-			if rawConfigSet(raw, k) {
+			if utils.IsRawConfigSet(raw, k) {
 				return fmt.Errorf("%q is only valid when purpose = %q", k, "vpn-client")
 			}
 		}
@@ -938,7 +937,7 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 	if d.Get("vpn_type").(string) != "wireguard-client" {
 		return fmt.Errorf("%q is required when purpose = %q (only %q is supported)", "vpn_type", "vpn-client", "wireguard-client")
 	}
-	if !rawConfigSet(raw, "subnet") {
+	if !utils.IsRawConfigSet(raw, "subnet") {
 		return fmt.Errorf("%q (the tunnel interface address, e.g. 10.0.0.2/32) is required for a wireguard-client network", "subnet")
 	}
 	// The tunnel address must be a /32 host address: CidrZeroBased zeroes the host
@@ -952,11 +951,11 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 			return fmt.Errorf("%q must be a /32 tunnel interface address (e.g. 10.0.0.2/32)", "subnet")
 		}
 	}
-	if !rawConfigSet(raw, "dhcp_dns") {
+	if !utils.IsRawConfigSet(raw, "dhcp_dns") {
 		return fmt.Errorf("%q (interface DNS) is required for a wireguard-client network", "dhcp_dns")
 	}
 	for _, k := range []string{"wireguard_client_peer_ip", "wireguard_client_peer_public_key", "wireguard_client_peer_port"} {
-		if !rawConfigSet(raw, k) {
+		if !utils.IsRawConfigSet(raw, k) {
 			return fmt.Errorf("%q is required when vpn_type = %q", k, "wireguard-client")
 		}
 	}
@@ -977,42 +976,10 @@ func customizeNetworkDHCPGuarding(_ context.Context, d *schema.ResourceDiff, _ i
 	if !d.Get("dhcp_guarding").(bool) {
 		return nil
 	}
-	if !rawConfigSet(raw, "dhcp_guarding_trusted_servers") {
+	if !utils.IsRawConfigSet(raw, "dhcp_guarding_trusted_servers") {
 		return fmt.Errorf("%q is required when %q is enabled: DHCP Guarding needs at least one trusted DHCP server IP address", "dhcp_guarding_trusted_servers", "dhcp_guarding")
 	}
 	return nil
-}
-
-// rawConfigSet reports whether attribute name is set in the raw config: non-null,
-// and for a known value non-empty (string), non-zero (number), or non-empty
-// (collection). An unknown/interpolated value (e.g. var.x) counts as set, so it
-// is not mistaken for unset at plan time.
-func rawConfigSet(raw cty.Value, name string) bool {
-	// A null raw config (e.g. on destroy, or in a unit test that builds
-	// ResourceData without a config block) is known-but-null: HasAttribute still
-	// reports true, but GetAttr panics on it because go-cty only guards the
-	// unknown case, not the null one. Treat it as "not set", like a missing attr.
-	if raw.IsNull() {
-		return false
-	}
-	if !raw.Type().HasAttribute(name) {
-		return false
-	}
-	v := raw.GetAttr(name)
-	if v.IsNull() {
-		return false
-	}
-	if !v.IsKnown() {
-		return true
-	}
-	switch {
-	case v.Type() == cty.String:
-		return v.AsString() != ""
-	case v.Type() == cty.Number:
-		return !v.RawEquals(cty.Zero)
-	default: // list / set / tuple / map
-		return v.LengthInt() > 0
-	}
 }
 
 // generateWireguardPrivateKey returns a base64-encoded Curve25519 private key in the
