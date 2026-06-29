@@ -8,7 +8,7 @@ resource "unifi_port_profile" "poe" {
   forward = "customize"
 
   native_networkconf_id = var.native_network_id
-  tagged_networkconf_ids = [
+  excluded_network_ids = [
     var.some_vlan_network_id,
   ]
 
@@ -32,6 +32,27 @@ resource "unifi_device" "us_24_poe" {
     number          = 2
     name            = "disabled"
     port_profile_id = data.unifi_port_profile.disabled.id
+  }
+
+  # inline access port: untagged on a specific network, without a port profile.
+  # per-port VLAN overrides generally require setting_preference = "manual" to persist.
+  port_override {
+    number                = 3
+    name                  = "access vlan"
+    forward               = "native"
+    native_networkconf_id = var.native_network_id
+    setting_preference    = "manual"
+  }
+
+  # inline customized trunk: tag all VLANs except the excluded one(s).
+  # excluded_network_ids is "all-except": an empty set would trunk everything.
+  port_override {
+    number               = 4
+    name                 = "trunk except guest"
+    forward              = "customize"
+    tagged_vlan_mgmt     = "custom"
+    excluded_network_ids = [var.some_vlan_network_id]
+    setting_preference   = "manual"
   }
 
   # port aggregation for ports 11 and 12

@@ -29,7 +29,7 @@ resource "unifi_port_profile" "poe" {
   forward = "customize"
 
   native_networkconf_id = var.native_network_id
-  tagged_networkconf_ids = [
+  excluded_network_ids = [
     var.some_vlan_network_id,
   ]
 
@@ -55,6 +55,27 @@ resource "unifi_device" "us_24_poe" {
     port_profile_id = data.unifi_port_profile.disabled.id
   }
 
+  # inline access port: untagged on a specific network, without a port profile.
+  # per-port VLAN overrides generally require setting_preference = "manual" to persist.
+  port_override {
+    number                = 3
+    name                  = "access vlan"
+    forward               = "native"
+    native_networkconf_id = var.native_network_id
+    setting_preference    = "manual"
+  }
+
+  # inline customized trunk: tag all VLANs except the excluded one(s).
+  # excluded_network_ids is "all-except": an empty set would trunk everything.
+  port_override {
+    number               = 4
+    name                 = "trunk except guest"
+    forward              = "customize"
+    tagged_vlan_mgmt     = "custom"
+    excluded_network_ids = [var.some_vlan_network_id]
+    setting_preference   = "manual"
+  }
+
   # port aggregation for ports 11 and 12
   port_override {
     number              = 11
@@ -74,6 +95,7 @@ resource "unifi_device" "us_24_poe" {
 * Device must be in a pending adoption state
 * Device must be accessible on the network
 Set to false if you want to manage adoption manually. Defaults to `true`.
+- `ether_lighting` (Block List, Max: 1) Etherlighting configuration for switches with per-port LEDs (e.g. USW Pro Max). `mode = "network"` colors each port's LED by the VLAN/network it serves (per-network colors come from the site-level Etherlighting palette); `mode = "speed"` colors by link speed. Only the fields you set are written — unset fields keep their controller-side values (read-modify-write overlay). Devices without Etherlighting hardware ignore this object. (see [below for nested schema](#nestedblock--ether_lighting))
 - `forget_on_destroy` (Boolean) Whether to forget (un-adopt) the device when this resource is destroyed. When true:
 * The device will be removed from the controller
 * The device will need to be readopted to be managed again
@@ -88,19 +110,39 @@ Choose descriptive names that indicate location and purpose.
 - `port_override` (Block Set) A list of port-specific configuration overrides for UniFi switches. This allows you to customize individual port settings such as:
   * Port names and labels for easy identification
   * Port profiles for VLAN and security settings
+  * Per-port native (untagged) and tagged VLAN behavior, inline, without authoring a `unifi_port_profile`
   * Operating modes for special functions
 
 Common use cases include:
   * Setting up trunk ports for inter-switch connections
   * Configuring PoE settings for powered devices
   * Creating mirrored ports for network monitoring
-  * Setting up link aggregation between switches or servers (see [below for nested schema](#nestedblock--port_override))
+  * Setting up link aggregation between switches or servers
+
+**Warning:** the controller stores port overrides as a single array on the device and the provider replaces the entire array on every apply. Any port whose override is set outside Terraform (e.g. via the UniFi UI or another tool) and is NOT declared here will have its override reset to the controller default on the next apply. Declare every port you want overridden.
+
+**Tagged-VLAN model:** there is no positive "allowed VLANs" list. With `forward = "customize"`, tagged traffic is *all* networks **minus** the ones listed in `excluded_network_ids`, so an empty `excluded_network_ids` means "trunk everything", not "trunk nothing". (see [below for nested schema](#nestedblock--port_override))
+- `radio` (Block Set) Per-band radio configuration for access points. Each block configures ONE band (`ng` = 2.4GHz, `na` = 5GHz, `6e` = 6GHz). Only the bands you declare are managed — undeclared bands are left untouched (the provider read-modify-writes the device's full radio table to preserve them, so declaring just one band will not wipe the others). Common uses: disable a band (`tx_power_mode = "disabled"`), pin a channel/width, or set a minimum-RSSI client kick. Applies to access points; has no effect on switches.
+
+Note: like other device fields, only non-zero values are written, so a field cannot be set back to its zero value through Terraform — manage by overriding with explicit non-zero values. (see [below for nested schema](#nestedblock--radio))
 - `site` (String) The name of the UniFi site where the device is located. If not specified, the default site will be used.
+- `switch_vlan_enabled` (Boolean) Whether per-port VLAN configuration is enabled on the device. Required for `port_override` blocks with VLAN-tagging profiles (e.g. an IoT-VLAN `port_profile_id`) to actually take effect on access points that expose passthrough Ethernet ports (UAP-UHDIW and similar in-wall units). Switches honor port profile VLAN bindings unconditionally; APs ignore them unless this flag is true. Note: the underlying field uses `omitempty` so setting this to `false` has no effect — once enabled on a device, it can only be disabled via the UI.
 
 ### Read-Only
 
 - `disabled` (Boolean) Whether the device is administratively disabled. When true, the device will not forward traffic or provide services.
 - `id` (String) The unique identifier of the device in the UniFi controller.
+
+<a id="nestedblock--ether_lighting"></a>
+### Nested Schema for `ether_lighting`
+
+Optional:
+
+- `behavior` (String) LED animation: `steady` or `breath`.
+- `brightness` (Number) LED brightness, 1-100.
+- `led_mode` (String) `etherlighting` (colored per-port LEDs) or `standard` (plain status LEDs).
+- `mode` (String) Color scheme: `network` (color by VLAN/network) or `speed` (color by link speed).
+
 
 <a id="nestedblock--port_override"></a>
 ### Nested Schema for `port_override`
@@ -116,11 +158,25 @@ Optional:
 * Setting up high-availability connections
 * Connecting to servers requiring more bandwidth
 Note: All ports in the LAG must be sequential and have matching configurations.
+- `excluded_network_ids` (Set of String) Set of network IDs to exclude when `forward = "customize"`. Tagged traffic on the port is *all* networks minus the ones listed here, so an empty set means "trunk everything".
+- `forward` (String) VLAN forwarding mode for the port. Valid values are:
+  * `all` - Forward all VLANs (trunk port)
+  * `native` - Only forward untagged traffic (access port)
+  * `customize` - Forward selected VLANs (use with `excluded_network_ids`)
+  * `disabled` - Disable VLAN forwarding
+
+This attribute has NO default: leaving it unset keeps the port's existing forwarding behavior. Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another value instead.
 - `name` (String) A friendly name for the port that will be displayed in the UniFi controller UI. Examples:
   * 'Uplink to Core Switch'
   * 'Conference Room AP'
   * 'Server LACP Group 1'
   * 'VoIP Phone Port'
+- `native_networkconf_id` (String) The ID of the network to use as the native (untagged) network on this port. This is typically used for:
+* Access ports where devices need untagged access
+* Trunk ports to specify the native VLAN
+* Management networks for network devices
+
+Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another network ID instead.
 - `op_mode` (String) The operating mode of the port. Valid values are:
   * `switch` - Normal switching mode (default)
     - Standard port operation for connecting devices
@@ -145,3 +201,30 @@ Note: All ports in the LAG must be sequential and have matching configurations.
   - For non-PoE devices
   - To prevent unwanted power delivery
 - `port_profile_id` (String) The ID of a pre-configured port profile to apply to this port. Port profiles define settings like VLANs, PoE, and other port-specific configurations.
+- `setting_preference` (String) Whether the port's settings are taken from a profile (`auto`) or set per-port (`manual`). Valid values are `auto` and `manual`. Per-port VLAN overrides (`native_networkconf_id`, `tagged_vlan_mgmt`, `forward`, `excluded_network_ids`) generally require `setting_preference = "manual"` to persist on the controller; with `auto` the controller may revert inline overrides to profile/auto behavior. Setting this to `manual` also overrides any `port_profile_id` on the same port.
+- `tagged_vlan_mgmt` (String) VLAN tagging behavior for the port. Valid values are:
+* `auto` - Automatically handle VLAN tags (recommended)
+* `block_all` - Block all VLAN tagged traffic
+* `custom` - Custom VLAN configuration (use with `forward = "customize"` and `excluded_network_ids`)
+
+Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another value instead.
+- `voice_networkconf_id` (String) The ID of the network to use for Voice over IP (VoIP) traffic on this port, for automatic voice-VLAN assignment in conjunction with LLDP-MED.
+
+Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another network ID instead.
+
+
+<a id="nestedblock--radio"></a>
+### Nested Schema for `radio`
+
+Required:
+
+- `name` (String) The radio band this block configures: `ng` (2.4GHz), `na` (5GHz), or `6e` (6GHz).
+
+Optional:
+
+- `channel` (String) The channel for this radio (band-specific), or `auto` to let the controller choose.
+- `ht` (Number) Channel width in MHz for this radio (e.g. 20, 40, 80, 160, 320).
+- `min_rssi` (Number) Minimum RSSI in dBm (negative) below which clients are disconnected, when `min_rssi_enabled` is true.
+- `min_rssi_enabled` (Boolean) Whether the minimum-RSSI client-disconnect threshold is enabled on this radio. Applied together with `min_rssi`.
+- `tx_power` (String) Custom transmit power in dBm, used when `tx_power_mode = "custom"`; otherwise leave unset.
+- `tx_power_mode` (String) Transmit-power mode: `auto`, `low`, `medium`, `high`, `custom`, or `disabled`. `disabled` turns the radio off (e.g. to suppress an unused 2.4GHz band on an in-wall AP).
