@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -284,13 +286,17 @@ func TestAccDevice_switch_portOverrides(t *testing.T) {
 						"poe_mode": "pasv24",
 					}),
 					// Inline per-port VLAN overrides: a native (access) port and a
-					// customized trunk that excludes one network.
+					// customized trunk that excludes one network. Identify each
+					// element by its declared, deterministic attributes only. The
+					// real native_networkconf_id is a computed network ID, so it is
+					// asserted to be non-empty via the dedicated state check below,
+					// and the PlanOnly merge gate proves it round-trips.
 					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
-						"number":                "5",
-						"forward":               "native",
-						"setting_preference":    "manual",
-						"native_networkconf_id": "",
+						"number":             "5",
+						"forward":            "native",
+						"setting_preference": "manual",
 					}),
+					testAccCheckPortOverrideNativeNetworkSet(resourceName, 5),
 					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
 						"number":             "6",
 						"forward":            "customize",
@@ -418,6 +424,34 @@ resource "unifi_device" "test" {
 	}
 }
 `, mac)
+}
+
+// testAccCheckPortOverrideNativeNetworkSet asserts that the port_override block
+// for the given port number has a non-empty native_networkconf_id. The element's
+// set index is a hash we don't want to hard-code, so locate it by matching the
+// `number` attribute and then inspect that element's native_networkconf_id. This
+// proves the computed network ID actually persisted (paired with the PlanOnly
+// merge-gate step that proves it round-trips with no diff).
+func testAccCheckPortOverrideNativeNetworkSet(resourceName string, number int) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("resource not found: %s", resourceName)
+		}
+		want := strconv.Itoa(number)
+		for k, v := range rs.Primary.Attributes {
+			if !strings.HasPrefix(k, "port_override.") || !strings.HasSuffix(k, ".number") || v != want {
+				continue
+			}
+			hash := strings.TrimSuffix(strings.TrimPrefix(k, "port_override."), ".number")
+			native := rs.Primary.Attributes["port_override."+hash+".native_networkconf_id"]
+			if native == "" {
+				return fmt.Errorf("port_override number %d: expected non-empty native_networkconf_id, got empty", number)
+			}
+			return nil
+		}
+		return fmt.Errorf("port_override with number %d not found in state", number)
+	}
 }
 
 func testAccCheckDeviceDestroy(s *terraform.State) error {
