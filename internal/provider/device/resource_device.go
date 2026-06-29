@@ -91,12 +91,20 @@ func ResourceDevice() *schema.Resource {
 				Description: "A list of port-specific configuration overrides for UniFi switches. This allows you to customize individual port settings such as:\n" +
 					"  * Port names and labels for easy identification\n" +
 					"  * Port profiles for VLAN and security settings\n" +
+					"  * Per-port native (untagged) and tagged VLAN behavior, inline, without authoring a `unifi_port_profile`\n" +
 					"  * Operating modes for special functions\n\n" +
 					"Common use cases include:\n" +
 					"  * Setting up trunk ports for inter-switch connections\n" +
 					"  * Configuring PoE settings for powered devices\n" +
 					"  * Creating mirrored ports for network monitoring\n" +
-					"  * Setting up link aggregation between switches or servers",
+					"  * Setting up link aggregation between switches or servers\n\n" +
+					"**Warning:** the controller stores port overrides as a single array on the device and the provider replaces the " +
+					"entire array on every apply. Any port whose override is set outside Terraform (e.g. via the UniFi UI or another " +
+					"tool) and is NOT declared here will have its override reset to the controller default on the next apply. Declare " +
+					"every port you want overridden.\n\n" +
+					"**Tagged-VLAN model:** there is no positive \"allowed VLANs\" list. With `forward = \"customize\"`, tagged traffic is " +
+					"*all* networks **minus** the ones listed in `excluded_network_ids`, so an empty `excluded_network_ids` means \"trunk " +
+					"everything\", not \"trunk nothing\".",
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
@@ -175,6 +183,66 @@ func ResourceDevice() *schema.Resource {
 								}
 								return false
 							},
+						},
+						"native_networkconf_id": {
+							Description: "The ID of the network to use as the native (untagged) network on this port. " +
+								"This is typically used for:\n" +
+								"* Access ports where devices need untagged access\n" +
+								"* Trunk ports to specify the native VLAN\n" +
+								"* Management networks for network devices\n\n" +
+								"Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty " +
+								"through Terraform — change it to another network ID instead.",
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"tagged_vlan_mgmt": {
+							Description: "VLAN tagging behavior for the port. Valid values are:\n" +
+								"* `auto` - Automatically handle VLAN tags (recommended)\n" +
+								"* `block_all` - Block all VLAN tagged traffic\n" +
+								"* `custom` - Custom VLAN configuration (use with `forward = \"customize\"` and `excluded_network_ids`)\n\n" +
+								"Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty " +
+								"through Terraform — change it to another value instead.",
+							Type:         schema.TypeString,
+							Optional:     true,
+							ValidateFunc: validation.StringInSlice([]string{"auto", "block_all", "custom"}, false),
+						},
+						"forward": {
+							Description: "VLAN forwarding mode for the port. Valid values are:\n" +
+								"  * `all` - Forward all VLANs (trunk port)\n" +
+								"  * `native` - Only forward untagged traffic (access port)\n" +
+								"  * `customize` - Forward selected VLANs (use with `excluded_network_ids`)\n" +
+								"  * `disabled` - Disable VLAN forwarding\n\n" +
+								"This attribute has NO default: leaving it unset keeps the port's existing forwarding behavior. " +
+								"Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty " +
+								"through Terraform — change it to another value instead.",
+							Type:         schema.TypeString,
+							Optional:     true,
+							ValidateFunc: validation.StringInSlice([]string{"all", "native", "customize", "disabled"}, false),
+						},
+						"excluded_network_ids": {
+							Description: "Set of network IDs to exclude when `forward = \"customize\"`. Tagged traffic on the port is " +
+								"*all* networks minus the ones listed here, so an empty set means \"trunk everything\".",
+							Type:     schema.TypeSet,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+						"voice_networkconf_id": {
+							Description: "The ID of the network to use for Voice over IP (VoIP) traffic on this port, for automatic " +
+								"voice-VLAN assignment in conjunction with LLDP-MED.\n\n" +
+								"Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty " +
+								"through Terraform — change it to another network ID instead.",
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"setting_preference": {
+							Description: "Whether the port's settings are taken from a profile (`auto`) or set per-port (`manual`). " +
+								"Valid values are `auto` and `manual`. Per-port VLAN overrides (`native_networkconf_id`, " +
+								"`tagged_vlan_mgmt`, `forward`, `excluded_network_ids`) generally require `setting_preference = \"manual\"` " +
+								"to persist on the controller; with `auto` the controller may revert inline overrides to profile/auto " +
+								"behavior. Setting this to `manual` also overrides any `port_profile_id` on the same port.",
+							Type:         schema.TypeString,
+							Optional:     true,
+							ValidateFunc: validation.StringInSlice([]string{"auto", "manual"}, false),
 						},
 					},
 				},
@@ -685,12 +753,38 @@ func toPortOverride(data map[string]interface{}) (unifi.DevicePortOverrides, err
 	poeMode := data["poe_mode"].(string)
 	aggregateNumPorts := data["aggregate_num_ports"].(int)
 
+	var excludedNetworkIDs []string
+	if set, ok := data["excluded_network_ids"].(*schema.Set); ok {
+		var err error
+		excludedNetworkIDs, err = utils.SetToStringSlice(set)
+		if err != nil {
+			return unifi.DevicePortOverrides{}, fmt.Errorf("unable to process excluded_network_ids: %w", err)
+		}
+	}
+
+	// Per-port VLAN overrides. All of these are `omitempty` on the controller
+	// side, so an unset (empty) value is dropped from the PUT. The user declares
+	// the whole set of ports, and the device PUT replaces the `port_overrides`
+	// array wholesale (no read-modify-write merge). comma-ok reads tolerate a
+	// partially-populated data map (e.g. in unit tests).
+	nativeNetworkID, _ := data["native_networkconf_id"].(string)
+	taggedVLANMgmt, _ := data["tagged_vlan_mgmt"].(string)
+	forward, _ := data["forward"].(string)
+	voiceNetworkID, _ := data["voice_networkconf_id"].(string)
+	settingPreference, _ := data["setting_preference"].(string)
+
 	po := unifi.DevicePortOverrides{
-		PortIDX:       idx,
-		Name:          name,
-		PortProfileID: profileID,
-		OpMode:        opMode,
-		PoeMode:       poeMode,
+		PortIDX:            idx,
+		Name:               name,
+		PortProfileID:      profileID,
+		OpMode:             opMode,
+		PoeMode:            poeMode,
+		NATiveNetworkID:    nativeNetworkID,
+		TaggedVLANMgmt:     taggedVLANMgmt,
+		Forward:            forward,
+		ExcludedNetworkIDs: excludedNetworkIDs,
+		VoiceNetworkID:     voiceNetworkID,
+		SettingPreference:  settingPreference,
 	}
 
 	// go-unifi v1.9 tracks the current controller API, which expresses a LAG
@@ -723,6 +817,14 @@ func fromPortOverride(po unifi.DevicePortOverrides) (map[string]interface{}, err
 		// length is the LAG port count (0 / unset round-trips as an empty
 		// list, preserving the previous zero-value behavior).
 		"aggregate_num_ports": len(po.AggregateMembers),
+		// Per-port VLAN overrides, round-tripped unconditionally to match the
+		// existing fields above (keeps ImportStateVerify consistent).
+		"native_networkconf_id": po.NATiveNetworkID,
+		"tagged_vlan_mgmt":      po.TaggedVLANMgmt,
+		"forward":               po.Forward,
+		"excluded_network_ids":  utils.StringSliceToSet(po.ExcludedNetworkIDs),
+		"voice_networkconf_id":  po.VoiceNetworkID,
+		"setting_preference":    po.SettingPreference,
 	}, nil
 }
 

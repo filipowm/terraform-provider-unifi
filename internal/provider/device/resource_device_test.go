@@ -74,6 +74,150 @@ func TestPortOverrideAggregateRoundTrip(t *testing.T) {
 	assert.Equal(t, in["aggregate_num_ports"], out["aggregate_num_ports"])
 }
 
+func stringSet(items ...string) *schema.Set {
+	raw := make([]interface{}, len(items))
+	for i, s := range items {
+		raw[i] = s
+	}
+	return schema.NewSet(schema.HashString, raw)
+}
+
+// portOverrideData builds a complete port_override map (all schema keys present,
+// as SDKv2 supplies them) so toPortOverride's type assertions don't panic.
+func portOverrideData(overrides map[string]interface{}) map[string]interface{} {
+	data := map[string]interface{}{
+		"number":                1,
+		"name":                  "",
+		"port_profile_id":       "",
+		"op_mode":               "switch",
+		"poe_mode":              "",
+		"aggregate_num_ports":   0,
+		"native_networkconf_id": "",
+		"tagged_vlan_mgmt":      "",
+		"forward":               "",
+		"excluded_network_ids":  stringSet(),
+		"voice_networkconf_id":  "",
+		"setting_preference":    "",
+	}
+	for k, v := range overrides {
+		data[k] = v
+	}
+	return data
+}
+
+func TestToPortOverride_VLANFields(t *testing.T) {
+	po, err := toPortOverride(portOverrideData(map[string]interface{}{
+		"number":                10,
+		"native_networkconf_id": "net-native",
+		"tagged_vlan_mgmt":      "custom",
+		"forward":               "customize",
+		"excluded_network_ids":  stringSet("net-a", "net-b"),
+		"voice_networkconf_id":  "net-voice",
+		"setting_preference":    "manual",
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "net-native", po.NATiveNetworkID)
+	assert.Equal(t, "custom", po.TaggedVLANMgmt)
+	assert.Equal(t, "customize", po.Forward)
+	assert.Equal(t, "net-voice", po.VoiceNetworkID)
+	assert.Equal(t, "manual", po.SettingPreference)
+	// TypeSet -> unordered slice: assert membership, not order.
+	assert.ElementsMatch(t, []string{"net-a", "net-b"}, po.ExcludedNetworkIDs)
+}
+
+// forward has NO default: a block that sets only poe_mode must leave Forward
+// empty (so omitempty drops it from the PUT and never black-holes a trunk port).
+func TestToPortOverride_ForwardNoDefault(t *testing.T) {
+	po, err := toPortOverride(portOverrideData(map[string]interface{}{
+		"number":   3,
+		"poe_mode": "auto",
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "", po.Forward)
+	assert.Equal(t, "", po.NATiveNetworkID)
+	assert.Equal(t, "", po.TaggedVLANMgmt)
+	assert.Equal(t, "", po.SettingPreference)
+	assert.Empty(t, po.ExcludedNetworkIDs)
+}
+
+func TestFromPortOverride_VLANFields(t *testing.T) {
+	m, err := fromPortOverride(unifi.DevicePortOverrides{
+		PortIDX:            10,
+		NATiveNetworkID:    "net-native",
+		TaggedVLANMgmt:     "custom",
+		Forward:            "customize",
+		ExcludedNetworkIDs: []string{"net-a", "net-b"},
+		VoiceNetworkID:     "net-voice",
+		SettingPreference:  "manual",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "net-native", m["native_networkconf_id"])
+	assert.Equal(t, "custom", m["tagged_vlan_mgmt"])
+	assert.Equal(t, "customize", m["forward"])
+	assert.Equal(t, "net-voice", m["voice_networkconf_id"])
+	assert.Equal(t, "manual", m["setting_preference"])
+	excluded, ok := m["excluded_network_ids"].(*schema.Set)
+	require.True(t, ok)
+	got := make([]string, 0, excluded.Len())
+	for _, v := range excluded.List() {
+		got = append(got, v.(string))
+	}
+	assert.ElementsMatch(t, []string{"net-a", "net-b"}, got)
+}
+
+func TestPortOverride_VLANRoundTrip(t *testing.T) {
+	in := portOverrideData(map[string]interface{}{
+		"number":                7,
+		"native_networkconf_id": "net-native",
+		"tagged_vlan_mgmt":      "custom",
+		"forward":               "customize",
+		"excluded_network_ids":  stringSet("net-a", "net-b"),
+		"voice_networkconf_id":  "net-voice",
+		"setting_preference":    "manual",
+	})
+	po, err := toPortOverride(in)
+	require.NoError(t, err)
+	out, err := fromPortOverride(po)
+	require.NoError(t, err)
+	assert.Equal(t, in["native_networkconf_id"], out["native_networkconf_id"])
+	assert.Equal(t, in["tagged_vlan_mgmt"], out["tagged_vlan_mgmt"])
+	assert.Equal(t, in["forward"], out["forward"])
+	assert.Equal(t, in["voice_networkconf_id"], out["voice_networkconf_id"])
+	assert.Equal(t, in["setting_preference"], out["setting_preference"])
+	assert.True(t, in["excluded_network_ids"].(*schema.Set).Equal(out["excluded_network_ids"].(*schema.Set)))
+}
+
+// The StringInSlice validators are the only client-side guard (SDK validation is
+// disabled in base/client.go), so verify they accept valid and reject invalid
+// values for the constrained VLAN attributes.
+func TestPortOverride_VLANValidators(t *testing.T) {
+	elem := ResourceDevice().Schema["port_override"].Elem.(*schema.Resource)
+
+	cases := []struct {
+		attr    string
+		valid   []string
+		invalid []string
+	}{
+		{"tagged_vlan_mgmt", []string{"auto", "block_all", "custom"}, []string{"bogus", "all"}},
+		{"forward", []string{"all", "native", "customize", "disabled"}, []string{"bogus", "trunk"}},
+		{"setting_preference", []string{"auto", "manual"}, []string{"bogus", "automatic"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.attr, func(t *testing.T) {
+			vf := elem.Schema[tc.attr].ValidateFunc
+			require.NotNil(t, vf, "%s must have a ValidateFunc", tc.attr)
+			for _, v := range tc.valid {
+				_, errs := vf(v, tc.attr)
+				assert.Empty(t, errs, "%q should be valid for %s", v, tc.attr)
+			}
+			for _, v := range tc.invalid {
+				_, errs := vf(v, tc.attr)
+				assert.NotEmpty(t, errs, "%q should be rejected for %s", v, tc.attr)
+			}
+		})
+	}
+}
+
 func radioSet(items ...map[string]interface{}) *schema.Set {
 	raw := make([]interface{}, len(items))
 	for i, m := range items {
