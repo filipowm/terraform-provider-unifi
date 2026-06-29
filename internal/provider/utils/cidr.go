@@ -30,6 +30,20 @@ func CidrZeroBased(cidr string) string {
 	return cidrNet.String()
 }
 
+// CidrListZeroBased canonicalizes each CIDR in the list to its network address
+// (see CidrZeroBased). An element that fails to parse is returned unchanged.
+func CidrListZeroBased(cidrs []string) []string {
+	out := make([]string, len(cidrs))
+	for i, cidr := range cidrs {
+		if canonical := CidrZeroBased(cidr); canonical != "" {
+			out[i] = canonical
+		} else {
+			out[i] = cidr
+		}
+	}
+	return out
+}
+
 func CidrOneBased(cidr string) string {
 	_, cidrNet, err := net.ParseCIDR(cidr)
 	if err != nil {

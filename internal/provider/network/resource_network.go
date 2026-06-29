@@ -2,17 +2,22 @@ package network
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
+	"net"
 	"regexp"
 	"strings"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"golang.org/x/crypto/curve25519"
 )
 
 var (
@@ -67,6 +72,12 @@ func ResourceNetwork() *schema.Resource {
 			StateContext: importNetwork,
 		},
 
+		// Cross-field validation the per-attribute schema can't express: a
+		// vpn-client requires its companion fields, and the wireguard_* fields are
+		// rejected on non-vpn-client networks. Catches misconfigurations at plan
+		// time instead of as an opaque controller 400.
+		CustomizeDiff: customizeNetworkVPNClient,
+
 		Schema: map[string]*schema.Schema{
 			"id": {
 				Description: "The ID of the network.",
@@ -91,11 +102,13 @@ func ResourceNetwork() *schema.Resource {
 					"* `corporate` - Standard network for corporate use with full access\n" +
 					"* `guest` - Isolated network for guest access with limited permissions\n" +
 					"* `wan` - External network connection (WAN uplink)\n" +
-					"* `vlan-only` - VLAN network without DHCP services",
+					"* `vlan-only` - VLAN network without DHCP services\n" +
+					"* `vpn-client` - Site-to-site VPN client connection (see the `vpn_type` and " +
+					"`wireguard_client_*` arguments to configure a WireGuard VPN client)",
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				ValidateFunc: validation.StringInSlice([]string{"corporate", "guest", "wan", "vlan-only"}, false),
+				ValidateFunc: validation.StringInSlice([]string{"corporate", "guest", "wan", "vlan-only", "vpn-client"}, false),
 			},
 			"vlan_id": {
 				Description: "The VLAN ID for this network. Valid range is 0-4096. Common uses:\n" +
@@ -540,12 +553,130 @@ func ResourceNetwork() *schema.Resource {
 				Optional:     true,
 				ValidateFunc: validation.IntBetween(1, 128),
 			},
+			"vpn_type": {
+				Description: "The VPN type for a `vpn-client` network. Currently `wireguard-client` is supported, " +
+					"which connects the gateway to a remote WireGuard server. Only applicable when `purpose` is " +
+					"'vpn-client'. A `wireguard-client` network also requires `subnet` (the tunnel interface address, " +
+					"e.g. `10.0.0.2/32`) and `dhcp_dns` (interface DNS); the controller rejects the create without them.",
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"wireguard-client"}, false),
+			},
+			"wireguard_interface": {
+				Description: "The WAN interface the WireGuard tunnel egresses from. One of `wan` or `wan2`. " +
+					"Only applicable when `vpn_type` is 'wireguard-client'.",
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"wan", "wan2"}, false),
+			},
+			"wireguard_client_mode": {
+				Description: "How the WireGuard VPN client peer is configured. Currently only `manual` is supported, " +
+					"configuring the peer with the individual `wireguard_client_*` arguments. " +
+					"Only applicable when `vpn_type` is 'wireguard-client'.",
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"manual"}, false),
+			},
+			"wireguard_client_peer_ip": {
+				Description: "The remote WireGuard server's endpoint host or IP address that the gateway dials. " +
+					"Only applicable when `vpn_type` is 'wireguard-client'.",
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"wireguard_client_peer_port": {
+				Description: "The remote WireGuard server's listen port (e.g. 51820). " +
+					"Only applicable when `vpn_type` is 'wireguard-client'.",
+				Type:         schema.TypeInt,
+				Optional:     true,
+				ValidateFunc: validation.IsPortNumber,
+			},
+			"wireguard_client_peer_public_key": {
+				Description: "The remote WireGuard server's public key (the peer the gateway connects to). " +
+					"Only applicable when `vpn_type` is 'wireguard-client'.",
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: utils.WireguardKeyValidate,
+			},
+			"wireguard_client_preshared_key": {
+				Description: "An optional WireGuard pre-shared key (PSK) for an additional layer of symmetric-key " +
+					"security with the peer. Keep this value secret. The controller may not return this value on read, " +
+					"so it is computed to avoid spurious drift. Only applicable when `vpn_type` is 'wireguard-client'.",
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				Sensitive:    true,
+				ValidateFunc: utils.WireguardKeyValidate,
+			},
+			"wireguard_client_preshared_key_enabled": {
+				Description: "Whether a WireGuard pre-shared key is used with the peer. " +
+					"Only applicable when `vpn_type` is 'wireguard-client'.",
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"x_wireguard_private_key": {
+				Description: "The gateway's own WireGuard private key for this VPN client. If omitted, a key pair is " +
+					"generated for you and the public key is exposed via `wireguard_public_key`. Keep this value secret. " +
+					"Only applicable when `vpn_type` is 'wireguard-client'.",
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				Sensitive:    true,
+				ValidateFunc: utils.WireguardKeyValidate,
+			},
+			"wireguard_public_key": {
+				Description: "The gateway's own WireGuard public key for this VPN client. The controller does not " +
+					"return it, so the provider derives it from the private key (Curve25519). Add this key as a peer " +
+					"on the remote WireGuard server. Only set when `vpn_type` is 'wireguard-client'.",
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"vpn_client_default_route": {
+				Description: "When true, route all of the gateway's internet traffic through the VPN client tunnel. " +
+					"When false (default), only the destinations in `uid_vpn_custom_routing` are routed through the tunnel. " +
+					"Only applicable when `purpose` is 'vpn-client'.",
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"vpn_client_pull_dns": {
+				Description: "When true, use DNS servers advertised by the VPN peer for traffic on the tunnel. " +
+					"Only applicable when `purpose` is 'vpn-client'.",
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"uid_vpn_custom_routing": {
+				Description: "The list of destination subnets (CIDR notation) routed through the VPN client tunnel " +
+					"when `vpn_client_default_route` is false. Values are canonicalized to their network address " +
+					"(e.g. `10.0.0.1/16` becomes `10.0.0.0/16`). Only applicable when `purpose` is 'vpn-client'.",
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type:             schema.TypeString,
+					ValidateFunc:     utils.CidrValidate,
+					DiffSuppressFunc: utils.CidrDiffSuppress,
+				},
+			},
 		},
 	}
 }
 
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*base.Client)
+
+	// Create-only: mint the gateway's WireGuard private key when the user omits it.
+	// The controller requires it in the create payload (it generates none) and never
+	// returns it on read, so generating it here rather than in the shared request
+	// builder avoids silently rotating an imported network's key on a later update
+	// (after import the key is empty in state; on update omitempty drops it and the
+	// controller keeps the one it already has).
+	if d.Get("vpn_type").(string) == "wireguard-client" && d.Get("x_wireguard_private_key").(string) == "" {
+		key, err := generateWireguardPrivateKey()
+		if err != nil {
+			return diag.FromErr(fmt.Errorf("unable to generate WireGuard private key: %w", err))
+		}
+		if err := d.Set("x_wireguard_private_key", key); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
 	req, err := resourceNetworkGetResourceData(d, meta)
 	if err != nil {
@@ -583,12 +714,31 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert wan_dns to string slice: %w", err)
 	}
+	uidVPNCustomRouting, err := utils.ListToStringSlice(d.Get("uid_vpn_custom_routing").([]interface{}))
+	if err != nil {
+		return nil, fmt.Errorf("unable to convert uid_vpn_custom_routing to string slice: %w", err)
+	}
+	// Canonicalize each route to its network address so config and controller-returned
+	// values stay consistent (matches the diff suppression on the schema).
+	uidVPNCustomRouting = utils.CidrListZeroBased(uidVPNCustomRouting)
+
+	vpnType := d.Get("vpn_type").(string)
+
+	// For a LAN the `subnet` is the gateway address, so CidrOneBased applies the +1
+	// host offset. A vpn-client's subnet is the tunnel interface address; CidrZeroBased
+	// canonicalizes it to its network address (host bits drop below /32, which the
+	// CustomizeDiff rejects), so the /32 host address round-trips intact.
+	subnet := d.Get("subnet").(string)
+	ipSubnet := utils.CidrOneBased(subnet)
+	if d.Get("purpose").(string) == "vpn-client" {
+		ipSubnet = utils.CidrZeroBased(subnet)
+	}
 
 	return &unifi.Network{
 		Name:              d.Get("name").(string),
 		Purpose:           d.Get("purpose").(string),
 		VLAN:              vlan,
-		IPSubnet:          utils.CidrOneBased(d.Get("subnet").(string)),
+		IPSubnet:          ipSubnet,
 		NetworkGroup:      d.Get("network_group").(string),
 		DHCPDStart:        d.Get("dhcp_start").(string),
 		DHCPDStop:         d.Get("dhcp_stop").(string),
@@ -659,7 +809,137 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		WANDNS2: append(wanDNS, "", "")[1],
 		WANDNS3: append(wanDNS, "", "", "")[2],
 		WANDNS4: append(wanDNS, "", "", "", "")[3],
+
+		// WireGuard VPN client (purpose = "vpn-client", vpn_type = "wireguard-client").
+		// wireguard_public_key is computed (the provider derives it on read), so it is not sent here.
+		VPNType:                            vpnType,
+		WireguardInterface:                 d.Get("wireguard_interface").(string),
+		WireguardClientMode:                d.Get("wireguard_client_mode").(string),
+		WireguardClientPeerIP:              d.Get("wireguard_client_peer_ip").(string),
+		WireguardClientPeerPort:            d.Get("wireguard_client_peer_port").(int),
+		WireguardClientPeerPublicKey:       d.Get("wireguard_client_peer_public_key").(string),
+		WireguardClientPresharedKey:        d.Get("wireguard_client_preshared_key").(string),
+		WireguardClientPresharedKeyEnabled: d.Get("wireguard_client_preshared_key_enabled").(bool),
+		XWireguardPrivateKey:               d.Get("x_wireguard_private_key").(string),
+		VPNClientDefaultRoute:              d.Get("vpn_client_default_route").(bool),
+		VPNClientPullDNS:                   d.Get("vpn_client_pull_dns").(bool),
+		UidVPNCustomRouting:                uidVPNCustomRouting,
 	}, nil
+}
+
+// customizeNetworkVPNClient enforces the cross-field rules for vpn-client networks
+// at plan time. Presence is read from GetRawConfig so a field supplied through
+// interpolation (e.g. var.x, unknown at plan) counts as set instead of tripping a
+// false "required" error.
+func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
+	raw := d.GetRawConfig()
+	if raw.IsNull() {
+		return nil // no config (e.g. on destroy) — nothing to validate
+	}
+
+	// Every field that only belongs on a vpn-client network.
+	vpnFields := []string{
+		"vpn_type", "wireguard_interface", "wireguard_client_mode",
+		"wireguard_client_peer_ip", "wireguard_client_peer_public_key",
+		"x_wireguard_private_key", "wireguard_client_preshared_key",
+		"wireguard_client_peer_port", "uid_vpn_custom_routing",
+	}
+
+	if d.Get("purpose").(string) != "vpn-client" {
+		for _, k := range vpnFields {
+			if rawConfigSet(raw, k) {
+				return fmt.Errorf("%q is only valid when purpose = %q", k, "vpn-client")
+			}
+		}
+		return nil
+	}
+
+	if d.Get("vpn_type").(string) != "wireguard-client" {
+		return fmt.Errorf("%q is required when purpose = %q (only %q is supported)", "vpn_type", "vpn-client", "wireguard-client")
+	}
+	if !rawConfigSet(raw, "subnet") {
+		return fmt.Errorf("%q (the tunnel interface address, e.g. 10.0.0.2/32) is required for a wireguard-client network", "subnet")
+	}
+	// The tunnel address must be a /32 host address: CidrZeroBased zeroes the host
+	// bits below /32, silently corrupting a shorter prefix. Skip when unknown.
+	if subnet := d.Get("subnet").(string); subnet != "" {
+		ip, ipNet, err := net.ParseCIDR(subnet)
+		if err != nil || ip.To4() == nil {
+			return fmt.Errorf("%q must be an IPv4 CIDR for a wireguard-client network", "subnet")
+		}
+		if ones, _ := ipNet.Mask.Size(); ones != 32 {
+			return fmt.Errorf("%q must be a /32 tunnel interface address (e.g. 10.0.0.2/32)", "subnet")
+		}
+	}
+	if !rawConfigSet(raw, "dhcp_dns") {
+		return fmt.Errorf("%q (interface DNS) is required for a wireguard-client network", "dhcp_dns")
+	}
+	for _, k := range []string{"wireguard_client_peer_ip", "wireguard_client_peer_public_key", "wireguard_client_peer_port"} {
+		if !rawConfigSet(raw, k) {
+			return fmt.Errorf("%q is required when vpn_type = %q", k, "wireguard-client")
+		}
+	}
+	return nil
+}
+
+// rawConfigSet reports whether attribute name is set in the raw config: non-null,
+// and for a known value non-empty (string), non-zero (number), or non-empty
+// (collection). An unknown/interpolated value (e.g. var.x) counts as set, so it
+// is not mistaken for unset at plan time.
+func rawConfigSet(raw cty.Value, name string) bool {
+	if !raw.Type().HasAttribute(name) {
+		return false
+	}
+	v := raw.GetAttr(name)
+	if v.IsNull() {
+		return false
+	}
+	if !v.IsKnown() {
+		return true
+	}
+	switch {
+	case v.Type() == cty.String:
+		return v.AsString() != ""
+	case v.Type() == cty.Number:
+		return !v.RawEquals(cty.Zero)
+	default: // list / set / tuple / map
+		return v.LengthInt() > 0
+	}
+}
+
+// generateWireguardPrivateKey returns a base64-encoded Curve25519 private key in the
+// same format as `wg genkey` and the UniFi UI: 32 random bytes, clamped per the
+// Curve25519 requirements. Used to mint the gateway's own key when the user omits
+// x_wireguard_private_key, since the controller will not generate one itself.
+func generateWireguardPrivateKey() (string, error) {
+	var key [32]byte
+	if _, err := rand.Read(key[:]); err != nil {
+		return "", err
+	}
+	key[0] &= 248
+	key[31] &= 127
+	key[31] |= 64
+	return base64.StdEncoding.EncodeToString(key[:]), nil
+}
+
+// wireguardPublicKey derives the base64 WireGuard public key from a base64
+// private key via Curve25519 scalar-base multiplication (matching `wg pubkey`).
+// The controller stores the private key but returns a null public key, so the
+// provider computes it to populate wireguard_public_key, the value you add as a
+// peer on the remote WireGuard server.
+func wireguardPublicKey(privateKeyB64 string) (string, error) {
+	priv, err := base64.StdEncoding.DecodeString(privateKeyB64)
+	if err != nil {
+		return "", err
+	}
+	if len(priv) != 32 {
+		return "", fmt.Errorf("WireGuard private key must be 32 bytes, got %d", len(priv))
+	}
+	pub, err := curve25519.X25519(priv, curve25519.Basepoint)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(pub), nil
 }
 
 func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData, site string) diag.Diagnostics {
@@ -794,6 +1074,41 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("wan_type", wanType)
 	d.Set("wan_username", resp.WANUsername)
 	d.Set("x_wan_password", resp.XWANPassword)
+
+	d.Set("vpn_type", resp.VPNType)
+	d.Set("wireguard_interface", resp.WireguardInterface)
+	d.Set("wireguard_client_mode", resp.WireguardClientMode)
+	d.Set("wireguard_client_peer_ip", resp.WireguardClientPeerIP)
+	d.Set("wireguard_client_peer_port", resp.WireguardClientPeerPort)
+	d.Set("wireguard_client_peer_public_key", resp.WireguardClientPeerPublicKey)
+	// Write-only secrets: the controller may omit these on read. Only overwrite state when a
+	// non-empty value is returned, otherwise the configured/generated secret would be blanked
+	// and the resource would drift on every refresh.
+	if resp.WireguardClientPresharedKey != "" {
+		d.Set("wireguard_client_preshared_key", resp.WireguardClientPresharedKey)
+	}
+	d.Set("wireguard_client_preshared_key_enabled", resp.WireguardClientPresharedKeyEnabled)
+	if resp.XWireguardPrivateKey != "" {
+		d.Set("x_wireguard_private_key", resp.XWireguardPrivateKey)
+	}
+	// The controller returns a null public key, so derive it from the private key
+	// (the response value, or the one we generated and stored in state).
+	// The controller returns a null public key. wireguardPublicKey errors on an
+	// empty/short key, so the err==nil check already skips the no-key case.
+	wgPublicKey := resp.WireguardPublicKey
+	if wgPublicKey == "" {
+		wgPrivateKey := resp.XWireguardPrivateKey
+		if wgPrivateKey == "" {
+			wgPrivateKey = d.Get("x_wireguard_private_key").(string)
+		}
+		if derived, err := wireguardPublicKey(wgPrivateKey); err == nil {
+			wgPublicKey = derived
+		}
+	}
+	d.Set("wireguard_public_key", wgPublicKey)
+	d.Set("vpn_client_default_route", resp.VPNClientDefaultRoute)
+	d.Set("vpn_client_pull_dns", resp.VPNClientPullDNS)
+	d.Set("uid_vpn_custom_routing", utils.CidrListZeroBased(resp.UidVPNCustomRouting))
 
 	return nil
 }
