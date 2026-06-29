@@ -970,10 +970,14 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 // means we only fail when guarding is effectively on while the trusted-server list is
 // effectively empty — an unrelated update that leaves both inherited won't trip it.
 func customizeNetworkDHCPGuarding(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
+	raw := d.GetRawConfig()
+	if raw.IsNull() {
+		return nil
+	}
 	if !d.Get("dhcp_guarding").(bool) {
 		return nil
 	}
-	if len(d.Get("dhcp_guarding_trusted_servers").([]interface{})) == 0 {
+	if !rawConfigSet(raw, "dhcp_guarding_trusted_servers") {
 		return fmt.Errorf("%q is required when %q is enabled: DHCP Guarding needs at least one trusted DHCP server IP address", "dhcp_guarding_trusted_servers", "dhcp_guarding")
 	}
 	return nil
