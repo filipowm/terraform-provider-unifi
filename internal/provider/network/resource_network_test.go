@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/filipowm/go-unifi/unifi"
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -81,5 +82,76 @@ func TestResourceNetworkSetResourceData_readsFirewallZoneID(t *testing.T) {
 
 	if got := d.Get("firewall_zone_id").(string); got != "zoneABC" {
 		t.Errorf("firewall_zone_id = %q, want %q", got, "zoneABC")
+	}
+}
+
+// TestValidateDHCPGuardingRawConfig is the plan-time guard for issue #123. The
+// trusted-server requirement must be driven off the raw config, not d.Get: an Update
+// that omits dhcp_guarding (inheriting a previously-enabled value plus its trusted
+// servers) must NOT trip the gate, because in a ResourceDiff a Computed list reads
+// back empty while the scalar still surfaces the inherited true. The gate fires only
+// when the user explicitly enables guarding in *this* config without a trusted server.
+func TestValidateDHCPGuardingRawConfig(t *testing.T) {
+	servers := cty.ListVal([]cty.Value{cty.StringVal("10.0.0.1")})
+	nullServers := cty.NullVal(cty.List(cty.String))
+	emptyServers := cty.ListValEmpty(cty.String)
+
+	rawConfig := func(guarding, trustedServers cty.Value) cty.Value {
+		return cty.ObjectVal(map[string]cty.Value{
+			"dhcp_guarding":                 guarding,
+			"dhcp_guarding_trusted_servers": trustedServers,
+		})
+	}
+
+	tests := []struct {
+		name    string
+		raw     cty.Value
+		wantErr bool
+	}{
+		{
+			// The decisive #123 case: dhcp_guarding omitted on an Update.
+			name: "guarding omitted (inherited)",
+			raw:  rawConfig(cty.NullVal(cty.Bool), nullServers),
+		},
+		{
+			name: "guarding enabled with trusted server",
+			raw:  rawConfig(cty.True, servers),
+		},
+		{
+			name:    "guarding enabled, trusted servers omitted",
+			raw:     rawConfig(cty.True, nullServers),
+			wantErr: true,
+		},
+		{
+			name:    "guarding enabled, trusted servers explicitly empty",
+			raw:     rawConfig(cty.True, emptyServers),
+			wantErr: true,
+		},
+		{
+			name: "guarding explicitly disabled",
+			raw:  rawConfig(cty.False, nullServers),
+		},
+		{
+			// Interpolated (var.x) — unresolved at plan, can't validate, must not error.
+			name: "guarding unknown",
+			raw:  rawConfig(cty.UnknownVal(cty.Bool), nullServers),
+		},
+		{
+			// No config at all (e.g. destroy).
+			name: "null raw config",
+			raw:  cty.NullVal(cty.Object(map[string]cty.Type{"dhcp_guarding": cty.Bool, "dhcp_guarding_trusted_servers": cty.List(cty.String)})),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateDHCPGuardingRawConfig(tt.raw)
+			if tt.wantErr && err == nil {
+				t.Fatalf("expected an error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("expected no error, got: %s", err)
+			}
+		})
 	}
 }

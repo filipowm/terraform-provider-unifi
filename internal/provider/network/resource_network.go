@@ -13,6 +13,7 @@ import (
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -964,16 +965,30 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 
 // customizeNetworkDHCPGuarding enforces that DHCP Guarding has at least one trusted
 // DHCP server: the controller rejects guarding with no trusted server (api.err.
-// MissingIPAddress). Both attributes are Optional+Computed, so d.Get returns the
-// effective post-plan value (config when set, else the inherited prior value). That
-// means we only fail when guarding is effectively on while the trusted-server list is
-// effectively empty — an unrelated update that leaves both inherited won't trip it.
+// MissingIPAddress). The check is driven off the *raw config*, not d.Get. Both
+// attributes are Optional+Computed, and in a ResourceDiff a Computed list reads back
+// empty even when its prior value is being inherited — while the scalar dhcp_guarding
+// still surfaces the inherited true. Gating on d.Get would therefore wrongly fire on
+// an unrelated Update that merely inherits a previously-enabled guarding plus its
+// trusted servers (the exact issue #123 regression: omitting dhcp_guarding while
+// changing some other attribute). So only enforce when the user explicitly enables
+// guarding in *this* configuration; an inherited value was already validated when it
+// was first set, and apply preserves the inherited trusted servers.
 func customizeNetworkDHCPGuarding(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
-	raw := d.GetRawConfig()
-	if raw.IsNull() {
+	return validateDHCPGuardingRawConfig(d.GetRawConfig())
+}
+
+// validateDHCPGuardingRawConfig holds the pure raw-config logic so it is unit-testable
+// without constructing a ResourceDiff. See customizeNetworkDHCPGuarding for the why.
+func validateDHCPGuardingRawConfig(raw cty.Value) error {
+	if raw.IsNull() || !raw.Type().HasAttribute("dhcp_guarding") {
 		return nil
 	}
-	if !d.Get("dhcp_guarding").(bool) {
+	// dhcp_guarding is a bool, so read it from raw config directly — IsRawConfigSet
+	// is for strings/numbers/collections and would panic on a bool. Skip unless it
+	// is explicitly, known-true in config (null = omitted, unknown = interpolated).
+	guarding := raw.GetAttr("dhcp_guarding")
+	if guarding.IsNull() || !guarding.IsKnown() || guarding.False() {
 		return nil
 	}
 	if !utils.IsRawConfigSet(raw, "dhcp_guarding_trusted_servers") {
