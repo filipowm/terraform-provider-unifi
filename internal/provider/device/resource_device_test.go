@@ -218,6 +218,48 @@ func TestPortOverride_VLANValidators(t *testing.T) {
 	}
 }
 
+// portOverrideSetHash must key the set by port number ONLY, so a controller
+// echoing/auto-populating a per-port VLAN field (e.g. setting_preference or a
+// native VLAN) on an entry the user didn't declare it on cannot change the
+// element's set identity and churn the set (the backward-compat hazard). Two
+// blocks for the same port number must hash identically regardless of the VLAN
+// fields; different numbers must hash differently.
+func TestPortOverrideSetHash_StableByNumber(t *testing.T) {
+	bare := portOverrideData(map[string]interface{}{"number": 5})
+	echoed := portOverrideData(map[string]interface{}{
+		"number":                5,
+		"setting_preference":    "auto",
+		"native_networkconf_id": "net-auto",
+		"forward":               "native",
+	})
+	assert.Equal(t, portOverrideSetHash(bare), portOverrideSetHash(echoed),
+		"same port number must hash identically regardless of echoed VLAN fields")
+
+	other := portOverrideData(map[string]interface{}{"number": 6})
+	assert.NotEqual(t, portOverrideSetHash(bare), portOverrideSetHash(other),
+		"different port numbers must hash differently")
+
+	// Sanity: the hash must be a pure function of `number`.
+	assert.Equal(t, portOverrideSetHash(bare), portOverrideSetHash(bare))
+}
+
+// The new VLAN attributes must be Optional+Computed so an undeclared field reads
+// back the controller's value without a perpetual diff. This pairs with the
+// number-keyed set hash above; together they neutralize the upgrade churn.
+func TestPortOverrideVLANFields_AreOptionalComputed(t *testing.T) {
+	elem := ResourceDevice().Schema["port_override"].Elem.(*schema.Resource)
+	for _, attr := range []string{
+		"native_networkconf_id", "tagged_vlan_mgmt", "forward",
+		"excluded_network_ids", "voice_networkconf_id", "setting_preference",
+	} {
+		s := elem.Schema[attr]
+		require.NotNil(t, s, "attribute %s must exist", attr)
+		assert.True(t, s.Optional, "%s must be Optional", attr)
+		assert.True(t, s.Computed, "%s must be Computed (to absorb controller echoes without churn)", attr)
+		assert.Nil(t, s.Default, "%s must not have a Default", attr)
+	}
+}
+
 func radioSet(items ...map[string]interface{}) *schema.Set {
 	raw := make([]interface{}, len(items))
 	for i, m := range items {

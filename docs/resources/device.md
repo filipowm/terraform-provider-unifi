@@ -158,14 +158,14 @@ Optional:
 * Setting up high-availability connections
 * Connecting to servers requiring more bandwidth
 Note: All ports in the LAG must be sequential and have matching configurations.
-- `excluded_network_ids` (Set of String) Set of network IDs to exclude when `forward = "customize"`. Tagged traffic on the port is *all* networks minus the ones listed here, so an empty set means "trunk everything".
+- `excluded_network_ids` (Set of String) Set of network IDs to exclude when `forward = "customize"`. Tagged traffic on the port is *all* networks minus the ones listed here, so an empty set means "trunk everything". Computed when not set, so the controller's current exclusions are preserved without producing a diff.
 - `forward` (String) VLAN forwarding mode for the port. Valid values are:
   * `all` - Forward all VLANs (trunk port)
   * `native` - Only forward untagged traffic (access port)
   * `customize` - Forward selected VLANs (use with `excluded_network_ids`)
   * `disabled` - Disable VLAN forwarding
 
-This attribute has NO default: leaving it unset keeps the port's existing forwarding behavior. Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another value instead.
+This attribute has NO default: leaving it unset keeps the port's existing forwarding behavior (the value is computed from the controller). Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another value instead.
 - `name` (String) A friendly name for the port that will be displayed in the UniFi controller UI. Examples:
   * 'Uplink to Core Switch'
   * 'Conference Room AP'
@@ -176,7 +176,7 @@ This attribute has NO default: leaving it unset keeps the port's existing forwar
 * Trunk ports to specify the native VLAN
 * Management networks for network devices
 
-Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another network ID instead.
+Computed when not set, so the controller's current value (which it may auto-populate on a port) is preserved without producing a diff. Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another network ID instead.
 - `op_mode` (String) The operating mode of the port. Valid values are:
   * `switch` - Normal switching mode (default)
     - Standard port operation for connecting devices
@@ -201,16 +201,16 @@ Note: the underlying field uses `omitempty`, so once set it cannot be cleared ba
   - For non-PoE devices
   - To prevent unwanted power delivery
 - `port_profile_id` (String) The ID of a pre-configured port profile to apply to this port. Port profiles define settings like VLANs, PoE, and other port-specific configurations.
-- `setting_preference` (String) Whether the port's settings are taken from a profile (`auto`) or set per-port (`manual`). Valid values are `auto` and `manual`. Per-port VLAN overrides (`native_networkconf_id`, `tagged_vlan_mgmt`, `forward`, `excluded_network_ids`) generally require `setting_preference = "manual"` to persist on the controller; with `auto` the controller may revert inline overrides to profile/auto behavior. Setting this to `manual` also overrides any `port_profile_id` on the same port.
+- `setting_preference` (String) Whether the port's settings are taken from a profile (`auto`) or set per-port (`manual`). Valid values are `auto` and `manual`. Per-port VLAN overrides (`native_networkconf_id`, `tagged_vlan_mgmt`, `forward`, `excluded_network_ids`) generally require `setting_preference = "manual"` to persist on the controller; with `auto` the controller may revert inline overrides to profile/auto behavior. Setting this to `manual` also overrides any `port_profile_id` on the same port. Computed when not set, so the value the controller attaches to the port is preserved without producing a diff.
 - `tagged_vlan_mgmt` (String) VLAN tagging behavior for the port. Valid values are:
 * `auto` - Automatically handle VLAN tags (recommended)
 * `block_all` - Block all VLAN tagged traffic
 * `custom` - Custom VLAN configuration (use with `forward = "customize"` and `excluded_network_ids`)
 
-Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another value instead.
+Computed when not set, so the controller's current value is preserved without producing a diff. Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another value instead.
 - `voice_networkconf_id` (String) The ID of the network to use for Voice over IP (VoIP) traffic on this port, for automatic voice-VLAN assignment in conjunction with LLDP-MED.
 
-Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another network ID instead.
+Computed when not set, so the controller's current value is preserved without producing a diff. Note: the underlying field uses `omitempty`, so once set it cannot be cleared back to empty through Terraform — change it to another network ID instead.
 
 
 <a id="nestedblock--radio"></a>
