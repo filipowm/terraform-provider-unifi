@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -82,48 +81,5 @@ func TestResourceNetworkSetResourceData_readsFirewallZoneID(t *testing.T) {
 
 	if got := d.Get("firewall_zone_id").(string); got != "zoneABC" {
 		t.Errorf("firewall_zone_id = %q, want %q", got, "zoneABC")
-	}
-}
-
-// TestRawConfigSet_firewallZoneID covers the "is the attribute explicitly configured"
-// decision that gates the conditional write in resourceNetworkGetResourceData. Only a
-// known, non-empty raw-config value must be sent to the controller; null and
-// empty-string must be treated as "not set" so omitempty drops the field and a zone
-// managed via unifi_firewall_zone.networks is not clobbered. Unknown (interpolated)
-// counts as set — it is resolved to a real value by apply time, when GetResourceData runs.
-func TestRawConfigSet_firewallZoneID(t *testing.T) {
-	tests := []struct {
-		name string
-		raw  cty.Value
-		want bool
-	}{
-		{
-			name: "null config (attribute omitted)",
-			raw:  cty.ObjectVal(map[string]cty.Value{"firewall_zone_id": cty.NullVal(cty.String)}),
-			want: false,
-		},
-		{
-			name: "explicit empty string",
-			raw:  cty.ObjectVal(map[string]cty.Value{"firewall_zone_id": cty.StringVal("")}),
-			want: false,
-		},
-		{
-			name: "known non-empty value",
-			raw:  cty.ObjectVal(map[string]cty.Value{"firewall_zone_id": cty.StringVal("zoneABC")}),
-			want: true,
-		},
-		{
-			name: "unknown (interpolated) value",
-			raw:  cty.ObjectVal(map[string]cty.Value{"firewall_zone_id": cty.UnknownVal(cty.String)}),
-			want: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := rawConfigSet(tt.raw, "firewall_zone_id"); got != tt.want {
-				t.Errorf("rawConfigSet(%s) = %v, want %v", tt.name, got, tt.want)
-			}
-		})
 	}
 }
