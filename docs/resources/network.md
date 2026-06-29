@@ -80,6 +80,11 @@ Maximum 4 servers can be specified.
 * The network will automatically assign IP addresses to clients
 * DHCP options (DNS, lease time) will be provided to clients
 * Static IP assignments can still be made outside the DHCP range
+- `dhcp_guarding` (Boolean) Enables DHCP Guarding for this network, blocking DHCP server responses from untrusted/rogue sources so only the trusted DHCP server can hand out leases. When enabled:
+* Drops DHCP offers/acknowledgements from servers other than the trusted one
+* Protects clients from rogue or misconfigured DHCP servers
+
+This attribute is `Optional` and `Computed`: when omitted from configuration it inherits the current value reported by the controller (so a value enabled in the UI is preserved), rather than being reset. Set it explicitly to manage the value from Terraform.
 - `dhcp_lease` (Number) The DHCP lease time in seconds. Common values:
 * 86400 (1 day) - Default, suitable for most networks
 * 3600 (1 hour) - For testing or temporary networks

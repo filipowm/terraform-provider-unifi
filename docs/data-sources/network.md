@@ -40,6 +40,7 @@ data "unifi_network" "my_network" {
 
 - `dhcp_dns` (List of String) IPv4 addresses for the DNS server to be returned from the DHCP server.
 - `dhcp_enabled` (Boolean) whether DHCP is enabled or not on this network.
+- `dhcp_guarding` (Boolean) Specifies whether DHCP Guarding (rogue/untrusted DHCP server protection) is enabled or not.
 - `dhcp_lease` (Number) lease time for DHCP addresses.
 - `dhcp_start` (String) The IPv4 address where the DHCP range of addresses starts.
 - `dhcp_stop` (String) The IPv4 address where the DHCP range of addresses stops.

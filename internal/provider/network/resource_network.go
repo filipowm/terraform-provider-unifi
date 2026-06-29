@@ -303,6 +303,18 @@ func ResourceNetwork() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
+			"dhcp_guarding": {
+				Description: "Enables DHCP Guarding for this network, blocking DHCP server responses from " +
+					"untrusted/rogue sources so only the trusted DHCP server can hand out leases. When enabled:\n" +
+					"* Drops DHCP offers/acknowledgements from servers other than the trusted one\n" +
+					"* Protects clients from rogue or misconfigured DHCP servers\n\n" +
+					"This attribute is `Optional` and `Computed`: when omitted from configuration it inherits the " +
+					"current value reported by the controller (so a value enabled in the UI is preserved), rather than " +
+					"being reset. Set it explicitly to manage the value from Terraform.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+			},
 			"upnp_lan_enabled": {
 				Description: "Whether clients on THIS network are allowed to request UPnP/NAT-PMP port mappings. " +
 					"Per-network opt-in that complements the gateway-global UPnP toggle " +
@@ -748,6 +760,7 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		DHCPDBootServer:   d.Get("dhcpd_boot_server").(string),
 		DHCPDBootFilename: d.Get("dhcpd_boot_filename").(string),
 		DHCPRelayEnabled:  d.Get("dhcp_relay_enabled").(bool),
+		DHCPguardEnabled:  d.Get("dhcp_guarding").(bool),
 		DomainName:        d.Get("domain_name").(string),
 		IGMPSnooping:      d.Get("igmp_snooping").(bool),
 		UpnpLanEnabled:    d.Get("upnp_lan_enabled").(bool),
@@ -1027,6 +1040,7 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("dhcp_enabled", resp.DHCPDEnabled)
 	d.Set("dhcp_lease", dhcpLease)
 	d.Set("dhcp_relay_enabled", resp.DHCPRelayEnabled)
+	d.Set("dhcp_guarding", resp.DHCPguardEnabled)
 	d.Set("dhcp_start", resp.DHCPDStart)
 	d.Set("dhcp_stop", resp.DHCPDStop)
 	d.Set("dhcp_v6_dns_auto", resp.DHCPDV6DNSAuto)

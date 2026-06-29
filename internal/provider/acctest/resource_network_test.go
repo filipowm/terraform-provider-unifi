@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 )
 
 func TestAccNetwork_basic(t *testing.T) {
@@ -359,6 +360,75 @@ func TestAccNetwork_dhcpRelay(t *testing.T) {
 	})
 }
 
+// TestAccNetwork_dhcpGuarding is the regression test for issue #123: a value
+// enabled for DHCP Guarding must not be silently cleared when an unrelated change
+// triggers an Update with dhcp_guarding omitted from config.
+func TestAccNetwork_dhcpGuarding(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		// TODO: CheckDestroy: ,
+		Steps: []resource.TestStep{
+			// 1. Enable DHCP Guarding explicitly.
+			{
+				Config: testAccNetworkConfigDHCPGuarding(name, subnet, vlan, "foo.local", true, true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "true"),
+				),
+			},
+			// 2. Import round-trip.
+			pt.ImportStep("unifi_network.test"),
+			// 3. Decisive #123 guard: omit dhcp_guarding from config while changing an
+			// unrelated attribute (domain_name) so a real Update fires; the previously
+			// enabled value must be preserved (Optional+Computed), not reset to false.
+			{
+				Config:           testAccNetworkConfigDHCPGuarding(name, subnet, vlan, "bar.local", false, false),
+				ConfigPlanChecks: pt.CheckResourceActions("unifi_network.test", plancheck.ResourceActionUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "domain_name", "bar.local"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "true"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+			// 4. Disable path (hard gate): explicit false must be honored.
+			{
+				Config: testAccNetworkConfigDHCPGuarding(name, subnet, vlan, "bar.local", true, false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "false"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+		},
+	})
+}
+
+// TestAccNetwork_dhcpGuardingVlanOnly pins the (UNVERIFIED) controller behavior for
+// a non-corporate purpose: it confirms dhcp_guarding round-trips on a vlan-only
+// network, or surfaces a controller constraint via the import-verify mismatch.
+func TestAccNetwork_dhcpGuardingVlanOnly(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	_, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		// TODO: CheckDestroy: ,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkVlanOnlyDHCPGuarding(name, vlan, true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "true"),
+				),
+			},
+			{
+				ResourceName:      "unifi_network.test",
+				ImportState:       true,
+				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_network.test"),
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func TestAccNetwork_vlanOnly(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	_, vlan := pt.GetTestVLAN(t)
@@ -611,6 +681,49 @@ resource "unifi_network" "test" {
 	dhcp_relay_enabled = %[4]t
 }
 `, name, subnet, vlan, dhcpRelay)
+}
+
+// testAccNetworkConfigDHCPGuarding renders a corporate network. When guardingSet is
+// false the dhcp_guarding attribute is omitted entirely (exercising the
+// Optional+Computed inherit-from-controller path that protects issue #123).
+func testAccNetworkConfigDHCPGuarding(name string, subnet *net.IPNet, vlan int, domainName string, guardingSet bool, guarding bool) string {
+	guardingLine := ""
+	if guardingSet {
+		guardingLine = fmt.Sprintf("dhcp_guarding = %t", guarding)
+	}
+	return fmt.Sprintf(`
+locals {
+	subnet  = "%[2]s"
+	vlan_id = %[3]d
+}
+
+resource "unifi_network" "test" {
+	name    = "%[1]s"
+	purpose = "corporate"
+
+	subnet      = local.subnet
+	vlan_id     = local.vlan_id
+	domain_name = "%[4]s"
+
+	%[5]s
+}
+`, name, subnet, vlan, domainName, guardingLine)
+}
+
+func testAccNetworkVlanOnlyDHCPGuarding(name string, vlan int, guarding bool) string {
+	return fmt.Sprintf(`
+resource "unifi_site" "test" {
+  description = "%[1]s"
+}
+
+resource "unifi_network" "test" {
+  site          = unifi_site.test.name
+  name          = "test"
+  purpose       = "vlan-only"
+  vlan_id       = %[2]d
+  dhcp_guarding = %[3]t
+}
+`, name, vlan, guarding)
 }
 
 func testAccNetworkVlanOnly(name string, vlan int) string {

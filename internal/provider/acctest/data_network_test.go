@@ -22,8 +22,11 @@ func TestAccDataNetwork_byName(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataNetworkConfig_byName(defaultName),
-				Check:  resource.ComposeTestCheckFunc(
-				// testCheckNetworkExists(t, "name"),
+				Check: resource.ComposeTestCheckFunc(
+					// testCheckNetworkExists(t, "name"),
+					// dhcp_guarding is Computed on the data source; assert it is set to a
+					// known bool so resource/data-source coverage stays in lockstep (#123).
+					resource.TestCheckResourceAttrSet("data.unifi_network.lan", "dhcp_guarding"),
 				),
 			},
 		},
