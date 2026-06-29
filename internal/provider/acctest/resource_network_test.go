@@ -1,6 +1,8 @@
 package acctest
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"net"
@@ -9,8 +11,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 func TestAccNetwork_basic(t *testing.T) {
@@ -695,6 +699,134 @@ func TestAccNetwork_wireguardVPNClient(t *testing.T) {
 			pt.ImportStep("unifi_network.wg_test", "x_wireguard_private_key", "wireguard_client_preshared_key"),
 		},
 	})
+}
+
+// TestAccNetwork_defaultGateway exercises the DHCP default-gateway override
+// (dhcpd_gateway / dhcpd_gateway_enabled): create with the override on, import
+// round-trip, flip it off, and a disappears step. The gateway IP is computed from
+// the test subnet rather than hardcoded.
+func TestAccNetwork_defaultGateway(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		CheckDestroy: testAccCheckNetworkDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkConfigDefaultGateway(name, subnet, vlan, true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcpd_gateway_enabled", "true"),
+					// The override IP is stored (cidrhost(subnet, 5) from the config).
+					resource.TestCheckResourceAttrSet("unifi_network.test", "dhcpd_gateway"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+			// Flip the override off; the attribute round-trips to false with a clean plan.
+			{
+				Config: testAccNetworkConfigDefaultGateway(name, subnet, vlan, false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcpd_gateway_enabled", "false"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+			// Disappears: delete the network out-of-band and assert the next plan is non-empty (a re-create).
+			{
+				PreConfig: func() {
+					networks, err := testClient.ListNetwork(context.Background(), "default")
+					if err != nil {
+						t.Fatalf("listing networks: %s", err)
+					}
+					for _, n := range networks {
+						if n.Name == name {
+							if err := testClient.DeleteNetwork(context.Background(), "default", n.ID); err != nil {
+								t.Fatalf("deleting network: %s", err)
+							}
+						}
+					}
+				},
+				Config:             testAccNetworkConfigDefaultGateway(name, subnet, vlan, false),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
+// TestAccNetwork_defaultGatewayValidation covers the plan-time validation for the
+// override: a non-IPv4 gateway, a gateway set with the toggle off, and the toggle
+// on with no gateway.
+func TestAccNetwork_defaultGatewayValidation(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccNetworkConfigDefaultGatewayRaw(name, subnet, vlan, "true", `dhcpd_gateway = "not-an-ip"`),
+				ExpectError: regexp.MustCompile("dhcpd_gateway"),
+			},
+			{
+				Config:      testAccNetworkConfigDefaultGatewayRaw(name, subnet, vlan, "false", `dhcpd_gateway = cidrhost(local.subnet, 5)`),
+				ExpectError: regexp.MustCompile("is set but"),
+			},
+			{
+				Config:      testAccNetworkConfigDefaultGatewayRaw(name, subnet, vlan, "true", ""),
+				ExpectError: regexp.MustCompile("is true but"),
+			},
+		},
+	})
+}
+
+func testAccCheckNetworkDestroy(s *terraform.State) error {
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "unifi_network" {
+			continue
+		}
+		site := rs.Primary.Attributes["site"]
+		if site == "" {
+			site = "default"
+		}
+		_, err := testClient.GetNetwork(context.Background(), site, rs.Primary.ID)
+		if err == nil {
+			return fmt.Errorf("network %s still exists", rs.Primary.ID)
+		}
+		if errors.Is(err, unifi.ErrNotFound) || strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+			continue
+		}
+		return err
+	}
+	return nil
+}
+
+func testAccNetworkConfigDefaultGateway(name string, subnet *net.IPNet, vlan int, enabled bool) string {
+	gatewayLine := ""
+	if enabled {
+		gatewayLine = "dhcpd_gateway = cidrhost(local.subnet, 5)"
+	}
+	return testAccNetworkConfigDefaultGatewayRaw(name, subnet, vlan, fmt.Sprintf("%t", enabled), gatewayLine)
+}
+
+func testAccNetworkConfigDefaultGatewayRaw(name string, subnet *net.IPNet, vlan int, enabled, gatewayLine string) string {
+	return fmt.Sprintf(`
+locals {
+	subnet  = "%[2]s"
+	vlan_id = %[3]d
+}
+
+resource "unifi_network" "test" {
+	name    = "%[1]s"
+	purpose = "corporate"
+
+	subnet       = local.subnet
+	vlan_id      = local.vlan_id
+	dhcp_start   = cidrhost(local.subnet, 6)
+	dhcp_stop    = cidrhost(local.subnet, 254)
+	dhcp_enabled = true
+
+	dhcpd_gateway_enabled = %[4]s
+	%[5]s
+}
+`, name, subnet, vlan, enabled, gatewayLine)
 }
 
 func testWireguardVPNClientNetworkConfig(name string, peerIP string, peerPort int, peerPublicKey string) string {
