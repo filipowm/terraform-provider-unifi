@@ -60,8 +60,10 @@ resource "unifi_network" "wan" {
 # `unifi_firewall_zone.networks` argument for a given network — not both, or the two
 # resources will fight over the association.
 resource "unifi_firewall_zone" "iot" {
-  name     = "iot"
-  networks = []
+  name = "iot"
+  # `networks` intentionally omitted: membership is managed from the network side
+  # via `firewall_zone_id` below. Listing the network here too would make the two
+  # resources fight over the association.
 }
 
 resource "unifi_network" "iot" {

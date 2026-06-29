@@ -859,8 +859,8 @@ func TestAccNetwork_unsetZoneDoesNotClobber(t *testing.T) {
 func testAccNetworkExplicitZoneConfig(name, subnet string, vlan int, zoneName string) string {
 	return fmt.Sprintf(`
 resource "unifi_firewall_zone" "test" {
-	name     = %[4]q
-	networks = []
+	name = %[4]q
+	# networks intentionally omitted — managed from the network side below.
 }
 
 resource "unifi_network" "test" {
@@ -880,13 +880,13 @@ resource "unifi_network" "test" {
 func testAccNetworkTwoZonesConfig(name, subnet string, vlan int, zoneA, zoneB, selected string) string {
 	return fmt.Sprintf(`
 resource "unifi_firewall_zone" "a" {
-	name     = %[4]q
-	networks = []
+	name = %[4]q
+	# networks intentionally omitted — managed from the network side below.
 }
 
 resource "unifi_firewall_zone" "b" {
-	name     = %[5]q
-	networks = []
+	name = %[5]q
+	# networks intentionally omitted — managed from the network side below.
 }
 
 resource "unifi_network" "test" {
