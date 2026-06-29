@@ -264,14 +264,14 @@ resource "unifi_network" "src" {
 	name    = "tfacc-gs-src"
 	purpose = "corporate"
 	subnet  = "10.42.10.1/24"
-	vlan_id = 4210
+	vlan_id = 4000
 }
 
 resource "unifi_network" "dst" {
 	name    = "tfacc-gs-dst"
 	purpose = "corporate"
 	subnet  = "10.42.11.1/24"
-	vlan_id = 4211
+	vlan_id = 4001
 }
 
 resource "unifi_setting_global_switch" "test" {
