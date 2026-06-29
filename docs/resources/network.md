@@ -232,10 +232,10 @@ Must be a valid IPv6 subnet allocated to your organization.
 * Supports zero-configuration networking
 * Available on Controller version 7 and later
 - `network_group` (String) The network group for this network. Default is 'LAN'. For WAN networks, use 'WAN' or 'WAN2'. Network groups help organize and apply policies to multiple networks. Defaults to `LAN`.
-- `network_isolation_enabled` (Boolean) Enables network isolation. When enabled:
-* Prevents communication between clients on this network
-* Each client can only communicate with the gateway
-* Commonly used for guest networks or IoT devices Defaults to `false`.
+- `network_isolation_enabled` (Boolean) Isolates this network from other local networks/VLANs on the site. When enabled:
+* Hosts on this network cannot route to or from other local networks on the site
+* Gateway and internet access are retained (internet access is subject to `internet_access_enabled`)
+* This is a routing/firewall option for network-to-network isolation, distinct from per-client (WLAN) isolation Defaults to `false`.
 - `site` (String) The name of the site to associate the network with.
 - `subnet` (String) The IPv4 subnet for this network in CIDR notation (e.g., '192.168.1.0/24'). This defines the network's address space and determines the range of IP addresses available for DHCP.
 - `uid_vpn_custom_routing` (List of String) The list of destination subnets (CIDR notation) routed through the VPN client tunnel when `vpn_client_default_route` is false. Values are canonicalized to their network address (e.g. `10.0.0.1/16` becomes `10.0.0.0/16`). Only applicable when `purpose` is 'vpn-client'.

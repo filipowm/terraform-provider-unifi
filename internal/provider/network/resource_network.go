@@ -440,10 +440,10 @@ func ResourceNetwork() *schema.Resource {
 				Default:  true,
 			},
 			"network_isolation_enabled": {
-				Description: "Enables network isolation. When enabled:\n" +
-					"* Prevents communication between clients on this network\n" +
-					"* Each client can only communicate with the gateway\n" +
-					"* Commonly used for guest networks or IoT devices",
+				Description: "Isolates this network from other local networks/VLANs on the site. When enabled:\n" +
+					"* Hosts on this network cannot route to or from other local networks on the site\n" +
+					"* Gateway and internet access are retained (internet access is subject to `internet_access_enabled`)\n" +
+					"* This is a routing/firewall option for network-to-network isolation, distinct from per-client (WLAN) isolation",
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  false,
