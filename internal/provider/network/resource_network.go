@@ -219,14 +219,16 @@ func ResourceNetwork() *schema.Resource {
 				Optional: true,
 			},
 			"dhcpd_gateway_enabled": {
-				Description: "Whether to override the default gateway advertised to this network's DHCP clients " +
-					"(DHCP option 3). This maps to the UI's \"Default Gateway: Auto/Manual\" control. When `false` " +
-					"(auto, the controller default) the gateway's own interface IP on this network is advertised. " +
-					"When `true` (manual) the address in `dhcpd_gateway` is advertised instead — useful, for example, " +
-					"to point LAN clients at a Tailscale subnet-router node for site-to-site routing. `dhcpd_gateway` " +
-					"must be set when this is `true`. Only honored when this network runs its own DHCP server " +
-					"(`dhcp_enabled = true` and `dhcp_relay_enabled = false`). Left unset, the controller's current " +
-					"value is preserved.",
+				Description: "Controls the controller's `dhcpd_gateway_enabled` field. When `true`, the address in " +
+					"`dhcpd_gateway` is advertised to this network's DHCP clients as their default gateway " +
+					"(DHCP option 3) instead of the gateway's own interface IP on this network; when `false` " +
+					"(the default) the gateway's own interface IP is advertised. A typical use case is pointing " +
+					"LAN clients at a Tailscale subnet-router node for site-to-site routing. `dhcpd_gateway` must " +
+					"be set when this is `true`. In current UniFi controller UIs this generally corresponds to " +
+					"switching a network's default gateway from automatic to manual, though the exact label and " +
+					"availability vary by controller version. Because it is DHCP option 3, it applies only while " +
+					"this network serves its own DHCP leases (`dhcp_enabled = true` and `dhcp_relay_enabled = false`). " +
+					"Left unset, the controller's current value is preserved.",
 				Type:     schema.TypeBool,
 				Optional: true,
 				Computed: true,

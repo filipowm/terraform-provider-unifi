@@ -2,6 +2,7 @@ package acctest
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
@@ -716,8 +717,12 @@ func TestAccNetwork_defaultGateway(t *testing.T) {
 				Config: testAccNetworkConfigDefaultGateway(name, subnet, vlan, true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_network.test", "dhcpd_gateway_enabled", "true"),
-					// The override IP is stored (cidrhost(subnet, 5) from the config).
-					resource.TestCheckResourceAttrSet("unifi_network.test", "dhcpd_gateway"),
+					// Pin the observed stored value: the controller must round-trip back exactly the
+					// override IP we sent (cidrhost(subnet, 5)) with the toggle still true. This is the
+					// strongest field-level claim a controller-backed test can make about the override;
+					// the UI mapping/polarity wording in the schema is intentionally hedged because a
+					// round-trip cannot prove how the controller interprets these fields downstream.
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcpd_gateway", cidrHost(subnet, 5)),
 				),
 			},
 			pt.ImportStep("unifi_network.test"),
@@ -796,6 +801,14 @@ func testAccCheckNetworkDestroy(s *terraform.State) error {
 		return err
 	}
 	return nil
+}
+
+// cidrHost mirrors Terraform's cidrhost(prefix, hostnum) for IPv4: it returns the
+// host address at hostNum within subnet, so tests can assert the exact value the
+// HCL config (cidrhost(local.subnet, n)) sends to the controller.
+func cidrHost(subnet *net.IPNet, hostNum int) string {
+	base := subnet.IP.Mask(subnet.Mask).To4()
+	return net.IP(binary.BigEndian.AppendUint32(nil, binary.BigEndian.Uint32(base)+uint32(hostNum))).String()
 }
 
 func testAccNetworkConfigDefaultGateway(name string, subnet *net.IPNet, vlan int, enabled bool) string {
