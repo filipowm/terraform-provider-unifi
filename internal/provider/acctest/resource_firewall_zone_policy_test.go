@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/tfjsonpath"
 )
 
 var firewallZonePolicyLock = &sync.Mutex{}
@@ -85,6 +86,63 @@ func TestAccFirewallZonePolicy_update(t *testing.T) {
 					resource.TestCheckResourceAttr(testFirewallZonePolicyResourceName, "description", "Updated zone policy"),
 				),
 				ConfigPlanChecks: pt.CheckResourceActions(testFirewallZonePolicyResourceName, plancheck.ResourceActionUpdate),
+			},
+		},
+		CheckDestroy: testAccCheckFirewallZonePolicyDestroy,
+	})
+}
+
+// TestAccFirewallZonePolicy_indexReassignedOnUpdate is the regression test for
+// issue #122. With multiple policies sharing one zone pair, the controller may
+// renumber the controller-assigned `index` when one policy is updated. Before the
+// fix (`index` was Optional+Computed with a StaticInt64(10000) default) the plan
+// carried a stale known index, so the renumbered value triggered "Provider
+// produced inconsistent result after apply: .index". Now `index` is Computed-only,
+// so the framework marks it unknown on update and the apply reconciles cleanly.
+//
+// The load-bearing guard is the PreApply ExpectUnknownValue check on `index`: it
+// passes post-fix and fails if a default is ever re-added. The multi-policy
+// update step adds apply-time realism by provoking controller-side renumbering.
+func TestAccFirewallZonePolicy_indexReassignedOnUpdate(t *testing.T) {
+	pt.SkipIfEnvLocalMissing(t, "Skipping, because test environment does not support firewall zones yet")
+	name := acctest.RandomWithPrefix("tfacc-zone-policy")
+	subnet, vlanId := pt.GetTestVLAN(t)
+
+	const firstPolicy = "unifi_firewall_zone_policy.test1"
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: ">= 9.0.0",
+		Lock:              firewallZonePolicyLock,
+		Steps: []resource.TestStep{
+			{
+				Config: pt.ComposeConfig(
+					testAccFirewallZonePolicyPreConfig(name, subnet.String(), vlanId),
+					testAccFirewallZonePolicyMultiConfig(name, false),
+				),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet(firstPolicy, "index"),
+					resource.TestCheckResourceAttrSet("unifi_firewall_zone_policy.test2", "index"),
+					resource.TestCheckResourceAttrSet("unifi_firewall_zone_policy.test3", "index"),
+				),
+			},
+			{
+				// Toggle a single attribute on one policy to force an Update RPC,
+				// which provokes controller-side renumbering of the shared zone pair.
+				Config: pt.ComposeConfig(
+					testAccFirewallZonePolicyPreConfig(name, subnet.String(), vlanId),
+					testAccFirewallZonePolicyMultiConfig(name, true),
+				),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{
+						plancheck.ExpectResourceAction(firstPolicy, plancheck.ResourceActionUpdate),
+						// Load-bearing guard: index must be planned unknown on update.
+						plancheck.ExpectUnknownValue(firstPolicy, tfjsonpath.New("index")),
+					},
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(firstPolicy, "logging", "true"),
+					resource.TestCheckResourceAttrSet(firstPolicy, "index"),
+				),
 			},
 		},
 		CheckDestroy: testAccCheckFirewallZonePolicyDestroy,
@@ -662,6 +720,54 @@ resource "unifi_firewall_zone_policy" "test" {
 	}
 }
 `, name)
+}
+
+// testAccFirewallZonePolicyMultiConfig declares three zone policies that share a
+// single zone pair so the controller renumbers their `index` on changes. The
+// `logging` flag toggles a single attribute on the first policy to force an
+// Update RPC in the second test step.
+func testAccFirewallZonePolicyMultiConfig(name string, loggingOnFirst bool) string {
+	return fmt.Sprintf(`
+resource "unifi_firewall_zone_policy" "test1" {
+	name    = "%[1]s-1"
+	action  = "BLOCK"
+	logging = %[2]t
+
+	source = {
+		zone_id = unifi_firewall_zone.test.id
+	}
+
+	destination = {
+		zone_id = unifi_firewall_zone.test.id
+	}
+}
+
+resource "unifi_firewall_zone_policy" "test2" {
+	name   = "%[1]s-2"
+	action = "BLOCK"
+
+	source = {
+		zone_id = unifi_firewall_zone.test.id
+	}
+
+	destination = {
+		zone_id = unifi_firewall_zone.test.id
+	}
+}
+
+resource "unifi_firewall_zone_policy" "test3" {
+	name   = "%[1]s-3"
+	action = "BLOCK"
+
+	source = {
+		zone_id = unifi_firewall_zone.test.id
+	}
+
+	destination = {
+		zone_id = unifi_firewall_zone.test.id
+	}
+}
+`, name, loggingOnFirst)
 }
 
 func testAccFirewallZonePolicyUpdatedConfig(name string) string {

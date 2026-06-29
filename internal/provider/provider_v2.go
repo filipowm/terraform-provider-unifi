@@ -194,6 +194,7 @@ func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource 
 		dns.NewDnsRecordResource,
 		firewall.NewFirewallZoneResource,
 		firewall.NewFirewallZonePolicyResource,
+		firewall.NewFirewallZonePolicyOrderResource,
 		portal.NewPortalFileResource,
 		settings.NewAutoSpeedtestResource,
 		settings.NewConnectivityResource,
