@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
@@ -361,6 +362,85 @@ func TestAccNetwork_dhcpRelay(t *testing.T) {
 	})
 }
 
+// TestAccNetwork_dhcpGuarding is the regression test for issue #123: a value
+// enabled for DHCP Guarding must not be silently cleared when an unrelated change
+// triggers an Update with dhcp_guarding omitted from config.
+func TestAccNetwork_dhcpGuarding(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		// TODO: CheckDestroy: ,
+		Steps: []resource.TestStep{
+			// 1. Enable DHCP Guarding explicitly (with the required trusted server).
+			{
+				Config: testAccNetworkConfigDHCPGuarding(name, subnet, vlan, "foo.local", true, true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "true"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding_trusted_servers.#", "1"),
+				),
+			},
+			// 2. Import round-trip.
+			pt.ImportStep("unifi_network.test"),
+			// 3. Decisive #123 guard: omit dhcp_guarding from config while changing an
+			// unrelated attribute (domain_name) so a real Update fires; the previously
+			// enabled value must be preserved (Optional+Computed), not reset to false.
+			{
+				Config:           testAccNetworkConfigDHCPGuarding(name, subnet, vlan, "bar.local", false, false),
+				ConfigPlanChecks: pt.CheckResourceActions("unifi_network.test", plancheck.ResourceActionUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "domain_name", "bar.local"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "true"),
+					// The companion trusted-server list must be preserved too, otherwise
+					// the inherited guarding=true would round-trip to MissingIPAddress.
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding_trusted_servers.#", "1"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+			// 4. Disable path (hard gate): explicit false must be honored.
+			{
+				Config: testAccNetworkConfigDHCPGuarding(name, subnet, vlan, "bar.local", true, false),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "false"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+		},
+	})
+}
+
+// TestAccNetwork_dhcpGuardingVlanOnly covers dhcp_guarding on a non-corporate
+// (vlan-only / L2-only) purpose. A vlan-only network runs no DHCP server, so
+// whether the controller honors an *enabled* value is controller-dependent and
+// unverified — this test deliberately does NOT assert that true is persisted.
+// Instead it asserts the deterministic round-trip we can rely on: the provider
+// already serializes dhcpguard_enabled on every network PUT regardless of
+// purpose (the very mechanism behind issue #123), so an explicit false is
+// accepted and read back as false (and an ignored field also reads back false),
+// giving a stable state with no perpetual diff and a clean import-verify.
+func TestAccNetwork_dhcpGuardingVlanOnly(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	_, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		// TODO: CheckDestroy: ,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkVlanOnlyDHCPGuarding(name, vlan),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "false"),
+				),
+			},
+			{
+				ResourceName:      "unifi_network.test",
+				ImportState:       true,
+				ImportStateIdFunc: pt.SiteAndIDImportStateIDFunc("unifi_network.test"),
+				ImportStateVerify: true,
+			},
+		},
+	})
+}
+
 func TestAccNetwork_vlanOnly(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	_, vlan := pt.GetTestVLAN(t)
@@ -613,6 +693,59 @@ resource "unifi_network" "test" {
 	dhcp_relay_enabled = %[4]t
 }
 `, name, subnet, vlan, dhcpRelay)
+}
+
+// testAccNetworkConfigDHCPGuarding renders a corporate network. When guardingSet is
+// false the dhcp_guarding attribute is omitted entirely (exercising the
+// Optional+Computed inherit-from-controller path that protects issue #123).
+func testAccNetworkConfigDHCPGuarding(name string, subnet *net.IPNet, vlan int, domainName string, guardingSet bool, guarding bool) string {
+	guardingLine := ""
+	if guardingSet {
+		guardingLine = fmt.Sprintf("dhcp_guarding = %t", guarding)
+		if guarding {
+			// DHCP Guarding requires at least one trusted DHCP server IP; the
+			// network's own gateway (first host of the subnet) is the natural one.
+			guardingLine += "\n\tdhcp_guarding_trusted_servers = [cidrhost(local.subnet, 1)]"
+		}
+	}
+	return fmt.Sprintf(`
+locals {
+	subnet  = "%[2]s"
+	vlan_id = %[3]d
+}
+
+resource "unifi_network" "test" {
+	name    = "%[1]s"
+	purpose = "corporate"
+
+	subnet      = local.subnet
+	vlan_id     = local.vlan_id
+	domain_name = "%[4]s"
+
+	%[5]s
+}
+`, name, subnet, vlan, domainName, guardingLine)
+}
+
+// testAccNetworkVlanOnlyDHCPGuarding renders a vlan-only (L2-only) network with
+// dhcp_guarding explicitly disabled. false is used deliberately: it is the value
+// the provider already sends for such networks today, so the round-trip is
+// deterministic regardless of how the controller treats DHCP guarding on a
+// purpose that runs no DHCP server.
+func testAccNetworkVlanOnlyDHCPGuarding(name string, vlan int) string {
+	return fmt.Sprintf(`
+resource "unifi_site" "test" {
+  description = "%[1]s"
+}
+
+resource "unifi_network" "test" {
+  site          = unifi_site.test.name
+  name          = "test"
+  purpose       = "vlan-only"
+  vlan_id       = %[2]d
+  dhcp_guarding = false
+}
+`, name, vlan)
 }
 
 func testAccNetworkVlanOnly(name string, vlan int) string {

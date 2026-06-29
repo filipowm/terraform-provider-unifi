@@ -155,6 +155,11 @@ func DataNetwork() *schema.Resource {
 				Type:        schema.TypeBool,
 				Computed:    true,
 			},
+			"dhcp_guarding": {
+				Description: "Specifies whether DHCP Guarding (rogue/untrusted DHCP server protection) is enabled or not.",
+				Type:        schema.TypeBool,
+				Computed:    true,
+			},
 			"ipv6_interface_type": {
 				Description: "Specifies which type of IPv6 connection to use. Must be one of either `static`, `pd`, or `none`.",
 				Type:        schema.TypeString,
@@ -349,6 +354,7 @@ func dataNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface
 			d.Set("dhcpd_boot_filename", n.DHCPDBootFilename)
 			d.Set("domain_name", n.DomainName)
 			d.Set("igmp_snooping", n.IGMPSnooping)
+			d.Set("dhcp_guarding", n.DHCPguardEnabled)
 			d.Set("ipv6_interface_type", n.IPV6InterfaceType)
 			d.Set("ipv6_static_subnet", n.IPV6Subnet)
 			d.Set("ipv6_pd_interface", n.IPV6PDInterface)
