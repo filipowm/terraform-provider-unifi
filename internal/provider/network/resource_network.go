@@ -812,14 +812,14 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		DHCPguardEnabled:  d.Get("dhcp_guarding").(bool),
 		// Trusted DHCP servers for DHCP Guarding. Same hackish positional fan-out as
 		// DHCPDDNS{x}; an empty list maps to "" entries. ¯\_(ツ)_/¯
-		DHCPDIP1:   append(dhcpGuardServers, "")[0],
-		DHCPDIP2:   append(dhcpGuardServers, "", "")[1],
-		DHCPDIP3:   append(dhcpGuardServers, "", "", "")[2],
-		DomainName: d.Get("domain_name").(string),
-		IGMPSnooping:      d.Get("igmp_snooping").(bool),
-		UpnpLanEnabled:    d.Get("upnp_lan_enabled").(bool),
-		MdnsEnabled:       d.Get("multicast_dns").(bool),
-		Enabled:           d.Get("enabled").(bool),
+		DHCPDIP1:       append(dhcpGuardServers, "")[0],
+		DHCPDIP2:       append(dhcpGuardServers, "", "")[1],
+		DHCPDIP3:       append(dhcpGuardServers, "", "", "")[2],
+		DomainName:     d.Get("domain_name").(string),
+		IGMPSnooping:   d.Get("igmp_snooping").(bool),
+		UpnpLanEnabled: d.Get("upnp_lan_enabled").(bool),
+		MdnsEnabled:    d.Get("multicast_dns").(bool),
+		Enabled:        d.Get("enabled").(bool),
 
 		DHCPDDNSEnabled: len(dhcpDNS) > 0,
 		// this is kinda hacky but ¯\_(ツ)_/¯
