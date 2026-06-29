@@ -49,9 +49,16 @@ func DataAccount() *schema.Resource {
 				Computed:    true,
 			},
 			"network_id": {
-				Description: "ID of the network for this account",
-				Type:        schema.TypeString,
-				Computed:    true,
+				Description: "The ID of the UniFi network configuration (the controller's `networkconf_id`) associated with this " +
+					"account. This is distinct from the `vlan` attribute, which is the 802.1Q VLAN ID delivered via RADIUS.",
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"vlan": {
+				Description: "The 802.1Q VLAN ID assigned to clients authenticating with this account via RADIUS dynamic VLAN " +
+					"assignment. `0` means no VLAN is assigned.",
+				Type:     schema.TypeInt,
+				Computed: true,
 			},
 		},
 	}
@@ -78,6 +85,7 @@ func dataAccountRead(ctx context.Context, d *schema.ResourceData, meta interface
 			d.Set("tunnel_type", account.TunnelType)
 			d.Set("tunnel_medium_type", account.TunnelMediumType)
 			d.Set("network_id", account.NetworkID)
+			d.Set("vlan", account.VLAN)
 			d.Set("site", site)
 			return nil
 		}

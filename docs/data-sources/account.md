@@ -26,7 +26,8 @@ unifi_account data source can be used to retrieve RADIUS user accounts
 ### Read-Only
 
 - `id` (String) The ID of this account.
-- `network_id` (String) ID of the network for this account
+- `network_id` (String) The ID of the UniFi network configuration (the controller's `networkconf_id`) associated with this account. This is distinct from the `vlan` attribute, which is the 802.1Q VLAN ID delivered via RADIUS.
 - `password` (String, Sensitive) The password of the account.
 - `tunnel_medium_type` (Number) See RFC2868 section 3.2
 - `tunnel_type` (Number) See RFC2868 section 3.1
+- `vlan` (Number) The 802.1Q VLAN ID assigned to clients authenticating with this account via RADIUS dynamic VLAN assignment. `0` means no VLAN is assigned.
