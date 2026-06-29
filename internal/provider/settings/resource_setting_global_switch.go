@@ -239,8 +239,11 @@ func (r *globalSwitchResource) Schema(_ context.Context, _ resource.SchemaReques
 			"id":   ut.ID(),
 			"site": ut.SiteAttribute(),
 			"acl_device_isolation": schema.SetAttribute{
-				MarkdownDescription: "Set of identifiers for device-level isolation. Reordering has no effect (this is an " +
-					"unordered set). At least one element is required when set; remove the attribute to stop managing it.",
+				MarkdownDescription: "Set of device identifiers to isolate (the controller's **Device Isolation** control). " +
+					"Each element is sent to the controller verbatim, with no validation or normalization: the UniFi " +
+					"`global_switch` API does not constrain this field's format, so supply the identifiers exactly as the " +
+					"controller expects them (refer to the controller UI). Reordering has no effect (this is an unordered " +
+					"set). At least one element is required when set; remove the attribute to stop managing it.",
 				ElementType: types.StringType,
 				Optional:    true,
 				Computed:    true,

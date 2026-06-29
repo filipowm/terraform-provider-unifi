@@ -66,7 +66,7 @@ resource "unifi_setting_global_switch" "example" {
 
 ### Optional
 
-- `acl_device_isolation` (Set of String) Set of identifiers for device-level isolation. Reordering has no effect (this is an unordered set). At least one element is required when set; remove the attribute to stop managing it.
+- `acl_device_isolation` (Set of String) Set of device identifiers to isolate (the controller's **Device Isolation** control). Each element is sent to the controller verbatim, with no validation or normalization: the UniFi `global_switch` API does not constrain this field's format, so supply the identifiers exactly as the controller expects them (refer to the controller UI). Reordering has no effect (this is an unordered set). At least one element is required when set; remove the attribute to stop managing it.
 - `acl_l3_isolation` (Attributes Set) Set of layer-3 (network-to-network) isolation rules. Each entry isolates a source network from a set of destination networks. All values are UniFi network IDs (the `id` of a `unifi_network` resource), not network names or CIDRs. Reordering has no effect (unordered set). (see [below for nested schema](#nestedatt--acl_l3_isolation))
 - `site` (String) The name of the UniFi site where this resource should be applied. If not specified, the default site will be used.
 - `switch_exclusions` (Set of String) Set of switch MAC addresses excluded from isolation enforcement. MAC addresses are case-insensitive and may use `:` or `-` separators; they are normalized to lowercase, colon-separated form. At least one element is required when set; remove the attribute to stop managing it.

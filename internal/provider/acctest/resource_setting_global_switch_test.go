@@ -77,6 +77,12 @@ func TestAccSettingGlobalSwitch_macNormalization(t *testing.T) {
 // non-modeled field (JumboframeEnabled) out-of-band, then manages only an
 // isolation field. The read-modify-write path must preserve the seeded toggle
 // across both Create and Update.
+//
+// It deliberately exercises acl_l3_isolation (whose value format — UniFi network
+// IDs — is verified and wired to real unifi_network resources) rather than
+// acl_device_isolation, whose element format is not constrained by the go-unifi
+// type and cannot be pinned down from the SDK source. This keeps the flagship
+// regression from hinging on an unverified field/value contract.
 func TestAccSettingGlobalSwitch_clobberGuard(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		Lock: settingGlobalSwitchLock,
@@ -93,17 +99,18 @@ func TestAccSettingGlobalSwitch_clobberGuard(t *testing.T) {
 						t.Fatalf("seeding global_switch failed: %s", err)
 					}
 				},
-				Config: testAccSettingGlobalSwitchDeviceIsolation("dev-1"),
+				Config: testAccSettingGlobalSwitchL3("unifi_network.src.id", "unifi_network.dst.id"),
 				Check: resource.ComposeTestCheckFunc(
-					pt.TestCheckSetResourceAttr(settingGlobalSwitchResourceName, "acl_device_isolation", "dev-1"),
+					resource.TestCheckResourceAttr(settingGlobalSwitchResourceName, "acl_l3_isolation.#", "1"),
 					checkGlobalSwitchJumboframe(t, true),
 				),
 			},
-			// Update a managed field; the seeded toggle must still survive.
+			// Update a managed field (swap the source/destination networks); the
+			// seeded toggle must still survive.
 			{
-				Config: testAccSettingGlobalSwitchDeviceIsolation("dev-2"),
+				Config: testAccSettingGlobalSwitchL3("unifi_network.dst.id", "unifi_network.src.id"),
 				Check: resource.ComposeTestCheckFunc(
-					pt.TestCheckSetResourceAttr(settingGlobalSwitchResourceName, "acl_device_isolation", "dev-2"),
+					resource.TestCheckResourceAttr(settingGlobalSwitchResourceName, "acl_l3_isolation.#", "1"),
 					checkGlobalSwitchJumboframe(t, true),
 				),
 			},
@@ -146,7 +153,7 @@ func TestAccSettingGlobalSwitch_aclL3Isolation(t *testing.T) {
 		Lock: settingGlobalSwitchLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGlobalSwitchL3Config(),
+				Config: testAccSettingGlobalSwitchL3("unifi_network.src.id", "unifi_network.dst.id"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(settingGlobalSwitchResourceName, "acl_l3_isolation.#", "1"),
 				),
@@ -247,23 +254,12 @@ resource "unifi_setting_global_switch" "test" {
 `, quoted)
 }
 
-func testAccSettingGlobalSwitchDeviceIsolation(ids ...string) string {
-	quoted := ""
-	for i, id := range ids {
-		if i > 0 {
-			quoted += ", "
-		}
-		quoted += fmt.Sprintf("%q", id)
-	}
+// testAccSettingGlobalSwitchL3 builds a config with two real networks (src/dst)
+// and a single acl_l3_isolation rule wiring the given source/destination network
+// references (e.g. "unifi_network.src.id"). Using real unifi_network IDs keeps
+// the layer-3 isolation tests on a verified value format.
+func testAccSettingGlobalSwitchL3(source, dest string) string {
 	return fmt.Sprintf(`
-resource "unifi_setting_global_switch" "test" {
-	acl_device_isolation = [%s]
-}
-`, quoted)
-}
-
-func testAccSettingGlobalSwitchL3Config() string {
-	return `
 resource "unifi_network" "src" {
 	name    = "tfacc-gs-src"
 	purpose = "corporate"
@@ -281,10 +277,10 @@ resource "unifi_network" "dst" {
 resource "unifi_setting_global_switch" "test" {
 	acl_l3_isolation = [
 		{
-			source_network       = unifi_network.src.id
-			destination_networks = [unifi_network.dst.id]
+			source_network       = %s
+			destination_networks = [%s]
 		},
 	]
 }
-`
+`, source, dest)
 }
