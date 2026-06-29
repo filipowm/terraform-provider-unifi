@@ -43,6 +43,23 @@ resource "unifi_network" "vlan" {
   dhcp_enabled = true
 }
 
+# Override the default gateway advertised to DHCP clients (DHCP option 3).
+# Useful, for example, to point LAN clients at a Tailscale subnet-router node
+# (10.0.1.5 here) for site-to-site routing instead of the gateway's own IP.
+resource "unifi_network" "custom_gateway" {
+  name    = "lan-via-subnet-router"
+  purpose = "corporate"
+
+  subnet       = "10.0.1.1/24"
+  vlan_id      = 20
+  dhcp_start   = "10.0.1.6"
+  dhcp_stop    = "10.0.1.254"
+  dhcp_enabled = true
+
+  dhcpd_gateway_enabled = true
+  dhcpd_gateway         = "10.0.1.5"
+}
+
 resource "unifi_network" "wan" {
   name    = "wan"
   purpose = "wan"
@@ -130,6 +147,8 @@ Must be after dhcp_v6_start in the IPv6 address space.
 * Is required when dhcpd_boot_enabled is true
 * Should be a reliable, always-on server
 * Must be accessible to all clients that need to boot
+- `dhcpd_gateway` (String) The IPv4 default gateway to advertise to this network's DHCP clients (DHCP option 3) when `dhcpd_gateway_enabled` is `true`. Must be a valid IPv4 address, and is normally an address within this network's `subnet` (an off-subnet address such as a 100.64.0.0/10 Tailscale CGNAT IP passes validation but may be rejected by the controller). IPv6 default gateways are not supported. Left unset, the controller's current value is preserved.
+- `dhcpd_gateway_enabled` (Boolean) Whether to override the default gateway advertised to this network's DHCP clients (DHCP option 3). This maps to the UI's "Default Gateway: Auto/Manual" control. When `false` (auto, the controller default) the gateway's own interface IP on this network is advertised. When `true` (manual) the address in `dhcpd_gateway` is advertised instead — useful, for example, to point LAN clients at a Tailscale subnet-router node for site-to-site routing. `dhcpd_gateway` must be set when this is `true`. Only honored when this network runs its own DHCP server (`dhcp_enabled = true` and `dhcp_relay_enabled = false`). Left unset, the controller's current value is preserved.
 - `domain_name` (String) The domain name for this network. Examples:
 * 'corp.example.com' - For corporate networks
 * 'guest.example.com' - For guest networks
