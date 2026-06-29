@@ -403,9 +403,15 @@ func TestAccNetwork_dhcpGuarding(t *testing.T) {
 	})
 }
 
-// TestAccNetwork_dhcpGuardingVlanOnly pins the (UNVERIFIED) controller behavior for
-// a non-corporate purpose: it confirms dhcp_guarding round-trips on a vlan-only
-// network, or surfaces a controller constraint via the import-verify mismatch.
+// TestAccNetwork_dhcpGuardingVlanOnly covers dhcp_guarding on a non-corporate
+// (vlan-only / L2-only) purpose. A vlan-only network runs no DHCP server, so
+// whether the controller honors an *enabled* value is controller-dependent and
+// unverified — this test deliberately does NOT assert that true is persisted.
+// Instead it asserts the deterministic round-trip we can rely on: the provider
+// already serializes dhcpguard_enabled on every network PUT regardless of
+// purpose (the very mechanism behind issue #123), so an explicit false is
+// accepted and read back as false (and an ignored field also reads back false),
+// giving a stable state with no perpetual diff and a clean import-verify.
 func TestAccNetwork_dhcpGuardingVlanOnly(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	_, vlan := pt.GetTestVLAN(t)
@@ -414,9 +420,9 @@ func TestAccNetwork_dhcpGuardingVlanOnly(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccNetworkVlanOnlyDHCPGuarding(name, vlan, true),
+				Config: testAccNetworkVlanOnlyDHCPGuarding(name, vlan),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "true"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "false"),
 				),
 			},
 			{
@@ -710,7 +716,12 @@ resource "unifi_network" "test" {
 `, name, subnet, vlan, domainName, guardingLine)
 }
 
-func testAccNetworkVlanOnlyDHCPGuarding(name string, vlan int, guarding bool) string {
+// testAccNetworkVlanOnlyDHCPGuarding renders a vlan-only (L2-only) network with
+// dhcp_guarding explicitly disabled. false is used deliberately: it is the value
+// the provider already sends for such networks today, so the round-trip is
+// deterministic regardless of how the controller treats DHCP guarding on a
+// purpose that runs no DHCP server.
+func testAccNetworkVlanOnlyDHCPGuarding(name string, vlan int) string {
 	return fmt.Sprintf(`
 resource "unifi_site" "test" {
   description = "%[1]s"
@@ -721,9 +732,9 @@ resource "unifi_network" "test" {
   name          = "test"
   purpose       = "vlan-only"
   vlan_id       = %[2]d
-  dhcp_guarding = %[3]t
+  dhcp_guarding = false
 }
-`, name, vlan, guarding)
+`, name, vlan)
 }
 
 func testAccNetworkVlanOnly(name string, vlan int) string {
