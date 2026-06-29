@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/filipowm/go-unifi/unifi"
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -63,9 +64,8 @@ func TestResourceNetworkSetResourceData_dhcpGuarding(t *testing.T) {
 	}
 	if got := d.Get("dhcp_guarding").(bool); !got {
 		t.Fatalf("expected dhcp_guarding to be true in state, got false")
-	"github.com/hashicorp/go-cty/cty"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-)
+	}
+}
 
 // TestResourceNetworkSetResourceData_readsFirewallZoneID is a regression guard for
 // the read-back gap that caused issue #94: the resource never surfaced
