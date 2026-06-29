@@ -160,9 +160,19 @@ func resourceFirewallGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 	}
 	req.SiteID = site
 
+	// go-unifi v1.9.2's updateFirewallGroup converts a successful-but-empty PUT
+	// response into unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98);
+	// re-read to tell a spurious error from a genuine out-of-band deletion.
 	resp, err := c.UpdateFirewallGroup(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.FirewallGroup, error) {
+		return c.GetFirewallGroup(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceFirewallGroupSetResourceData(resp, d, site)

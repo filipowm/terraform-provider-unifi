@@ -177,9 +177,19 @@ func resourceUserCreate(ctx context.Context, d *schema.ResourceData, meta interf
 		req.ID = existing.ID
 		req.SiteID = existing.SiteID
 
+		// go-unifi v1.9.2's updateUser converts a successful-but-empty PUT response
+		// into unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98); re-read
+		// so reconciling an existing MAC does not spuriously fail.
+		var found bool
 		resp, err = c.UpdateUser(ctx, site, req)
+		resp, found, err = utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.User, error) {
+			return c.GetUser(ctx, site, req.ID)
+		})
 		if err != nil {
 			return diag.FromErr(err)
+		}
+		if !found {
+			return diag.Errorf("existing user %q (id %s) vanished while reconciling its configuration", req.MAC, req.ID)
 		}
 	}
 
@@ -335,9 +345,19 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 	req.ID = d.Id()
 	req.SiteID = site
 
+	// go-unifi v1.9.2's updateUser converts a successful-but-empty PUT response into
+	// unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98); re-read to tell
+	// a spurious error from a genuine out-of-band deletion.
 	resp, err := c.UpdateUser(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.User, error) {
+		return c.GetUser(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceUserSetResourceData(resp, d, site)

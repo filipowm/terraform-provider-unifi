@@ -6,6 +6,7 @@ import (
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -151,9 +152,19 @@ func resourceUserGroupUpdate(ctx context.Context, d *schema.ResourceData, meta i
 	}
 	req.SiteID = site
 
+	// go-unifi v1.9.2's updateUserGroup converts a successful-but-empty PUT response
+	// into unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98); re-read
+	// to tell a spurious error from a genuine out-of-band deletion.
 	resp, err := c.UpdateUserGroup(context.TODO(), site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.UserGroup, error) {
+		return c.GetUserGroup(context.TODO(), site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceUserGroupSetResourceData(resp, d)

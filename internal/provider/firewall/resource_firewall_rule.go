@@ -424,9 +424,19 @@ func resourceFirewallRuleUpdate(ctx context.Context, d *schema.ResourceData, met
 	}
 	req.SiteID = site
 
+	// go-unifi v1.9.2's updateFirewallRule converts a successful-but-empty PUT
+	// response into unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98);
+	// re-read to tell a spurious error from a genuine out-of-band deletion.
 	resp, err := c.UpdateFirewallRule(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.FirewallRule, error) {
+		return c.GetFirewallRule(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceFirewallRuleSetResourceData(resp, d, site)

@@ -1257,24 +1257,21 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 	req.SiteID = site
 
+	// go-unifi v1.9.2's updateNetwork converts a successful-but-empty PUT response
+	// into unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98); re-read
+	// to tell a spurious error from a genuine out-of-band deletion.
 	resp, err := c.UpdateNetwork(ctx, site, req)
-	if errors.Is(err, unifi.ErrNotFound) {
-		// go-unifi v1.9.2's updateNetwork (unifi/network.generated.go) converts a
-		// successful-but-empty PUT response (HTTP 200, {"meta":{"rc":"ok"},"data":[]}) into
-		// unifi.ErrNotFound via its `len(respBody.Data) != 1` guard. That fires on every
-		// successful update on some controllers, so we cannot treat it as a deletion outright.
-		// Re-read to distinguish a spurious error (object still exists) from a genuine
-		// out-of-band deletion. See issue #98.
-		resp, err = c.GetNetwork(ctx, site, req.ID)
-		if errors.Is(err, unifi.ErrNotFound) {
-			// The network is genuinely gone; clear state so it is recreated on the next
-			// apply (mirrors resourceNetworkRead and resourceNetworkDelete).
-			d.SetId("")
-			return nil
-		}
-	}
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.Network, error) {
+		return c.GetNetwork(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		// The network is genuinely gone; clear state so it is recreated on the next
+		// apply (mirrors resourceNetworkRead and resourceNetworkDelete).
+		d.SetId("")
+		return nil
 	}
 
 	return resourceNetworkSetResourceData(resp, d, site)
