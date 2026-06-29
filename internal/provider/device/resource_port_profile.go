@@ -97,7 +97,11 @@ func ResourcePortProfile() *schema.Resource {
 					"Examples:\n" +
 					"  * Use 'all' for uplink ports or connections to VLAN-aware devices\n" +
 					"  * Use 'native' for end-user devices or simple network connections\n" +
-					"  * Use 'customize' to create a selective trunk port (e.g., for a server needing access to specific VLANs)",
+					"  * Use 'customize' to create a selective trunk port (e.g., for a server needing access to specific VLANs)\n\n" +
+					"~> **Note:** For an access port configured only with `native_networkconf_id` the controller " +
+					"normalizes the stored mode to `customize`. With the default value of `native` this currently " +
+					"results in a non-failing perpetual diff (`~ forward = \"customize\" -> \"native\"`) on every plan. " +
+					"To avoid it, set `forward = \"customize\"` explicitly. See issue #98.",
 				Type:         schema.TypeString,
 				Optional:     true,
 				Default:      "native",
@@ -519,6 +523,21 @@ func resourcePortProfileUpdate(ctx context.Context, d *schema.ResourceData, meta
 	req.SiteID = site
 
 	resp, err := c.UpdatePortProfile(ctx, site, req)
+	if errors.Is(err, unifi.ErrNotFound) {
+		// go-unifi v1.9.2's updatePortProfile (unifi/port_profile.generated.go) converts a
+		// successful-but-empty PUT response (HTTP 200, {"meta":{"rc":"ok"},"data":[]}) into
+		// unifi.ErrNotFound via its `len(respBody.Data) != 1` guard. That fires on every
+		// successful update on some controllers, so we cannot treat it as a deletion outright.
+		// Re-read to distinguish a spurious error (object still exists) from a genuine
+		// out-of-band deletion. See issue #98.
+		resp, err = c.GetPortProfile(ctx, site, req.ID)
+		if errors.Is(err, unifi.ErrNotFound) {
+			// The profile is genuinely gone; clear state so it is recreated on the next
+			// apply (mirrors resourcePortProfileRead and resourcePortProfileDelete).
+			d.SetId("")
+			return nil
+		}
+	}
 	if err != nil {
 		return diag.FromErr(err)
 	}
