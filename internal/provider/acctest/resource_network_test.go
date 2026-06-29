@@ -837,14 +837,21 @@ func TestAccNetwork_unsetZoneDoesNotClobber(t *testing.T) {
 				Config: testAccNetworkZoneFromZoneSideConfig(name, subnet.String(), vlan, zoneName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_firewall_zone.test", "networks.#", "1"),
-					// The network never configures firewall_zone_id, but Read must surface the
-					// zone assigned from the zone side (computed read-back).
-					resource.TestCheckResourceAttrPair("unifi_network.test", "firewall_zone_id", "unifi_firewall_zone.test", "id"),
+					// NOTE: we deliberately do NOT assert unifi_network.firewall_zone_id here.
+					// Because the zone references the network's id, Terraform creates the
+					// network FIRST (read back while no zone exists yet -> firewall_zone_id is
+					// empty or a controller default) and only then creates the zone that
+					// assigns membership. The network is not re-read within the same apply, so
+					// the zone-side assignment is not yet visible in the network's post-apply
+					// state. It surfaces at the start-of-step refresh in the next step, where
+					// the pair check below correctly passes.
 				),
 			},
-			// Re-apply the identical config; the framework fails on a non-empty post-apply
-			// plan, so a clean second apply proves the network's omitted firewall_zone_id
-			// does not fight the zone-side assignment.
+			// Re-apply the identical config. The start-of-step refresh first reads the
+			// network back (now surfacing the zone-side assignment via the computed
+			// read-back), and the framework then fails on a non-empty post-apply plan — so a
+			// clean second apply proves the network's omitted firewall_zone_id does not fight
+			// the zone-side assignment.
 			{
 				Config: testAccNetworkZoneFromZoneSideConfig(name, subnet.String(), vlan, zoneName),
 				Check: resource.ComposeTestCheckFunc(
