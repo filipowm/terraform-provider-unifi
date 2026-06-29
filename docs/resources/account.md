@@ -5,11 +5,11 @@ subcategory: ""
 description: |-
   The unifi_account resource manages RADIUS user accounts in the UniFi controller's built-in RADIUS server.
   This resource is used for:
-  WPA2/WPA3-Enterprise wireless authentication802.1X wired authenticationMAC-based device authenticationVLAN assignment through RADIUS attributes
+  WPA2/WPA3-Enterprise wireless authentication802.1X wired authenticationMAC-based device authenticationDynamic VLAN assignment through RADIUS attributes (see the vlan attribute)
   Important Notes:
   For MAC-based authentication:
   Use the device's MAC address as both username and passwordConvert MAC address to uppercase with no separators (e.g., '00:11:22:33:44:55' becomes '001122334455')VLAN Assignment:
-  If no VLAN is specified in the profile, clients will use the network's untagged VLANVLAN assignment uses standard RADIUS tunnel attributes
+  Set the vlan attribute to the 802.1Q VLAN ID the controller should assign to authenticated clientsVLAN assignment is delivered using the standard RADIUS tunnel attributes (tunnel_type/tunnel_medium_type)If no VLAN is specified, clients will use the network's untagged VLAN
   Limitations:
   MAC-based authentication works only for wireless and wired clientsL2TP remote access VPN is not supported with MAC authenticationAccounts must be unique within a site
 ---
@@ -22,15 +22,16 @@ This resource is used for:
   * WPA2/WPA3-Enterprise wireless authentication
   * 802.1X wired authentication
   * MAC-based device authentication
-  * VLAN assignment through RADIUS attributes
+  * Dynamic VLAN assignment through RADIUS attributes (see the `vlan` attribute)
 
 Important Notes:
 1. For MAC-based authentication:
    * Use the device's MAC address as both username and password
    * Convert MAC address to uppercase with no separators (e.g., '00:11:22:33:44:55' becomes '001122334455')
 2. VLAN Assignment:
-   * If no VLAN is specified in the profile, clients will use the network's untagged VLAN
-   * VLAN assignment uses standard RADIUS tunnel attributes
+   * Set the `vlan` attribute to the 802.1Q VLAN ID the controller should assign to authenticated clients
+   * VLAN assignment is delivered using the standard RADIUS tunnel attributes (`tunnel_type`/`tunnel_medium_type`)
+   * If no VLAN is specified, clients will use the network's untagged VLAN
 
 Limitations:
   * MAC-based authentication works only for wireless and wired clients
@@ -49,7 +50,7 @@ Limitations:
 
 ### Optional
 
-- `network_id` (String) The ID of the network (VLAN) to assign to clients authenticating with this account. This is used in conjunction with the tunnel attributes to provide VLAN assignment via RADIUS.
+- `network_id` (String) The ID of a UniFi network configuration (the controller's `networkconf_id`) to associate with this account. This is a reference to a network object and is distinct from the `vlan` attribute, which sets the 802.1Q VLAN ID delivered via RADIUS.
 - `site` (String) The name of the UniFi site where this RADIUS account should be created. If not specified, the default site will be used.
 - `tunnel_medium_type` (Number) The RADIUS tunnel medium type attribute ([RFC 2868](https://tools.ietf.org/html/rfc2868), section 3.2). Common values:
   * `6` - 802 (includes Ethernet, Token Ring, FDDI) (default)
@@ -63,6 +64,7 @@ Only change this if you need specific tunneling behavior. Defaults to `6`.
   * `9` - Point-to-Point Protocol (L2TP)
 
 Only change this if you need specific tunneling behavior. Defaults to `13`.
+- `vlan` (Number) The 802.1Q VLAN ID to assign to clients authenticating with this account, used for RADIUS dynamic VLAN assignment. It is delivered together with the tunnel attributes (`tunnel_type`/`tunnel_medium_type`). Omitting this attribute (or setting it to `0`) means no VLAN is assigned; if a VLAN was set out-of-band (e.g. in the controller UI), omitting it here removes it on the next apply.
 
 ### Read-Only
 
