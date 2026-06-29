@@ -1,4 +1,4 @@
-package apgroup
+package types
 
 import (
 	"context"
@@ -18,7 +18,8 @@ import (
 type normalizeMACModifier struct{}
 
 // NormalizeMAC returns a plan modifier that canonicalizes a set of MAC
-// addresses to lowercase, colon-separated form.
+// addresses to lowercase, colon-separated form. It is shared across resources
+// (e.g. unifi_ap_group, unifi_setting_global_switch) that accept MAC sets.
 func NormalizeMAC() planmodifier.Set {
 	return normalizeMACModifier{}
 }

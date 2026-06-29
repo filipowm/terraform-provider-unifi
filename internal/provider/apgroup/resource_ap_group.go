@@ -133,7 +133,7 @@ func (r *apGroupResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					setvalidator.ValueStringsAre(validators.Mac),
 				},
 				PlanModifiers: []planmodifier.Set{
-					NormalizeMAC(),
+					ut.NormalizeMAC(),
 				},
 			},
 		},

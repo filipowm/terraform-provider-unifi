@@ -1,9 +1,10 @@
-package apgroup
+package types_test
 
 import (
 	"context"
 	"testing"
 
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -52,7 +53,7 @@ func TestNormalizeMAC(t *testing.T) {
 			t.Parallel()
 			req := planmodifier.SetRequest{PlanValue: test.plan}
 			resp := planmodifier.SetResponse{PlanValue: test.plan}
-			NormalizeMAC().PlanModifySet(context.Background(), req, &resp)
+			ut.NormalizeMAC().PlanModifySet(context.Background(), req, &resp)
 
 			if resp.Diagnostics.HasError() {
 				t.Fatalf("unexpected diagnostics: %s", resp.Diagnostics.Errors()[0].Detail())
