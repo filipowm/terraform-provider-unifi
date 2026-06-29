@@ -15,6 +15,7 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"golang.org/x/crypto/curve25519"
@@ -72,11 +73,16 @@ func ResourceNetwork() *schema.Resource {
 			StateContext: importNetwork,
 		},
 
-		// Cross-field validation the per-attribute schema can't express: a
-		// vpn-client requires its companion fields, and the wireguard_* fields are
-		// rejected on non-vpn-client networks. Catches misconfigurations at plan
-		// time instead of as an opaque controller 400.
-		CustomizeDiff: customizeNetworkVPNClient,
+		// Cross-field validation the per-attribute schema can't express, caught at
+		// plan time instead of as an opaque controller 400:
+		//   - customizeNetworkVPNClient: a vpn-client requires its companion fields,
+		//     and the wireguard_* fields are rejected on non-vpn-client networks.
+		//   - customizeNetworkDefaultGateway: the DHCP default-gateway override IP
+		//     and its enable toggle must be set together.
+		CustomizeDiff: customdiff.All(
+			customizeNetworkVPNClient,
+			customizeNetworkDefaultGateway,
+		),
 
 		Schema: map[string]*schema.Schema{
 			"id": {
@@ -211,6 +217,30 @@ func ResourceNetwork() *schema.Resource {
 					"* Custom paths for specific boot images",
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			"dhcpd_gateway_enabled": {
+				Description: "Whether to override the default gateway advertised to this network's DHCP clients " +
+					"(DHCP option 3). This maps to the UI's \"Default Gateway: Auto/Manual\" control. When `false` " +
+					"(auto, the controller default) the gateway's own interface IP on this network is advertised. " +
+					"When `true` (manual) the address in `dhcpd_gateway` is advertised instead — useful, for example, " +
+					"to point LAN clients at a Tailscale subnet-router node for site-to-site routing. `dhcpd_gateway` " +
+					"must be set when this is `true`. Only honored when this network runs its own DHCP server " +
+					"(`dhcp_enabled = true` and `dhcp_relay_enabled = false`). Left unset, the controller's current " +
+					"value is preserved.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+			},
+			"dhcpd_gateway": {
+				Description: "The IPv4 default gateway to advertise to this network's DHCP clients (DHCP option 3) " +
+					"when `dhcpd_gateway_enabled` is `true`. Must be a valid IPv4 address, and is normally an address " +
+					"within this network's `subnet` (an off-subnet address such as a 100.64.0.0/10 Tailscale CGNAT IP " +
+					"passes validation but may be rejected by the controller). IPv6 default gateways are not supported. " +
+					"Left unset, the controller's current value is preserved.",
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ValidateFunc: validation.IsIPv4Address,
 			},
 			"dhcp_relay_enabled": {
 				Description: "Enables DHCP relay for this network. When enabled:\n" +
@@ -747,12 +777,16 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		DHCPDBootEnabled:  d.Get("dhcpd_boot_enabled").(bool),
 		DHCPDBootServer:   d.Get("dhcpd_boot_server").(string),
 		DHCPDBootFilename: d.Get("dhcpd_boot_filename").(string),
-		DHCPRelayEnabled:  d.Get("dhcp_relay_enabled").(bool),
-		DomainName:        d.Get("domain_name").(string),
-		IGMPSnooping:      d.Get("igmp_snooping").(bool),
-		UpnpLanEnabled:    d.Get("upnp_lan_enabled").(bool),
-		MdnsEnabled:       d.Get("multicast_dns").(bool),
-		Enabled:           d.Get("enabled").(bool),
+
+		DHCPDGatewayEnabled: d.Get("dhcpd_gateway_enabled").(bool),
+		DHCPDGateway:        d.Get("dhcpd_gateway").(string),
+
+		DHCPRelayEnabled: d.Get("dhcp_relay_enabled").(bool),
+		DomainName:       d.Get("domain_name").(string),
+		IGMPSnooping:     d.Get("igmp_snooping").(bool),
+		UpnpLanEnabled:   d.Get("upnp_lan_enabled").(bool),
+		MdnsEnabled:      d.Get("multicast_dns").(bool),
+		Enabled:          d.Get("enabled").(bool),
 
 		DHCPDDNSEnabled: len(dhcpDNS) > 0,
 		// this is kinda hacky but ¯\_(ツ)_/¯
@@ -880,6 +914,57 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 		}
 	}
 	return nil
+}
+
+// customizeNetworkDefaultGateway enforces that the DHCP default-gateway override
+// IP (dhcpd_gateway) and its enable toggle (dhcpd_gateway_enabled) are configured
+// together. SDKv2 RequiredWith can't express "this bool must be TRUE" (a zero-value
+// bool always reads as present), so the rule lives here. Presence is read from
+// GetRawConfig so a value supplied through interpolation (unknown at plan) counts
+// as set instead of tripping a false error, and so an omitted Optional+Computed
+// value (preserving the controller's current setting) is not mistaken for a
+// configured one.
+func customizeNetworkDefaultGateway(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
+	raw := d.GetRawConfig()
+	if raw.IsNull() {
+		return nil // no config (e.g. on destroy) — nothing to validate
+	}
+	return validateDefaultGatewayCombo(rawConfigSet(raw, "dhcpd_gateway"), rawConfigBoolTrue(raw, "dhcpd_gateway_enabled"))
+}
+
+// validateDefaultGatewayCombo is the pure cross-field rule for the DHCP default
+// gateway override, factored out of the CustomizeDiff so it can be unit-tested
+// without constructing a ResourceDiff. gatewaySet reports whether dhcpd_gateway is
+// set in config; enabled reports whether dhcpd_gateway_enabled is true in config.
+func validateDefaultGatewayCombo(gatewaySet, enabled bool) error {
+	if gatewaySet && !enabled {
+		return fmt.Errorf("%q is set but %q is not true: set %q = true to advertise a custom default gateway, or remove %q",
+			"dhcpd_gateway", "dhcpd_gateway_enabled", "dhcpd_gateway_enabled", "dhcpd_gateway")
+	}
+	if enabled && !gatewaySet {
+		return fmt.Errorf("%q is true but %q is empty: set %q to the IPv4 gateway to advertise to DHCP clients, or set %q = false",
+			"dhcpd_gateway_enabled", "dhcpd_gateway", "dhcpd_gateway", "dhcpd_gateway_enabled")
+	}
+	return nil
+}
+
+// rawConfigBoolTrue reports whether boolean attribute name is set to true in the
+// raw config. A null/absent value (Optional+Computed left unset) reads as false;
+// an unknown (interpolated) value reads as true so it is not mistaken for unset at
+// plan time. rawConfigSet is not usable for bools (its collection fallback would
+// panic on cty.Bool).
+func rawConfigBoolTrue(raw cty.Value, name string) bool {
+	if !raw.Type().HasAttribute(name) {
+		return false
+	}
+	v := raw.GetAttr(name)
+	if v.IsNull() {
+		return false
+	}
+	if !v.IsKnown() {
+		return true
+	}
+	return v.True()
 }
 
 // rawConfigSet reports whether attribute name is set in the raw config: non-null,
@@ -1038,6 +1123,8 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("dhcpd_boot_enabled", resp.DHCPDBootEnabled)
 	d.Set("dhcpd_boot_filename", resp.DHCPDBootFilename)
 	d.Set("dhcpd_boot_server", resp.DHCPDBootServer)
+	d.Set("dhcpd_gateway_enabled", resp.DHCPDGatewayEnabled)
+	d.Set("dhcpd_gateway", resp.DHCPDGateway)
 	d.Set("domain_name", resp.DomainName)
 	d.Set("enabled", resp.Enabled)
 	d.Set("igmp_snooping", resp.IGMPSnooping)
