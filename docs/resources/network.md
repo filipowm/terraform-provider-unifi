@@ -85,6 +85,9 @@ Maximum 4 servers can be specified.
 * Protects clients from rogue or misconfigured DHCP servers
 
 This attribute is `Optional` and `Computed`: when omitted from configuration it inherits the current value reported by the controller (so a value enabled in the UI is preserved), rather than being reset. Set it explicitly to manage the value from Terraform.
+- `dhcp_guarding_trusted_servers` (List of String) List of trusted DHCP server IPv4 addresses for DHCP Guarding. When `dhcp_guarding` is enabled the controller drops DHCP offers from every server except those listed here, so at least one address is required whenever guarding is on (for a network served by the UniFi gateway's own DHCP server this is typically the network's gateway IP). Maximum 3 servers can be specified.
+
+Like `dhcp_guarding`, this attribute is `Optional` and `Computed`: when omitted it inherits the current value reported by the controller (so a list configured in the UI is preserved rather than cleared). Set it explicitly to manage the trusted servers from Terraform.
 - `dhcp_lease` (Number) The DHCP lease time in seconds. Common values:
 * 86400 (1 day) - Default, suitable for most networks
 * 3600 (1 hour) - For testing or temporary networks

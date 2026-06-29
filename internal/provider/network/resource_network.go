@@ -15,6 +15,7 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"golang.org/x/crypto/curve25519"
@@ -73,10 +74,13 @@ func ResourceNetwork() *schema.Resource {
 		},
 
 		// Cross-field validation the per-attribute schema can't express: a
-		// vpn-client requires its companion fields, and the wireguard_* fields are
-		// rejected on non-vpn-client networks. Catches misconfigurations at plan
-		// time instead of as an opaque controller 400.
-		CustomizeDiff: customizeNetworkVPNClient,
+		// vpn-client requires its companion fields and rejects wireguard_* on other
+		// purposes, and DHCP Guarding requires at least one trusted server. Catches
+		// misconfigurations at plan time instead of as an opaque controller 400.
+		CustomizeDiff: customdiff.All(
+			customizeNetworkVPNClient,
+			customizeNetworkDHCPGuarding,
+		),
 
 		Schema: map[string]*schema.Schema{
 			"id": {
@@ -314,6 +318,26 @@ func ResourceNetwork() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Computed: true,
+			},
+			"dhcp_guarding_trusted_servers": {
+				Description: "List of trusted DHCP server IPv4 addresses for DHCP Guarding. When `dhcp_guarding` " +
+					"is enabled the controller drops DHCP offers from every server except those listed here, so at " +
+					"least one address is required whenever guarding is on (for a network served by the UniFi gateway's " +
+					"own DHCP server this is typically the network's gateway IP). Maximum 3 servers can be specified.\n\n" +
+					"Like `dhcp_guarding`, this attribute is `Optional` and `Computed`: when omitted it inherits the " +
+					"current value reported by the controller (so a list configured in the UI is preserved rather than " +
+					"cleared). Set it explicitly to manage the trusted servers from Terraform.",
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				MaxItems: 3,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+					ValidateFunc: validation.All(
+						validation.IsIPv4Address,
+						validation.StringLenBetween(1, 50),
+					),
+				},
 			},
 			"upnp_lan_enabled": {
 				Description: "Whether clients on THIS network are allowed to request UPnP/NAT-PMP port mappings. " +
@@ -718,6 +742,10 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert dhcp_dns to string slice: %w", err)
 	}
+	dhcpGuardServers, err := utils.ListToStringSlice(d.Get("dhcp_guarding_trusted_servers").([]interface{}))
+	if err != nil {
+		return nil, fmt.Errorf("unable to convert dhcp_guarding_trusted_servers to string slice: %w", err)
+	}
 	dhcpV6DNS, err := utils.ListToStringSlice(d.Get("dhcp_v6_dns").([]interface{}))
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert dhcp_v6_dns to string slice: %w", err)
@@ -761,7 +789,12 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		DHCPDBootFilename: d.Get("dhcpd_boot_filename").(string),
 		DHCPRelayEnabled:  d.Get("dhcp_relay_enabled").(bool),
 		DHCPguardEnabled:  d.Get("dhcp_guarding").(bool),
-		DomainName:        d.Get("domain_name").(string),
+		// Trusted DHCP servers for DHCP Guarding. Same hackish positional fan-out as
+		// DHCPDDNS{x}; an empty list maps to "" entries. ¯\_(ツ)_/¯
+		DHCPDIP1:   append(dhcpGuardServers, "")[0],
+		DHCPDIP2:   append(dhcpGuardServers, "", "")[1],
+		DHCPDIP3:   append(dhcpGuardServers, "", "", "")[2],
+		DomainName: d.Get("domain_name").(string),
 		IGMPSnooping:      d.Get("igmp_snooping").(bool),
 		UpnpLanEnabled:    d.Get("upnp_lan_enabled").(bool),
 		MdnsEnabled:       d.Get("multicast_dns").(bool),
@@ -895,6 +928,22 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 	return nil
 }
 
+// customizeNetworkDHCPGuarding enforces that DHCP Guarding has at least one trusted
+// DHCP server: the controller rejects guarding with no trusted server (api.err.
+// MissingIPAddress). Both attributes are Optional+Computed, so d.Get returns the
+// effective post-plan value (config when set, else the inherited prior value). That
+// means we only fail when guarding is effectively on while the trusted-server list is
+// effectively empty — an unrelated update that leaves both inherited won't trip it.
+func customizeNetworkDHCPGuarding(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
+	if !d.Get("dhcp_guarding").(bool) {
+		return nil
+	}
+	if len(d.Get("dhcp_guarding_trusted_servers").([]interface{})) == 0 {
+		return fmt.Errorf("%q is required when %q is enabled: DHCP Guarding needs at least one trusted DHCP server IP address", "dhcp_guarding_trusted_servers", "dhcp_guarding")
+	}
+	return nil
+}
+
 // rawConfigSet reports whether attribute name is set in the raw config: non-null,
 // and for a known value non-empty (string), non-zero (number), or non-empty
 // (collection). An unknown/interpolated value (e.g. var.x) counts as set, so it
@@ -1011,6 +1060,18 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 		}
 	}
 
+	dhcpGuardServers := []string{}
+	for _, ip := range []string{
+		resp.DHCPDIP1,
+		resp.DHCPDIP2,
+		resp.DHCPDIP3,
+	} {
+		if ip == "" {
+			continue
+		}
+		dhcpGuardServers = append(dhcpGuardServers, ip)
+	}
+
 	dhcpV6DNS := []string{}
 	for _, dns := range []string{
 		resp.DHCPDV6DNS1,
@@ -1041,6 +1102,7 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("dhcp_lease", dhcpLease)
 	d.Set("dhcp_relay_enabled", resp.DHCPRelayEnabled)
 	d.Set("dhcp_guarding", resp.DHCPguardEnabled)
+	d.Set("dhcp_guarding_trusted_servers", dhcpGuardServers)
 	d.Set("dhcp_start", resp.DHCPDStart)
 	d.Set("dhcp_stop", resp.DHCPDStop)
 	d.Set("dhcp_v6_dns_auto", resp.DHCPDV6DNSAuto)

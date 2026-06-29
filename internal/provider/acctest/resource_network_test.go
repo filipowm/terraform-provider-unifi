@@ -370,11 +370,12 @@ func TestAccNetwork_dhcpGuarding(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
-			// 1. Enable DHCP Guarding explicitly.
+			// 1. Enable DHCP Guarding explicitly (with the required trusted server).
 			{
 				Config: testAccNetworkConfigDHCPGuarding(name, subnet, vlan, "foo.local", true, true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "true"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding_trusted_servers.#", "1"),
 				),
 			},
 			// 2. Import round-trip.
@@ -388,6 +389,9 @@ func TestAccNetwork_dhcpGuarding(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_network.test", "domain_name", "bar.local"),
 					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding", "true"),
+					// The companion trusted-server list must be preserved too, otherwise
+					// the inherited guarding=true would round-trip to MissingIPAddress.
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_guarding_trusted_servers.#", "1"),
 				),
 			},
 			pt.ImportStep("unifi_network.test"),
@@ -696,6 +700,11 @@ func testAccNetworkConfigDHCPGuarding(name string, subnet *net.IPNet, vlan int, 
 	guardingLine := ""
 	if guardingSet {
 		guardingLine = fmt.Sprintf("dhcp_guarding = %t", guarding)
+		if guarding {
+			// DHCP Guarding requires at least one trusted DHCP server IP; the
+			// network's own gateway (first host of the subnet) is the natural one.
+			guardingLine += "\n\tdhcp_guarding_trusted_servers = [cidrhost(local.subnet, 1)]"
+		}
 	}
 	return fmt.Sprintf(`
 locals {
