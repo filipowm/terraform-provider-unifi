@@ -571,7 +571,6 @@ type firewallZonePolicyResource struct {
 func (r *firewallZonePolicyResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
 		validators.RequiredSimpleTogetherIf("connection_state_type", types.StringValue("CUSTOM"), "connection_states"),
-		validators.RequiredSimpleTogetherIf("connection_state_type", types.StringValue("CUSTOM"), "connection_states"),
 	}
 }
 
