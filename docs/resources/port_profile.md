@@ -75,7 +75,9 @@ Use 'auto' for highest security, 'mac_based' for legacy devices, and 'multi_host
 Examples:
   * Use 'all' for uplink ports or connections to VLAN-aware devices
   * Use 'native' for end-user devices or simple network connections
-  * Use 'customize' to create a selective trunk port (e.g., for a server needing access to specific VLANs) Defaults to `native`.
+  * Use 'customize' to create a selective trunk port (e.g., for a server needing access to specific VLANs)
+
+~> **Note:** For an access port configured only with `native_networkconf_id` the controller normalizes the stored mode to `customize`. With the default value of `native` this currently results in a non-failing perpetual diff (`~ forward = "customize" -> "native"`) on every plan. To avoid it, set `forward = "customize"` explicitly. See issue #98. Defaults to `native`.
 - `full_duplex` (Boolean) Enable full-duplex mode when auto-negotiation is disabled. Full duplex allows simultaneous two-way communication. Defaults to `false`.
 - `isolation` (Boolean) Enable port isolation. When enabled, devices connected to ports with this profile cannot communicate with each other, providing enhanced security. Defaults to `false`.
 - `lldpmed_enabled` (Boolean) Enable Link Layer Discovery Protocol-Media Endpoint Discovery (LLDP-MED). This allows for automatic discovery and configuration of devices like VoIP phones. Defaults to `true`.
