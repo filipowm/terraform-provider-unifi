@@ -134,6 +134,27 @@ func ResourceNetwork() *schema.Resource {
 				Optional: true,
 				Default:  "LAN",
 			},
+			"firewall_zone_id": {
+				Description: "The ID of the Zone-Based Firewall (ZBF) zone this network belongs to. This is only " +
+					"meaningful on UniFi OS 9.x controllers with Zone-Based Firewall enabled. The zone ID is " +
+					"**site-scoped**: an ID from a different site is rejected or silently dropped by the controller.\n\n" +
+					"This attribute is `Optional` + `Computed`:\n" +
+					"* Leave it **unset** to preserve whatever zone the controller (or a `unifi_firewall_zone` " +
+					"resource) has assigned. The provider never sends the field when it is not configured, so it " +
+					"cannot clobber a zone managed elsewhere.\n" +
+					"* **Set** it to explicitly pin or move this network to a specific zone — choose the zone " +
+					"appropriate for the network's purpose (e.g. Internal, External, Guest).\n\n" +
+					"On read the controller-assigned zone is always populated, so drift is detectable and " +
+					"`terraform import` round-trips cleanly. Note the standard `Optional`+`Computed` \"sticky " +
+					"value\" semantics: once set and later removed from configuration the value persists in state " +
+					"rather than reverting, and removing it does **not** un-zone the network.\n\n" +
+					"To manage zone membership from the zone side instead, use `unifi_firewall_zone.networks`. " +
+					"Do not manage the same network-to-zone association from both sides.",
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ValidateFunc: validation.StringIsNotEmpty,
+			},
 			"dhcp_start": {
 				Description: "The starting IPv4 address of the DHCP range. Examples:\n" +
 					"* For subnet 192.168.1.0/24, typical start: '192.168.1.100'\n" +
@@ -734,7 +755,7 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		ipSubnet = utils.CidrZeroBased(subnet)
 	}
 
-	return &unifi.Network{
+	n := &unifi.Network{
 		Name:              d.Get("name").(string),
 		Purpose:           d.Get("purpose").(string),
 		VLAN:              vlan,
@@ -824,7 +845,21 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		VPNClientDefaultRoute:              d.Get("vpn_client_default_route").(bool),
 		VPNClientPullDNS:                   d.Get("vpn_client_pull_dns").(bool),
 		UidVPNCustomRouting:                uidVPNCustomRouting,
-	}, nil
+	}
+
+	// Zone-Based Firewall (UniFi OS 9.x) zone membership. Only send firewall_zone_id
+	// when the user explicitly configured it. If it is omitted (null/unknown) leave it
+	// empty so omitempty drops it from the payload — preserving today's behavior and not
+	// clobbering a zone managed via unifi_firewall_zone.networks. Plain d.Get is
+	// insufficient here: for an Optional+Computed string it returns the stale state
+	// value when config is null, which would re-send (and fight) an externally-managed
+	// zone. rawConfigSet inspects d.GetRawConfig() and treats null and empty-string as
+	// "not set" (the StringIsNotEmpty validator already rejects an explicit "").
+	if raw := d.GetRawConfig(); rawConfigSet(raw, "firewall_zone_id") {
+		n.FirewallZoneID = d.Get("firewall_zone_id").(string)
+	}
+
+	return n, nil
 }
 
 // customizeNetworkVPNClient enforces the cross-field rules for vpn-client networks
@@ -1022,6 +1057,9 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 		networkGroup = "LAN"
 	}
 	d.Set("network_group", networkGroup)
+
+	// Always read back the firewall zone so drift is detectable and imports round-trip.
+	d.Set("firewall_zone_id", resp.FirewallZoneID)
 
 	d.Set("dhcp_dns", dhcpDNS)
 	d.Set("dhcp_enabled", resp.DHCPDEnabled)

@@ -1,6 +1,7 @@
 package acctest
 
 import (
+	"context"
 	"fmt"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"net"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 func TestAccNetwork_basic(t *testing.T) {
@@ -695,6 +697,268 @@ func TestAccNetwork_wireguardVPNClient(t *testing.T) {
 			pt.ImportStep("unifi_network.wg_test", "x_wireguard_private_key", "wireguard_client_preshared_key"),
 		},
 	})
+}
+
+// --- Zone-Based Firewall (issue #94) -----------------------------------------
+//
+// These exercise the new unifi_network.firewall_zone_id attribute. They require a
+// real UniFi OS 9.x controller with Zone-Based Firewall enabled and therefore skip
+// in the Dockerized make testacc run (the harness "does not support firewall zones
+// yet"), mirroring acctest/resource_firewall_zone_test.go. Existing unifi_network
+// tests carry `// TODO: CheckDestroy` placeholders; these do not regress that — the
+// zone resource is destroy-checked via testAccCheckFirewallZoneDestroy where a zone
+// is created.
+//
+// CAVEAT (must be validated manually on a live 9.x ZBF controller before relying on
+// these): whether the controller honors Network.FirewallZoneID on POST/PUT at all,
+// and whether a full-object PUT with firewall_zone_id omitted PRESERVES vs CLEARS the
+// existing zone (TestAccNetwork_unsetZoneDoesNotClobber guards the latter assumption).
+
+// TestAccNetwork_explicitFirewallZone creates a zone, pins a network to it via
+// firewall_zone_id, and asserts it sticks, imports cleanly, and that the zone matrix
+// endpoint does not 500 (the exact UI-blank failure path from #94).
+func TestAccNetwork_explicitFirewallZone(t *testing.T) {
+	pt.SkipIfEnvLocalMissing(t, "Skipping, because test environment does not support firewall zones yet")
+	name := acctest.RandomWithPrefix("tfacc")
+	zoneName := acctest.RandomWithPrefix("tfacc-zone")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: ">= 9.0.0",
+		Lock:              firewallZoneLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkExplicitZoneConfig(name, subnet.String(), vlan, zoneName),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("unifi_network.test", "firewall_zone_id"),
+					resource.TestCheckResourceAttrPair("unifi_network.test", "firewall_zone_id", "unifi_firewall_zone.test", "id"),
+					testAccCheckFirewallZoneMatrixNoError("default"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+		},
+		CheckDestroy: testAccCheckFirewallZoneDestroy,
+	})
+}
+
+// TestAccNetwork_moveBetweenZones flips a network's firewall_zone_id from zone A to
+// zone B and asserts the change applies and persists.
+func TestAccNetwork_moveBetweenZones(t *testing.T) {
+	pt.SkipIfEnvLocalMissing(t, "Skipping, because test environment does not support firewall zones yet")
+	name := acctest.RandomWithPrefix("tfacc")
+	zoneA := acctest.RandomWithPrefix("tfacc-zonea")
+	zoneB := acctest.RandomWithPrefix("tfacc-zoneb")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: ">= 9.0.0",
+		Lock:              firewallZoneLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkTwoZonesConfig(name, subnet.String(), vlan, zoneA, zoneB, "unifi_firewall_zone.a.id"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrPair("unifi_network.test", "firewall_zone_id", "unifi_firewall_zone.a", "id"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+			{
+				Config: testAccNetworkTwoZonesConfig(name, subnet.String(), vlan, zoneA, zoneB, "unifi_firewall_zone.b.id"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrPair("unifi_network.test", "firewall_zone_id", "unifi_firewall_zone.b", "id"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+		},
+		CheckDestroy: testAccCheckFirewallZoneDestroy,
+	})
+}
+
+// TestAccNetwork_externalDrift moves a network's zone out-of-band and asserts the
+// next refresh surfaces a non-empty plan — proving the primary value of the fix
+// (drift visibility) works.
+func TestAccNetwork_externalDrift(t *testing.T) {
+	pt.SkipIfEnvLocalMissing(t, "Skipping, because test environment does not support firewall zones yet")
+	name := acctest.RandomWithPrefix("tfacc")
+	zoneA := acctest.RandomWithPrefix("tfacc-zonea")
+	zoneB := acctest.RandomWithPrefix("tfacc-zoneb")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: ">= 9.0.0",
+		Lock:              firewallZoneLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkTwoZonesConfig(name, subnet.String(), vlan, zoneA, zoneB, "unifi_firewall_zone.a.id"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrPair("unifi_network.test", "firewall_zone_id", "unifi_firewall_zone.a", "id"),
+				),
+			},
+			{
+				// Move the network to zone B behind Terraform's back, then plan with the
+				// original (zone A) config. Refresh must detect the drift.
+				PreConfig: func() {
+					ctx := context.Background()
+					netID := mustNetworkIDByName(t, "default", name)
+					zoneBID := mustFirewallZoneIDByName(t, "default", zoneB)
+					n, err := testClient.GetNetwork(ctx, "default", netID)
+					if err != nil {
+						t.Fatalf("GetNetwork: %s", err)
+					}
+					n.FirewallZoneID = zoneBID
+					if _, err := testClient.UpdateNetwork(ctx, "default", n); err != nil {
+						t.Fatalf("out-of-band UpdateNetwork: %s", err)
+					}
+				},
+				Config:             testAccNetworkTwoZonesConfig(name, subnet.String(), vlan, zoneA, zoneB, "unifi_firewall_zone.a.id"),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true,
+			},
+		},
+		CheckDestroy: testAccCheckFirewallZoneDestroy,
+	})
+}
+
+// TestAccNetwork_unsetZoneDoesNotClobber assigns a network to a zone from the zone
+// side (unifi_firewall_zone.networks) while leaving firewall_zone_id unset on the
+// network, and asserts the apply produces no diff and preserves membership. This
+// guards the dueling-writes resolution AND the PUT-omit-preserves-zone assumption:
+// the network resource must not send firewall_zone_id when unconfigured.
+func TestAccNetwork_unsetZoneDoesNotClobber(t *testing.T) {
+	pt.SkipIfEnvLocalMissing(t, "Skipping, because test environment does not support firewall zones yet")
+	name := acctest.RandomWithPrefix("tfacc")
+	zoneName := acctest.RandomWithPrefix("tfacc-zone")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: ">= 9.0.0",
+		Lock:              firewallZoneLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkZoneFromZoneSideConfig(name, subnet.String(), vlan, zoneName),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_firewall_zone.test", "networks.#", "1"),
+					// The network never configures firewall_zone_id, but Read must surface the
+					// zone assigned from the zone side (computed read-back).
+					resource.TestCheckResourceAttrPair("unifi_network.test", "firewall_zone_id", "unifi_firewall_zone.test", "id"),
+				),
+			},
+			// Re-apply the identical config; the framework fails on a non-empty post-apply
+			// plan, so a clean second apply proves the network's omitted firewall_zone_id
+			// does not fight the zone-side assignment.
+			{
+				Config: testAccNetworkZoneFromZoneSideConfig(name, subnet.String(), vlan, zoneName),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrPair("unifi_network.test", "firewall_zone_id", "unifi_firewall_zone.test", "id"),
+				),
+			},
+		},
+		CheckDestroy: testAccCheckFirewallZoneDestroy,
+	})
+}
+
+func testAccNetworkExplicitZoneConfig(name, subnet string, vlan int, zoneName string) string {
+	return fmt.Sprintf(`
+resource "unifi_firewall_zone" "test" {
+	name     = %[4]q
+	networks = []
+}
+
+resource "unifi_network" "test" {
+	name    = %[1]q
+	purpose = "corporate"
+	subnet  = %[2]q
+	vlan_id = %[3]d
+
+	# Manage the zone association from the network side only; the zone above
+	# intentionally does not list this network (the two representations are
+	# mutually exclusive — see the example).
+	firewall_zone_id = unifi_firewall_zone.test.id
+}
+`, name, subnet, vlan, zoneName)
+}
+
+func testAccNetworkTwoZonesConfig(name, subnet string, vlan int, zoneA, zoneB, selected string) string {
+	return fmt.Sprintf(`
+resource "unifi_firewall_zone" "a" {
+	name     = %[4]q
+	networks = []
+}
+
+resource "unifi_firewall_zone" "b" {
+	name     = %[5]q
+	networks = []
+}
+
+resource "unifi_network" "test" {
+	name    = %[1]q
+	purpose = "corporate"
+	subnet  = %[2]q
+	vlan_id = %[3]d
+
+	firewall_zone_id = %[6]s
+}
+`, name, subnet, vlan, zoneA, zoneB, selected)
+}
+
+func testAccNetworkZoneFromZoneSideConfig(name, subnet string, vlan int, zoneName string) string {
+	return fmt.Sprintf(`
+resource "unifi_network" "test" {
+	name    = %[1]q
+	purpose = "corporate"
+	subnet  = %[2]q
+	vlan_id = %[3]d
+
+	# firewall_zone_id intentionally unset — membership is managed from the zone side.
+}
+
+resource "unifi_firewall_zone" "test" {
+	name     = %[4]q
+	networks = [unifi_network.test.id]
+}
+`, name, subnet, vlan, zoneName)
+}
+
+// testAccCheckFirewallZoneMatrixNoError reproduces the #94 failure path: an unzoned
+// network made the zone-matrix endpoint return HTTP 500, blanking the ZBF Rules UI.
+// A successful (non-error) list proves explicit assignment repairs it. The SDK
+// surfaces an error, not the raw HTTP status.
+func testAccCheckFirewallZoneMatrixNoError(site string) resource.TestCheckFunc {
+	return func(*terraform.State) error {
+		if _, err := testClient.ListFirewallZoneMatrix(context.Background(), site); err != nil {
+			return fmt.Errorf("ListFirewallZoneMatrix(%q) returned an error (reproduces the #94 zone-matrix 500): %w", site, err)
+		}
+		return nil
+	}
+}
+
+func mustNetworkIDByName(t *testing.T, site, name string) string {
+	t.Helper()
+	networks, err := testClient.ListNetwork(context.Background(), site)
+	if err != nil {
+		t.Fatalf("ListNetwork: %s", err)
+	}
+	for _, n := range networks {
+		if n.Name == name {
+			return n.ID
+		}
+	}
+	t.Fatalf("no network found with name %q", name)
+	return ""
+}
+
+func mustFirewallZoneIDByName(t *testing.T, site, name string) string {
+	t.Helper()
+	zones, err := testClient.ListFirewallZone(context.Background(), site)
+	if err != nil {
+		t.Fatalf("ListFirewallZone: %s", err)
+	}
+	for _, z := range zones {
+		if z.Name == name {
+			return z.ID
+		}
+	}
+	t.Fatalf("no firewall zone found with name %q", name)
+	return ""
 }
 
 func testWireguardVPNClientNetworkConfig(name string, peerIP string, peerPort int, peerPublicKey string) string {
