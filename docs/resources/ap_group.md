@@ -27,7 +27,7 @@ resource "unifi_ap_group" "example" {
 
 ### Required
 
-- `device_macs` (Set of String) Set of AP device MAC addresses to include in this AP group. MAC addresses are case-insensitive and may use `:` or `-` separators; they are normalized to lowercase, colon-separated form.
+- `device_macs` (Set of String) Set of AP device MAC addresses to include in this AP group. MAC addresses are case-insensitive and may use `:` or `-` separators (e.g. `aa:bb:cc:dd:ee:ff` and `AA-BB-CC-DD-EE-FF` are treated as the same address and produce no diff); the value is kept as written.
 - `name` (String) The name of the AP group.
 
 ### Optional

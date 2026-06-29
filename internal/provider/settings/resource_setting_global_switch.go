@@ -76,8 +76,10 @@ func (m *globalSwitchModel) overlay(ctx context.Context, cur *unifi.SettingGloba
 		if diags.HasError() {
 			return diags
 		}
-		// Defensive normalization in case a value reaches here without passing
-		// through the plan-time NormalizeMAC modifier.
+		// Normalize to the controller's canonical MAC form before the write. The
+		// schema keeps the user's chosen form in state (via the MACType semantic
+		// equality), but the controller matches switch_exclusions against adopted
+		// devices by canonical MAC, so the wire value must be canonicalized here.
 		for i := range v {
 			v[i] = utils.CleanMAC(v[i])
 		}
@@ -149,7 +151,10 @@ func (m *globalSwitchModel) Merge(ctx context.Context, other interface{}) diag.D
 	diags.Append(d...)
 	m.AclDeviceIsolation = deviceIso
 
-	switchExcl, d := types.SetValueFrom(ctx, types.StringType, nonNilStrings(model.SwitchExclusions))
+	// switch_exclusions uses the MACType element type so the state value carries
+	// MACValue elements; that is what lets the framework apply MAC semantic
+	// equality (case/separator-insensitive) and avoid perpetual diffs.
+	switchExcl, d := types.SetValueFrom(ctx, ut.MACType{}, nonNilStrings(model.SwitchExclusions))
 	diags.Append(d...)
 	m.SwitchExclusions = switchExcl
 
@@ -290,11 +295,13 @@ func (r *globalSwitchResource) Schema(_ context.Context, _ resource.SchemaReques
 				},
 			},
 			"switch_exclusions": schema.SetAttribute{
-				MarkdownDescription: "Set of switch MAC addresses excluded from isolation enforcement. MAC addresses " +
-					"are case-insensitive and may use `:` or `-` separators; they are normalized to lowercase, " +
-					"colon-separated form. At least one element is required when set; remove the attribute to stop " +
-					"managing it.",
-				ElementType: types.StringType,
+				MarkdownDescription: "Set of switch MAC addresses excluded from isolation enforcement. Each element " +
+					"must be the MAC address of a switch that is already adopted/managed by the controller; the " +
+					"controller rejects MACs that do not correspond to a known switch. MAC addresses are " +
+					"case-insensitive and may use `:` or `-` separators (e.g. `aa:bb:cc:dd:ee:ff` and " +
+					"`AA-BB-CC-DD-EE-FF` are treated as the same address and produce no diff); the value is kept as " +
+					"written. At least one element is required when set; remove the attribute to stop managing it.",
+				ElementType: ut.MACType{},
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.Set{
@@ -302,7 +309,6 @@ func (r *globalSwitchResource) Schema(_ context.Context, _ resource.SchemaReques
 					setvalidator.ValueStringsAre(validators.Mac),
 				},
 				PlanModifiers: []planmodifier.Set{
-					ut.NormalizeMAC(),
 					setplanmodifier.UseStateForUnknown(),
 				},
 			},

@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
 	"github.com/filipowm/go-unifi/unifi"
@@ -63,7 +62,10 @@ func (m *APGroupModel) Merge(ctx context.Context, other interface{}) diag.Diagno
 	m.ID = types.StringValue(model.ID)
 	m.Name = types.StringValue(model.Name)
 
-	deviceMACs, d := types.SetValueFrom(ctx, types.StringType, model.DeviceMACs)
+	// device_macs uses the MACType element type so the state carries MACValue
+	// elements, enabling MAC semantic equality (case/separator-insensitive) and
+	// avoiding perpetual diffs.
+	deviceMACs, d := types.SetValueFrom(ctx, ut.MACType{}, model.DeviceMACs)
 	diags = append(diags, d...)
 	m.DeviceMACs = deviceMACs
 
@@ -124,16 +126,14 @@ func (r *apGroupResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			},
 			"device_macs": schema.SetAttribute{
 				MarkdownDescription: "Set of AP device MAC addresses to include in this AP group. " +
-					"MAC addresses are case-insensitive and may use `:` or `-` separators; " +
-					"they are normalized to lowercase, colon-separated form.",
+					"MAC addresses are case-insensitive and may use `:` or `-` separators " +
+					"(e.g. `aa:bb:cc:dd:ee:ff` and `AA-BB-CC-DD-EE-FF` are treated as the same address " +
+					"and produce no diff); the value is kept as written.",
 				Required:    true,
-				ElementType: types.StringType,
+				ElementType: ut.MACType{},
 				Validators: []validator.Set{
 					setvalidator.SizeAtLeast(1),
 					setvalidator.ValueStringsAre(validators.Mac),
-				},
-				PlanModifiers: []planmodifier.Set{
-					ut.NormalizeMAC(),
 				},
 			},
 		},

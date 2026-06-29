@@ -13,9 +13,10 @@ import (
 //
 // MacRegex accepts both ':' and '-' separators (and, as a property of the
 // pattern, mixed separators such as "00-11:22:33-44:55"). Mixed separators are
-// intentionally accepted here: the unifi_ap_group resource normalizes every MAC
-// to lowercase, colon-separated form at plan time (see apgroup.NormalizeMAC), so
-// any accepted variant round-trips to the controller's canonical form.
+// intentionally accepted here: resources that hold MAC sets use the MACType
+// custom type (see types.MACType), which treats values that differ only in case
+// or separator as semantically equal, so any accepted variant round-trips to the
+// controller's canonical form without a diff.
 func TestMacRegex(t *testing.T) {
 	t.Parallel()
 
