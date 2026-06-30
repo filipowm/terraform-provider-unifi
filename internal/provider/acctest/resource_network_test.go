@@ -220,6 +220,10 @@ func TestAccNetwork_v6ImportPreserved(t *testing.T) {
 					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_v6_start", "fd6a:37be:e364::2"),
 					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_v6_stop", "fd6a:37be:e364::7d1"),
 					resource.TestCheckResourceAttr("unifi_network.test", "ipv6_ra_priority", "high"),
+					// Confirm the controller honored the pinned confounders; if it overrides
+					// either, the later ExpectEmptyPlan would fail confusingly — surface it here.
+					resource.TestCheckResourceAttr("unifi_network.test", "igmp_snooping", "false"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_v6_dns_auto", "true"),
 				),
 			},
 			// 2. Import by name, exactly like the reporter's `terraform import ... name=...`.
@@ -869,9 +873,18 @@ resource "unifi_network" "test" {
 // the IPv6/DHCPv6 *value* fields (ipv6_static_subnet, dhcp_v6_start/stop,
 // ipv6_ra_priority) are omitted while the IPv6 *gating* fields (ipv6_interface_type,
 // dhcp_v6_enabled, ipv6_ra_enable) are kept — reproducing the sparse post-import config
-// from the report. The IPv4 DHCP control fields are pinned in both variants so they
-// match the controller's stored values and cannot false-fail the convergence
-// (ExpectEmptyPlan) step.
+// from the report.
+//
+// Every Optional-not-Computed, controller-populated confounder is pinned identically in
+// both variants so the ONLY attributes that vary between them are domain_name and the
+// value fields under test — otherwise the step-4 ExpectEmptyPlan could false-fail on an
+// unrelated field whose stored controller value differs from the (zero) value a sparse
+// config sends:
+//   - igmp_snooping: no schema Default and no go-unifi `,omitempty`, so it is always
+//     serialized; pin it to false so it cannot drift the convergence plan.
+//   - dhcp_v6_dns_auto: no go-unifi `,omitempty` (always serialized); pin it to its
+//     schema default (true) so enabling DHCPv6 here does not require a manual dhcp_v6_dns
+//     list — auto-off without a DNS list can be rejected by the controller at create.
 func testAccNetworkConfigV6ImportPreserved(name string, subnet *net.IPNet, vlan int, domainName string, includeV6Values bool) string {
 	v6Values := ""
 	if includeV6Values {
@@ -891,16 +904,18 @@ resource "unifi_network" "test" {
 	name    = "%[1]s"
 	purpose = "corporate"
 
-	subnet       = local.subnet
-	vlan_id      = local.vlan_id
-	dhcp_start   = cidrhost(local.subnet, 6)
-	dhcp_stop    = cidrhost(local.subnet, 254)
-	dhcp_enabled = true
-	domain_name  = "%[4]s"
+	subnet        = local.subnet
+	vlan_id       = local.vlan_id
+	dhcp_start    = cidrhost(local.subnet, 6)
+	dhcp_stop     = cidrhost(local.subnet, 254)
+	dhcp_enabled  = true
+	domain_name   = "%[4]s"
+	igmp_snooping = false
 
 	ipv6_interface_type = "static"
 	ipv6_ra_enable      = true
 	dhcp_v6_enabled     = true
+	dhcp_v6_dns_auto    = true
 %[5]s
 }
 `, name, subnet, vlan, domainName, v6Values)
