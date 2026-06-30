@@ -33,6 +33,12 @@ const settingGlobalSwitchResourceName = "unifi_setting_global_switch.test"
 // reusing the same MACs across them is safe.
 func nonPoolSwitchMACs(t *testing.T, n int) []string {
 	t.Helper()
+	// These switch-isolation tests are version-independent, so in the matrix scope
+	// AcceptanceTest would skip them anyway. Skip here first, before the (retrying)
+	// device discovery below, so a soon-to-be-skipped test does not spend the retry
+	// budget hunting for demo switches that a given matrix controller image may not
+	// provide.
+	SkipForScope(t, false)
 	pt.MarkAccTest(t)
 	ctx := context.Background()
 
