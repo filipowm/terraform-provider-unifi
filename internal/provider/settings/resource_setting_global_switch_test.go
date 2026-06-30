@@ -195,10 +195,10 @@ func TestUniqueSourceNetworkValidator(t *testing.T) {
 	ctx := context.Background()
 
 	l3Type := types.ObjectType{AttrTypes: (&aclL3IsolationModel{}).AttributeTypes()}
-	entry := func(src string) attr.Value {
+	entry := func(src, dest string) attr.Value {
 		return types.ObjectValueMust((&aclL3IsolationModel{}).AttributeTypes(), map[string]attr.Value{
 			"source_network":       types.StringValue(src),
-			"destination_networks": types.SetValueMust(types.StringType, []attr.Value{types.StringValue("net-x")}),
+			"destination_networks": types.SetValueMust(types.StringType, []attr.Value{types.StringValue(dest)}),
 		})
 	}
 
@@ -207,10 +207,14 @@ func TestUniqueSourceNetworkValidator(t *testing.T) {
 		wantErr bool
 	}{
 		"unique source networks are accepted": {
-			set: types.SetValueMust(l3Type, []attr.Value{entry("net-a"), entry("net-b")}),
+			set: types.SetValueMust(l3Type, []attr.Value{entry("net-a", "net-x"), entry("net-b", "net-x")}),
 		},
+		// The two entries share a source_network but differ in destination_networks
+		// so they are distinct set members (identical objects would be collapsed by
+		// the set) — this is the realistic duplicate-source case the validator
+		// must reject.
 		"duplicate source networks are rejected": {
-			set:     types.SetValueMust(l3Type, []attr.Value{entry("net-a"), entry("net-a")}),
+			set:     types.SetValueMust(l3Type, []attr.Value{entry("net-a", "net-b"), entry("net-a", "net-c")}),
 			wantErr: true,
 		},
 		"null set is accepted": {

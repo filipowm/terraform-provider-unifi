@@ -2,6 +2,7 @@ package acctest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -100,6 +101,12 @@ func gsSeedJumboframe(t *testing.T) {
 	ctx := context.Background()
 	cur, err := testClient.GetSettingGlobalSwitch(ctx, "default")
 	if err != nil {
+		// Only treat a genuinely-absent setting as "start from scratch"; any other
+		// read error must fail loudly rather than silently writing a blank object
+		// that would clobber unrelated controller fields on the seed PUT.
+		if !errors.Is(err, unifi.ErrNotFound) {
+			t.Fatalf("reading global_switch for seeding failed: %s", err)
+		}
 		cur = &unifi.SettingGlobalSwitch{}
 	}
 	cur.JumboframeEnabled = true
@@ -175,6 +182,7 @@ resource "unifi_setting_global_switch" "test" {
 	switch_exclusions = [upper(replace(unifi_device.sw0.mac, ":", "-"))]
 }
 `
+	wantMAC := strings.ToUpper(strings.ReplaceAll(macs[0], ":", "-"))
 
 	AcceptanceTest(t, AcceptanceTestCase{
 		Lock: settingGlobalSwitchLock,
@@ -183,6 +191,10 @@ resource "unifi_setting_global_switch" "test" {
 				Config: noncanonical,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(settingGlobalSwitchResourceName, "switch_exclusions.#", "1"),
+					// The non-canonical form is preserved verbatim in state (the
+					// controller's canonical echo is reconciled away by MAC semantic
+					// equality), so a refresh/re-apply produces no diff.
+					resource.TestCheckTypeSetElemAttr(settingGlobalSwitchResourceName, "switch_exclusions.*", wantMAC),
 				),
 			},
 			// The controller stores the MAC canonically (lowercase, colon); the
@@ -273,6 +285,23 @@ func TestAccSettingGlobalSwitch_aclL3Isolation(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(settingGlobalSwitchResourceName, "acl_l3_isolation.#", "1"),
 				),
+			},
+		},
+	})
+}
+
+// TestAccSettingGlobalSwitch_duplicateMacRejected verifies the plan-time
+// UniqueMACs validator: two spellings of the same MAC (differing only in case
+// and separator) are rejected before any controller call.
+func TestAccSettingGlobalSwitch_duplicateMacRejected(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		Lock: settingGlobalSwitchLock,
+		Steps: []resource.TestStep{
+			{
+				Config: `resource "unifi_setting_global_switch" "test" {
+	switch_exclusions = ["AA-BB-CC-DD-EE-FF", "aa:bb:cc:dd:ee:ff"]
+}`,
+				ExpectError: regexp.MustCompile(`(?i)same MAC address`),
 			},
 		},
 	})

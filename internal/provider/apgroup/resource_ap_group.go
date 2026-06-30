@@ -134,6 +134,7 @@ func (r *apGroupResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Validators: []validator.Set{
 					setvalidator.SizeAtLeast(1),
 					setvalidator.ValueStringsAre(validators.Mac),
+					validators.UniqueMACs(),
 				},
 			},
 		},

@@ -238,8 +238,8 @@ func (r *globalSwitchResource) Schema(_ context.Context, _ resource.SchemaReques
 			"(for example, DHCP snooping via `unifi_setting_usw`).\n\n" +
 			"~> **Clearing collections is not supported.** Because the underlying controller fields are " +
 			"`omitempty`, setting any of `acl_device_isolation`, `acl_l3_isolation`, or `switch_exclusions` to an " +
-			"empty value cannot reliably clear it via the API. Configure at least one element, or remove the " +
-			"attribute to stop managing it (the last applied value is retained). Empty values are rejected at plan time.",
+			"empty value cannot reliably clear it via the API. Configure at least one element. Removing the" +
+			"attribute does not unmanage or clear it: the last applied value is retained and kept in sync. Empty values are rejected at plan time.",
 		Attributes: map[string]schema.Attribute{
 			"id":   ut.ID(),
 			"site": ut.SiteAttribute(),
@@ -248,7 +248,7 @@ func (r *globalSwitchResource) Schema(_ context.Context, _ resource.SchemaReques
 					"Each element is sent to the controller verbatim, with no validation or normalization: the UniFi " +
 					"`global_switch` API does not constrain this field's format, so supply the identifiers exactly as the " +
 					"controller expects them (refer to the controller UI). Reordering has no effect (this is an unordered " +
-					"set). At least one element is required when set; remove the attribute to stop managing it.",
+					"set). At least one element is required when set; the value cannot be cleared and is retained even if the attribute is later removed.",
 				ElementType: types.StringType,
 				Optional:    true,
 				Computed:    true,
@@ -300,13 +300,14 @@ func (r *globalSwitchResource) Schema(_ context.Context, _ resource.SchemaReques
 					"controller rejects MACs that do not correspond to a known switch. MAC addresses are " +
 					"case-insensitive and may use `:` or `-` separators (e.g. `aa:bb:cc:dd:ee:ff` and " +
 					"`AA-BB-CC-DD-EE-FF` are treated as the same address and produce no diff); the value is kept as " +
-					"written. At least one element is required when set; remove the attribute to stop managing it.",
+					"written. At least one element is required when set; the value cannot be cleared and is retained even if the attribute is later removed.",
 				ElementType: ut.MACType{},
 				Optional:    true,
 				Computed:    true,
 				Validators: []validator.Set{
 					setvalidator.SizeAtLeast(1),
 					setvalidator.ValueStringsAre(validators.Mac),
+					validators.UniqueMACs(),
 				},
 				PlanModifiers: []planmodifier.Set{
 					setplanmodifier.UseStateForUnknown(),

@@ -5,7 +5,7 @@ subcategory: ""
 description: |-
   The unifi_setting_global_switch resource manages the switch isolation settings (device isolation and ACL-based layer-3 isolation) for a UniFi site, exposed in the controller UI under Settings → Network → Switch Isolation Settings.
   This resource is intentionally narrow: it manages only the isolation-related fields of the controller's global_switch setting object. All other fields of that object (such as DHCP snooping, 802.1X, STP, jumbo frames, and flow control) are preserved untouched using a read-modify-write write path, so this resource can be adopted without clobbering settings managed elsewhere (for example, DHCP snooping via unifi_setting_usw).
-  ~> Clearing collections is not supported. Because the underlying controller fields are omitempty, setting any of acl_device_isolation, acl_l3_isolation, or switch_exclusions to an empty value cannot reliably clear it via the API. Configure at least one element, or remove the attribute to stop managing it (the last applied value is retained). Empty values are rejected at plan time.
+  ~> Clearing collections is not supported. Because the underlying controller fields are omitempty, setting any of acl_device_isolation, acl_l3_isolation, or switch_exclusions to an empty value cannot reliably clear it via the API. Configure at least one element. Removing theattribute does not unmanage or clear it: the last applied value is retained and kept in sync. Empty values are rejected at plan time.
 ---
 
 # unifi_setting_global_switch (Resource)
@@ -14,7 +14,7 @@ The `unifi_setting_global_switch` resource manages the switch isolation settings
 
 This resource is intentionally narrow: it manages only the isolation-related fields of the controller's `global_switch` setting object. All other fields of that object (such as DHCP snooping, 802.1X, STP, jumbo frames, and flow control) are preserved untouched using a read-modify-write write path, so this resource can be adopted without clobbering settings managed elsewhere (for example, DHCP snooping via `unifi_setting_usw`).
 
-~> **Clearing collections is not supported.** Because the underlying controller fields are `omitempty`, setting any of `acl_device_isolation`, `acl_l3_isolation`, or `switch_exclusions` to an empty value cannot reliably clear it via the API. Configure at least one element, or remove the attribute to stop managing it (the last applied value is retained). Empty values are rejected at plan time.
+~> **Clearing collections is not supported.** Because the underlying controller fields are `omitempty`, setting any of `acl_device_isolation`, `acl_l3_isolation`, or `switch_exclusions` to an empty value cannot reliably clear it via the API. Configure at least one element. Removing theattribute does not unmanage or clear it: the last applied value is retained and kept in sync. Empty values are rejected at plan time.
 
 ## Example Usage
 
@@ -51,8 +51,10 @@ resource "unifi_setting_global_switch" "example" {
     },
   ]
 
-  # Switch MAC addresses excluded from isolation enforcement. MACs are
-  # normalized to lowercase, colon-separated form.
+  # Switch MAC addresses excluded from isolation enforcement. Each must be the
+  # MAC of a switch already adopted by the controller. MACs are matched case- and
+  # separator-insensitively (so "00:11:..." and "00-11-..." are equivalent) and
+  # are kept as written in state, not rewritten to a canonical form.
   switch_exclusions = ["00:11:22:33:44:55"]
 
   # Specify the site (optional, defaults to the site configured in the provider,
@@ -66,10 +68,10 @@ resource "unifi_setting_global_switch" "example" {
 
 ### Optional
 
-- `acl_device_isolation` (Set of String) Set of device identifiers to isolate (the controller's **Device Isolation** control). Each element is sent to the controller verbatim, with no validation or normalization: the UniFi `global_switch` API does not constrain this field's format, so supply the identifiers exactly as the controller expects them (refer to the controller UI). Reordering has no effect (this is an unordered set). At least one element is required when set; remove the attribute to stop managing it.
+- `acl_device_isolation` (Set of String) Set of device identifiers to isolate (the controller's **Device Isolation** control). Each element is sent to the controller verbatim, with no validation or normalization: the UniFi `global_switch` API does not constrain this field's format, so supply the identifiers exactly as the controller expects them (refer to the controller UI). Reordering has no effect (this is an unordered set). At least one element is required when set; the value cannot be cleared and is retained even if the attribute is later removed.
 - `acl_l3_isolation` (Attributes Set) Set of layer-3 (network-to-network) isolation rules. Each entry isolates a source network from a set of destination networks. All values are UniFi network IDs (the `id` of a `unifi_network` resource), not network names or CIDRs. Reordering has no effect (unordered set). (see [below for nested schema](#nestedatt--acl_l3_isolation))
 - `site` (String) The name of the UniFi site where this resource should be applied. If not specified, the default site will be used.
-- `switch_exclusions` (Set of String) Set of switch MAC addresses excluded from isolation enforcement. Each element must be the MAC address of a switch that is already adopted/managed by the controller; the controller rejects MACs that do not correspond to a known switch. MAC addresses are case-insensitive and may use `:` or `-` separators (e.g. `aa:bb:cc:dd:ee:ff` and `AA-BB-CC-DD-EE-FF` are treated as the same address and produce no diff); the value is kept as written. At least one element is required when set; remove the attribute to stop managing it.
+- `switch_exclusions` (Set of String) Set of switch MAC addresses excluded from isolation enforcement. Each element must be the MAC address of a switch that is already adopted/managed by the controller; the controller rejects MACs that do not correspond to a known switch. MAC addresses are case-insensitive and may use `:` or `-` separators (e.g. `aa:bb:cc:dd:ee:ff` and `AA-BB-CC-DD-EE-FF` are treated as the same address and produce no diff); the value is kept as written. At least one element is required when set; the value cannot be cleared and is retained even if the attribute is later removed.
 
 ### Read-Only
 

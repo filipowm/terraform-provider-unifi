@@ -30,8 +30,10 @@ resource "unifi_setting_global_switch" "example" {
     },
   ]
 
-  # Switch MAC addresses excluded from isolation enforcement. MACs are
-  # normalized to lowercase, colon-separated form.
+  # Switch MAC addresses excluded from isolation enforcement. Each must be the
+  # MAC of a switch already adopted by the controller. MACs are matched case- and
+  # separator-insensitively (so "00:11:..." and "00-11-..." are equivalent) and
+  # are kept as written in state, not rewritten to a canonical form.
   switch_exclusions = ["00:11:22:33:44:55"]
 
   # Specify the site (optional, defaults to the site configured in the provider,
