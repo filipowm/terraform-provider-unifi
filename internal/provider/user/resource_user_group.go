@@ -155,9 +155,9 @@ func resourceUserGroupUpdate(ctx context.Context, d *schema.ResourceData, meta i
 	// go-unifi v1.9.2's updateUserGroup converts a successful-but-empty PUT response
 	// into unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98); re-read
 	// to tell a spurious error from a genuine out-of-band deletion.
-	resp, err := c.UpdateUserGroup(context.TODO(), site, req)
+	resp, err := c.UpdateUserGroup(ctx, site, req)
 	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.UserGroup, error) {
-		return c.GetUserGroup(context.TODO(), site, req.ID)
+		return c.GetUserGroup(ctx, site, req.ID)
 	})
 	if err != nil {
 		return diag.FromErr(err)

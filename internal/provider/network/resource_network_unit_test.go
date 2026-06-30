@@ -43,7 +43,7 @@ func TestResourceNetworkUpdate_ReReadOnNotFound(t *testing.T) {
 		fake := &fakeNetworkClient{
 			updateResp: nil,
 			updateErr:  unifi.ErrNotFound,
-			getResp:    &unifi.Network{ID: "net1", Name: "lan", Purpose: "corporate"},
+			getResp:    &unifi.Network{ID: "net1", Name: "lan-renamed", Purpose: "corporate"},
 			getErr:     nil,
 		}
 		client := &base.Client{Client: fake, Site: "default"}
@@ -60,7 +60,7 @@ func TestResourceNetworkUpdate_ReReadOnNotFound(t *testing.T) {
 		assert.True(t, fake.getCalled, "Update must re-read via GetNetwork on ErrNotFound")
 		assert.Equal(t, "net1", fake.getID, "re-read must use the resource ID")
 		assert.Equal(t, "net1", d.Id(), "ID must be retained when the object still exists")
-		assert.Equal(t, "lan", d.Get("name"), "state must be populated from the re-read object")
+		assert.Equal(t, "lan-renamed", d.Get("name"), "state must be repopulated from the re-read object, not the preloaded state")
 	})
 
 	t.Run("update and re-read both return ErrNotFound - genuine deletion clears state", func(t *testing.T) {
