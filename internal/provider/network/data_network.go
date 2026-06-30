@@ -111,6 +111,16 @@ func DataNetwork() *schema.Resource {
 				Type:        schema.TypeString,
 				Computed:    true,
 			},
+			"dhcpd_gateway_enabled": {
+				Description: "Whether the DHCP default gateway is manually overridden (true) or auto (false).",
+				Type:        schema.TypeBool,
+				Computed:    true,
+			},
+			"dhcpd_gateway": {
+				Description: "The IPv4 default gateway advertised to DHCP clients when the override is enabled.",
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
 			"dhcp_v6_dns": {
 				Description: "Specifies the IPv6 addresses for the DNS server to be returned from the DHCP " +
 					"server. Used if `dhcp_v6_dns_auto` is set to `false`.",
@@ -352,6 +362,8 @@ func dataNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface
 			d.Set("dhcpd_boot_enabled", n.DHCPDBootEnabled)
 			d.Set("dhcpd_boot_server", n.DHCPDBootServer)
 			d.Set("dhcpd_boot_filename", n.DHCPDBootFilename)
+			d.Set("dhcpd_gateway_enabled", n.DHCPDGatewayEnabled)
+			d.Set("dhcpd_gateway", n.DHCPDGateway)
 			d.Set("domain_name", n.DomainName)
 			d.Set("igmp_snooping", n.IGMPSnooping)
 			d.Set("dhcp_guarding", n.DHCPguardEnabled)
