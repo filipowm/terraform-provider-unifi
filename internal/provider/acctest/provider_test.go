@@ -53,16 +53,7 @@ func AcceptanceTest(t *testing.T, testCase AcceptanceTestCase) {
 	// A test case is "version-gated" iff it pins a controller version via MinVersion or
 	// VersionConstraint. The skip happens here, before resource.ParallelTest, so it occurs
 	// before any controller interaction (PreCheck / provider configuration / API calls).
-	gated := testCase.MinVersion != nil || testCase.VersionConstraint != ""
-	scope := strings.ToLower(strings.TrimSpace(os.Getenv("UNIFI_ACCTEST_SCOPE")))
-	if scope == "core" && gated {
-		t.Skip("skipped in core scope: version-gated test runs in the matrix job")
-		return
-	}
-	if scope == "matrix" && !gated {
-		t.Skip("skipped in matrix scope: version-independent test runs in the core job")
-		return
-	}
+	SkipForScope(t, testCase.MinVersion != nil || testCase.VersionConstraint != "")
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -87,6 +78,26 @@ func AcceptanceTest(t *testing.T, testCase AcceptanceTestCase) {
 		CheckDestroy:             testCase.CheckDestroy,
 		Steps:                    testCase.Steps,
 	})
+}
+
+// SkipForScope applies the UNIFI_ACCTEST_SCOPE gating (see AcceptanceTest): in
+// the "core" scope a version-gated test is skipped, and in the "matrix" scope a
+// version-independent test is skipped. AcceptanceTest calls this itself, but a
+// test that performs expensive setup BEFORE calling AcceptanceTest (e.g. device
+// discovery) must call it first so that setup is not run for a test that is about
+// to be skipped.
+func SkipForScope(t *testing.T, gated bool) {
+	t.Helper()
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("UNIFI_ACCTEST_SCOPE"))) {
+	case "core":
+		if gated {
+			t.Skip("skipped in core scope: version-gated test runs in the matrix job")
+		}
+	case "matrix":
+		if !gated {
+			t.Skip("skipped in matrix scope: version-independent test runs in the core job")
+		}
+	}
 }
 
 func TestMain(m *testing.M) {
