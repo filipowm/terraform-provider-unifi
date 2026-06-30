@@ -196,12 +196,29 @@ func TestAccNetwork_v6(t *testing.T) {
 // plan (never converging). The fix makes them Optional+Computed so an omitted field
 // inherits the controller's value.
 //
-// Uses *static* IPv6 (not Prefix Delegation): the Dockerized controller cannot provide
-// an upstream-delegated prefix, which is why the broader TestAccNetwork_v6 is skipped.
-// Consequently dhcp_v6_start/stop and ipv6_ra_priority ARE exercised here, while the
-// pd-only fields (ipv6_pd_start/stop, ipv6_pd_interface) are covered by the identical
-// Optional+Computed mechanism + the offline schema guard
-// (network.TestResourceNetwork_ipv6FieldsOptionalComputed) + code review, not by CI.
+// Scope — this test uses *static* IPv6, not Prefix Delegation, because the PD value
+// fields (ipv6_pd_start/stop, ipv6_pd_interface) cannot be exercised on the Dockerized
+// controller: it has no upstream-delegated prefix to draw from. Those PD-only fields are
+// therefore covered by the identical Optional+Computed mechanism plus the offline schema
+// guard (network.TestResourceNetwork_ipv6FieldsOptionalComputed) and code review, not by
+// CI. The static-mode fields dhcp_v6_start/stop and ipv6_ra_priority ARE exercised here.
+//
+// This is NOT why the sibling TestAccNetwork_v6 (above) is skipped — do not conflate the
+// two. TestAccNetwork_v6 also uses static IPv6 (ipv6_interface_type="static" via
+// testAccNetworkConfigV6 / the static testAccNetworkConfigDhcpV6 helper), so its skip has
+// nothing to do with Prefix Delegation. It was `t.Skip("FIXME")`'d by an upstream commit
+// (paultyng#462, "Update supported versions", 2024-11) with no recorded reason. Because
+// this test reuses the same static dhcp_v6 schema path, if that undocumented FIXME turns
+// out to be a static-DHCPv6 round-trip problem on the Dockerized controller, this test
+// could inherit the same failure.
+//
+// CI-verifiability caveat: acceptance tests need a live controller (~20m) and are not run
+// in the change-authoring environment, so the static dhcp_v6 round-trip here is UNVERIFIED
+// against the Dockerized controller at the time of writing — do not assume the static path
+// is known-good. Before relying on this as the behavioral proof of the #96 fix, run
+// `make testacc TESTARGS='-run TestAccNetwork_v6ImportPreserved'` against Docker and record
+// the green result in the PR. Until then the offline schema guard above is the only
+// Docker-free regression net for the fix.
 func TestAccNetwork_v6ImportPreserved(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 	subnet, vlan := pt.GetTestVLAN(t)
