@@ -3,13 +3,14 @@ package acctest
 import (
 	"context"
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"net"
 	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/apparentlymart/go-cidr/cidr"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
@@ -1025,6 +1026,181 @@ resource "unifi_network" "test" {
 	multicast_dns = %[4]t
 }
 `, name, subnet, vlan, mdns)
+}
+
+// TestAccNetwork_defaultGateway exercises the DHCP default-gateway override (issue
+// #120): create with the override enabled + an in-subnet gateway IP, import
+// round-trip (including the two new attributes), a perpetual-diff guard, an in-place
+// update of the gateway IP, and the disable path. The gateway IP is computed from the
+// allocated test subnet rather than hardcoded so the assertion settles polarity (an
+// enabled override stores the exact IP) against the live controller.
+func TestAccNetwork_defaultGateway(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+	gw1 := mustHost(t, subnet, 100)
+	gw2 := mustHost(t, subnet, 150)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		CheckDestroy: testAccCheckNetworkDestroy,
+		Steps: []resource.TestStep{
+			// 1. Create with the override enabled + an in-subnet gateway IP.
+			{
+				Config: testAccNetworkConfigDefaultGateway(name, subnet, vlan, true, gw1),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcpd_gateway_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcpd_gateway", gw1),
+				),
+			},
+			// 2. Import round-trip including the two new fields.
+			pt.ImportStep("unifi_network.test"),
+			// 3. Perpetual-diff guard: re-apply the identical config, expect an empty plan
+			//    (Optional+Computed must absorb any controller echo in either field).
+			{
+				Config:   testAccNetworkConfigDefaultGateway(name, subnet, vlan, true, gw1),
+				PlanOnly: true,
+			},
+			// 4. In-place update: change the gateway IP, assert it applies.
+			{
+				Config: testAccNetworkConfigDefaultGateway(name, subnet, vlan, true, gw2),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcpd_gateway_enabled", "true"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcpd_gateway", gw2),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+			// 5. Disable: flip the override off (gateway omitted, inherited), assert false.
+			{
+				Config: testAccNetworkConfigDefaultGateway(name, subnet, vlan, false, ""),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcpd_gateway_enabled", "false"),
+				),
+			},
+			pt.ImportStep("unifi_network.test"),
+		},
+	})
+}
+
+// TestAccNetwork_defaultGatewayValidation covers the plan-time guards for the override:
+// the IPv4 schema validator and the two cross-field rules. Each step expects an error,
+// so nothing is created.
+func TestAccNetwork_defaultGatewayValidation(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		Steps: []resource.TestStep{
+			// Non-IPv4 gateway → schema IsIPv4Address validator.
+			{
+				Config:      testAccNetworkConfigDefaultGateway(name, subnet, vlan, true, "not-an-ip"),
+				ExpectError: regexp.MustCompile(regexp.QuoteMeta("expected dhcpd_gateway to contain a valid IPv4 address")),
+			},
+			// Gateway set while the override is explicitly disabled → cross-field error.
+			{
+				Config:      testAccNetworkConfigDefaultGateway(name, subnet, vlan, false, "10.0.0.1"),
+				ExpectError: regexp.MustCompile(regexp.QuoteMeta(`"dhcpd_gateway_enabled" must be true`)),
+			},
+			// Override enabled with no gateway IP → cross-field error.
+			{
+				Config:      testAccNetworkConfigDefaultGateway(name, subnet, vlan, true, ""),
+				ExpectError: regexp.MustCompile(regexp.QuoteMeta(`"dhcpd_gateway" is required`)),
+			},
+		},
+	})
+}
+
+// TestAccNetwork_disappears deletes the network out-of-band and asserts the next plan
+// is a non-empty re-create. It also wires up testAccCheckNetworkDestroy, the first
+// CheckDestroy in the network suite (existing tests carry `// TODO: CheckDestroy`).
+func TestAccNetwork_disappears(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		CheckDestroy: testAccCheckNetworkDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkConfig(name, subnet, vlan, true, nil),
+			},
+			{
+				// Delete the network behind Terraform's back, then plan with the same
+				// config: the start-of-step refresh drops it from state and the plan
+				// must show a re-create.
+				PreConfig: func() {
+					ctx := context.Background()
+					id := mustNetworkIDByName(t, "default", name)
+					if err := testClient.DeleteNetwork(ctx, "default", id); err != nil {
+						t.Fatalf("out-of-band DeleteNetwork: %s", err)
+					}
+				},
+				Config:             testAccNetworkConfig(name, subnet, vlan, true, nil),
+				PlanOnly:           true,
+				ExpectNonEmptyPlan: true,
+			},
+		},
+	})
+}
+
+// testAccNetworkConfigDefaultGateway renders a corporate DHCP network with the
+// default-gateway override. When gateway is "" the dhcpd_gateway attribute is omitted
+// entirely (exercising the inherit-from-controller / disable paths).
+func testAccNetworkConfigDefaultGateway(name string, subnet *net.IPNet, vlan int, enabled bool, gateway string) string {
+	gatewayLine := ""
+	if gateway != "" {
+		gatewayLine = fmt.Sprintf("dhcpd_gateway = %q", gateway)
+	}
+	return fmt.Sprintf(`
+locals {
+	subnet  = "%[2]s"
+	vlan_id = %[3]d
+}
+
+resource "unifi_network" "test" {
+	name    = "%[1]s"
+	purpose = "corporate"
+
+	subnet       = local.subnet
+	vlan_id      = local.vlan_id
+	dhcp_start   = cidrhost(local.subnet, 6)
+	dhcp_stop    = cidrhost(local.subnet, 254)
+	dhcp_enabled = true
+
+	dhcpd_gateway_enabled = %[4]t
+	%[5]s
+}
+`, name, subnet, vlan, enabled, gatewayLine)
+}
+
+// mustHost returns the Nth host address of subnet as a string, failing the test on
+// error. Used to compute an in-subnet gateway IP from the allocated test subnet
+// instead of hardcoding one.
+func mustHost(t *testing.T, subnet *net.IPNet, n int) string {
+	t.Helper()
+	ip, err := cidr.Host(subnet, n)
+	if err != nil {
+		t.Fatalf("cidr.Host(%s, %d): %s", subnet, n, err)
+	}
+	return ip.String()
+}
+
+// testAccCheckNetworkDestroy asserts every unifi_network in state is gone from the
+// controller. Mirrors testAccCheckDNSRecordDestroy; networks created on a non-default
+// site read back as not-found on "default", which also counts as destroyed.
+func testAccCheckNetworkDestroy(s *terraform.State) error {
+	for _, rs := range s.RootModule().Resources {
+		if rs.Type != "unifi_network" {
+			continue
+		}
+		_, err := testClient.GetNetwork(context.Background(), "default", rs.Primary.ID)
+		if err == nil {
+			return fmt.Errorf("network %s still exists", rs.Primary.ID)
+		}
+		// A 404 / not-found means the network was deleted.
+		if strings.Contains(err.Error(), "404") || strings.Contains(strings.ToLower(err.Error()), "not found") {
+			continue
+		}
+		return err
+	}
+	return nil
 }
 
 func TestAccNetwork_wireguardVPNClient(t *testing.T) {
