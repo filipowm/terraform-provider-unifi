@@ -104,6 +104,48 @@ data "unifi_network" "test" {
 `, name, subnet, vlan, zoneName)
 }
 
+// TestAccDataNetwork_defaultGateway proves the data source surfaces the computed
+// default-gateway override fields (issue #120). It creates a dedicated network with the
+// override enabled rather than reusing the pre-existing Default network, which has no
+// override, so the computed values would otherwise be empty/false.
+func TestAccDataNetwork_defaultGateway(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+	gw := mustHost(t, subnet, 100)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		CheckDestroy: testAccCheckNetworkDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDataNetworkConfig_defaultGateway(name, subnet.String(), vlan, gw),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.unifi_network.test", "dhcpd_gateway_enabled", "true"),
+					resource.TestCheckResourceAttr("data.unifi_network.test", "dhcpd_gateway", gw),
+				),
+			},
+		},
+	})
+}
+
+func testAccDataNetworkConfig_defaultGateway(name, subnet string, vlan int, gateway string) string {
+	return fmt.Sprintf(`
+resource "unifi_network" "test" {
+	name    = %[1]q
+	purpose = "corporate"
+	subnet  = %[2]q
+	vlan_id = %[3]d
+
+	dhcp_enabled          = true
+	dhcpd_gateway_enabled = true
+	dhcpd_gateway         = %[4]q
+}
+
+data "unifi_network" "test" {
+	id = unifi_network.test.id
+}
+`, name, subnet, vlan, gateway)
+}
+
 func testAccDataNetworkConfig_byName(name string) string {
 	return fmt.Sprintf(`
 data "unifi_network" "lan" {
