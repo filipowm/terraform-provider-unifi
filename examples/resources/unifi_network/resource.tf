@@ -45,3 +45,22 @@ resource "unifi_network" "iot" {
 
   firewall_zone_id = unifi_firewall_zone.iot.id
 }
+
+# Override the DHCP-advertised default gateway. By default UniFi advertises the
+# network's own interface IP as the gateway (DHCP option 3); setting
+# `dhcpd_gateway_enabled = true` switches that to "manual" and hands clients the
+# address in `dhcpd_gateway` instead. Here clients are pointed at a Tailscale
+# subnet-router node (10.0.30.10) so their traffic can reach a remote tailnet.
+resource "unifi_network" "tailscale_lan" {
+  name    = "tailscale-lan"
+  purpose = "corporate"
+
+  subnet       = "10.0.30.1/24"
+  vlan_id      = 30
+  dhcp_start   = "10.0.30.100"
+  dhcp_stop    = "10.0.30.254"
+  dhcp_enabled = true
+
+  dhcpd_gateway_enabled = true
+  dhcpd_gateway         = "10.0.30.10"
+}
