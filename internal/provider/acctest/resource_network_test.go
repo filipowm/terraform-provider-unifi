@@ -185,6 +185,81 @@ func TestAccNetwork_v6(t *testing.T) {
 	})
 }
 
+// TestAccNetwork_v6ImportPreserved is the regression test for issue #96: after
+// importing a network whose IPv6/DHCPv6 value fields are set on the controller, a
+// subsequent apply of a config that omits those fields must be a clean no-op rather
+// than a perpetual `value -> null` diff.
+//
+// Pre-fix those five fields were Optional-but-not-Computed, so a sparse config planned
+// them to null; go-unifi's `,omitempty` tags then dropped the empty strings from the
+// PUT so the controller never cleared them, and the identical diff reappeared on every
+// plan (never converging). The fix makes them Optional+Computed so an omitted field
+// inherits the controller's value.
+//
+// Uses *static* IPv6 (not Prefix Delegation): the Dockerized controller cannot provide
+// an upstream-delegated prefix, which is why the broader TestAccNetwork_v6 is skipped.
+// Consequently dhcp_v6_start/stop and ipv6_ra_priority ARE exercised here, while the
+// pd-only fields (ipv6_pd_start/stop, ipv6_pd_interface) are covered by the identical
+// Optional+Computed mechanism + the offline schema guard
+// (network.TestResourceNetwork_ipv6FieldsOptionalComputed) + code review, not by CI.
+func TestAccNetwork_v6ImportPreserved(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		// TODO: CheckDestroy: ,
+		Steps: []resource.TestStep{
+			// 1. Create a network with static IPv6, static DHCPv6 and an explicit RA
+			// priority all set, so the controller holds non-empty values for every
+			// field under test.
+			{
+				Config: testAccNetworkConfigV6ImportPreserved(name, subnet, vlan, "foo.local", true),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "ipv6_interface_type", "static"),
+					resource.TestCheckResourceAttr("unifi_network.test", "ipv6_static_subnet", "fd6a:37be:e364::1/64"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_v6_start", "fd6a:37be:e364::2"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_v6_stop", "fd6a:37be:e364::7d1"),
+					resource.TestCheckResourceAttr("unifi_network.test", "ipv6_ra_priority", "high"),
+				),
+			},
+			// 2. Import by name, exactly like the reporter's `terraform import ... name=...`.
+			{
+				ResourceName:      "unifi_network.test",
+				ImportState:       true,
+				ImportStateId:     "name=" + name,
+				ImportStateVerify: true,
+			},
+			// 3. Decisive #96 guard: re-apply a config that OMITS the IPv6/DHCPv6 value
+			// fields while changing an unrelated attribute (domain_name) so a real
+			// Update fires. The previously-set values must be preserved
+			// (Optional+Computed), not planned to null. The harness's automatic
+			// post-apply empty-plan check is the discriminator: pre-fix this step fails
+			// because the `-> null` diff persists; post-fix it passes.
+			{
+				Config:           testAccNetworkConfigV6ImportPreserved(name, subnet, vlan, "bar.local", false),
+				ConfigPlanChecks: pt.CheckResourceActions("unifi_network.test", plancheck.ResourceActionUpdate),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "domain_name", "bar.local"),
+					resource.TestCheckResourceAttr("unifi_network.test", "ipv6_static_subnet", "fd6a:37be:e364::1/64"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_v6_start", "fd6a:37be:e364::2"),
+					resource.TestCheckResourceAttr("unifi_network.test", "dhcp_v6_stop", "fd6a:37be:e364::7d1"),
+					resource.TestCheckResourceAttr("unifi_network.test", "ipv6_ra_priority", "high"),
+				),
+			},
+			// 4. Convergence proof: re-applying the identical sparse config must be a
+			// no-op. This step FAILS pre-fix (the perpetual `-> null` diff) and PASSES
+			// post-fix — the artifact that proves #96 is actually closed, not merely
+			// de-crashed.
+			{
+				Config: testAccNetworkConfigV6ImportPreserved(name, subnet, vlan, "bar.local", false),
+				ConfigPlanChecks: resource.ConfigPlanChecks{
+					PreApply: []plancheck.PlanCheck{plancheck.ExpectEmptyPlan()},
+				},
+			},
+		},
+	})
+}
+
 func TestAccNetwork_wan(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
@@ -787,6 +862,48 @@ resource "unifi_network" "test" {
 	dhcp_v6_lease = 12 * 60 * 60
 }
 `, name, subnet, vlan, gatewayIP, dhcpdV6Start, dhcpdV6Stop, strings.Join(quoteStrings(dhcpV6DNS), ","))
+}
+
+// testAccNetworkConfigV6ImportPreserved renders a corporate network with static IPv6,
+// static DHCPv6 and an explicit RA priority (issue #96). When includeV6Values is false
+// the IPv6/DHCPv6 *value* fields (ipv6_static_subnet, dhcp_v6_start/stop,
+// ipv6_ra_priority) are omitted while the IPv6 *gating* fields (ipv6_interface_type,
+// dhcp_v6_enabled, ipv6_ra_enable) are kept — reproducing the sparse post-import config
+// from the report. The IPv4 DHCP control fields are pinned in both variants so they
+// match the controller's stored values and cannot false-fail the convergence
+// (ExpectEmptyPlan) step.
+func testAccNetworkConfigV6ImportPreserved(name string, subnet *net.IPNet, vlan int, domainName string, includeV6Values bool) string {
+	v6Values := ""
+	if includeV6Values {
+		v6Values = `
+	ipv6_static_subnet = "fd6a:37be:e364::1/64"
+	dhcp_v6_start      = "fd6a:37be:e364::2"
+	dhcp_v6_stop       = "fd6a:37be:e364::7d1"
+	ipv6_ra_priority   = "high"`
+	}
+	return fmt.Sprintf(`
+locals {
+	subnet  = "%[2]s"
+	vlan_id = %[3]d
+}
+
+resource "unifi_network" "test" {
+	name    = "%[1]s"
+	purpose = "corporate"
+
+	subnet       = local.subnet
+	vlan_id      = local.vlan_id
+	dhcp_start   = cidrhost(local.subnet, 6)
+	dhcp_stop    = cidrhost(local.subnet, 254)
+	dhcp_enabled = true
+	domain_name  = "%[4]s"
+
+	ipv6_interface_type = "static"
+	ipv6_ra_enable      = true
+	dhcp_v6_enabled     = true
+%[5]s
+}
+`, name, subnet, vlan, domainName, v6Values)
 }
 
 func testAccNetworkConfigMDNS(name string, subnet *net.IPNet, vlan int, mdns bool) string {

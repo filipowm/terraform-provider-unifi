@@ -288,16 +288,34 @@ func ResourceNetwork() *schema.Resource {
 			},
 			"dhcp_v6_start": {
 				Description: "The starting IPv6 address for the DHCPv6 range. Used in static DHCPv6 configuration.\n" +
-					"Must be a valid IPv6 address within your allocated IPv6 subnet.",
+					"Must be a valid IPv6 address within your allocated IPv6 subnet.\n\n" +
+					"This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the " +
+					"current value reported by the controller, so a value configured in the UI (or read in via " +
+					"`terraform import`) is preserved rather than planned for removal. Note the standard " +
+					"`Optional`+`Computed` \"sticky value\" semantics — once the controller has a value, removing " +
+					"the attribute from configuration leaves that value in place rather than clearing it (the " +
+					"provider serializes this field with `omitempty`, so an empty value is never sent). There is " +
+					"therefore no way to clear it by deleting it from configuration; turn DHCPv6 off with " +
+					"`dhcp_v6_enabled`/`ipv6_interface_type` instead. Set it explicitly to manage the value from Terraform.",
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				ValidateFunc: validation.IsIPv6Address,
 			},
 			"dhcp_v6_stop": {
 				Description: "The ending IPv6 address for the DHCPv6 range. Used in static DHCPv6 configuration.\n" +
-					"Must be after dhcp_v6_start in the IPv6 address space.",
+					"Must be after dhcp_v6_start in the IPv6 address space.\n\n" +
+					"This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the " +
+					"current value reported by the controller, so a value configured in the UI (or read in via " +
+					"`terraform import`) is preserved rather than planned for removal. Note the standard " +
+					"`Optional`+`Computed` \"sticky value\" semantics — once the controller has a value, removing " +
+					"the attribute from configuration leaves that value in place rather than clearing it (the " +
+					"provider serializes this field with `omitempty`, so an empty value is never sent). There is " +
+					"therefore no way to clear it by deleting it from configuration; turn DHCPv6 off with " +
+					"`dhcp_v6_enabled`/`ipv6_interface_type` instead. Set it explicitly to manage the value from Terraform.",
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				ValidateFunc: validation.IsIPv6Address,
 			},
 			"domain_name": {
@@ -385,17 +403,35 @@ func ResourceNetwork() *schema.Resource {
 			"ipv6_static_subnet": {
 				Description: "The static IPv6 subnet in CIDR notation (e.g., '2001:db8::/64') when using static IPv6.\n" +
 					"Only applicable when `ipv6_interface_type` is 'static'.\n" +
-					"Must be a valid IPv6 subnet allocated to your organization.",
+					"Must be a valid IPv6 subnet allocated to your organization.\n\n" +
+					"This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the " +
+					"current value reported by the controller, so a value configured in the UI (or read in via " +
+					"`terraform import`) is preserved rather than planned for removal. Note the standard " +
+					"`Optional`+`Computed` \"sticky value\" semantics — once the controller has a value, removing " +
+					"the attribute from configuration leaves that value in place rather than clearing it (the " +
+					"provider serializes this field with `omitempty`, so an empty value is never sent). There is " +
+					"therefore no way to clear it by deleting it from configuration; switch `ipv6_interface_type` " +
+					"away from 'static' to disable static IPv6 instead. Set it explicitly to manage the value from Terraform.",
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"ipv6_pd_interface": {
 				Description: "The WAN interface to use for IPv6 Prefix Delegation. Options:\n" +
 					"* `wan` - Primary WAN interface\n" +
 					"* `wan2` - Secondary WAN interface\n" +
-					"Only applicable when `ipv6_interface_type` is 'pd'.",
+					"Only applicable when `ipv6_interface_type` is 'pd'.\n\n" +
+					"This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the " +
+					"current value reported by the controller, so a value configured in the UI (or read in via " +
+					"`terraform import`) is preserved rather than planned for removal. Note the standard " +
+					"`Optional`+`Computed` \"sticky value\" semantics — once the controller has a value, removing " +
+					"the attribute from configuration leaves that value in place rather than clearing it (the " +
+					"provider serializes this field with `omitempty`, so an empty value is never sent). There is " +
+					"therefore no way to clear it by deleting it from configuration; switch `ipv6_interface_type` " +
+					"away from 'pd' to disable Prefix Delegation instead. Set it explicitly to manage the value from Terraform.",
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				ValidateFunc: validateWANV6NetworkGroup,
 			},
 			"ipv6_pd_prefixid": {
@@ -409,17 +445,35 @@ func ResourceNetwork() *schema.Resource {
 			"ipv6_pd_start": {
 				Description: "The starting IPv6 address for Prefix Delegation range.\n" +
 					"Only used when `ipv6_interface_type` is 'pd'.\n" +
-					"Must be within the delegated prefix range.",
+					"Must be within the delegated prefix range.\n\n" +
+					"This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the " +
+					"current value reported by the controller, so a value configured in the UI (or read in via " +
+					"`terraform import`) is preserved rather than planned for removal. Note the standard " +
+					"`Optional`+`Computed` \"sticky value\" semantics — once the controller has a value, removing " +
+					"the attribute from configuration leaves that value in place rather than clearing it (the " +
+					"provider serializes this field with `omitempty`, so an empty value is never sent). There is " +
+					"therefore no way to clear it by deleting it from configuration; switch `ipv6_interface_type` " +
+					"away from 'pd' to disable Prefix Delegation instead. Set it explicitly to manage the value from Terraform.",
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				ValidateFunc: validation.IsIPv6Address,
 			},
 			"ipv6_pd_stop": {
 				Description: "The ending IPv6 address for Prefix Delegation range.\n" +
 					"Only used when `ipv6_interface_type` is 'pd'.\n" +
-					"Must be after `ipv6_pd_start` within the delegated prefix.",
+					"Must be after `ipv6_pd_start` within the delegated prefix.\n\n" +
+					"This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the " +
+					"current value reported by the controller, so a value configured in the UI (or read in via " +
+					"`terraform import`) is preserved rather than planned for removal. Note the standard " +
+					"`Optional`+`Computed` \"sticky value\" semantics — once the controller has a value, removing " +
+					"the attribute from configuration leaves that value in place rather than clearing it (the " +
+					"provider serializes this field with `omitempty`, so an empty value is never sent). There is " +
+					"therefore no way to clear it by deleting it from configuration; switch `ipv6_interface_type` " +
+					"away from 'pd' to disable Prefix Delegation instead. Set it explicitly to manage the value from Terraform.",
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				ValidateFunc: validation.IsIPv6Address,
 			},
 			"ipv6_ra_enable": {
@@ -462,9 +516,18 @@ func ResourceNetwork() *schema.Resource {
 					"* `high` - Preferred for primary networks\n" +
 					"* `medium` - Standard priority\n" +
 					"* `low` - For backup or secondary networks\n" +
-					"Affects router selection when multiple IPv6 routers exist.",
+					"Affects router selection when multiple IPv6 routers exist.\n\n" +
+					"This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the " +
+					"current value reported by the controller, so a value configured in the UI (or read in via " +
+					"`terraform import`) is preserved rather than planned for removal. Note the standard " +
+					"`Optional`+`Computed` \"sticky value\" semantics — once the controller has a value, removing " +
+					"the attribute from configuration leaves that value in place rather than clearing it (the " +
+					"provider serializes this field with `omitempty`, so an empty value is never sent). There is " +
+					"therefore no way to clear it by deleting it from configuration; turn Router Advertisements " +
+					"off with `ipv6_ra_enable` instead. Set it explicitly to manage the value from Terraform.",
 				Type:         schema.TypeString,
 				Optional:     true,
+				Computed:     true,
 				ValidateFunc: validateIpV6RAPriority,
 			},
 			"ipv6_ra_valid_lifetime": {
@@ -1257,7 +1320,7 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 	req.SiteID = site
 
-	// go-unifi v1.9.2's updateNetwork converts a successful-but-empty PUT response
+	// go-unifi v1.9.3's updateNetwork converts a successful-but-empty PUT response
 	// into unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98); re-read
 	// to tell a spurious error from a genuine out-of-band deletion.
 	resp, err := c.UpdateNetwork(ctx, site, req)
