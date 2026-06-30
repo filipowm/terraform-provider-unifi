@@ -293,7 +293,7 @@ func TestAccDevice_switch_portOverrides(t *testing.T) {
 					// and the PlanOnly merge gate proves it round-trips.
 					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
 						"number":             "5",
-						"forward":            "native",
+						"forward":            "customize",
 						"setting_preference": "manual",
 					}),
 					testAccCheckPortOverrideNativeNetworkSet(resourceName, 5),
@@ -354,8 +354,6 @@ resource "unifi_device" "test" {
 
 func testAccDeviceConfig_withPortOverrides(mac string) string {
 	return fmt.Sprintf(`
-data "unifi_port_profile" "all" {}
-
 resource "unifi_network" "test_native" {
 	name    = "tfacc-device-native"
 	purpose = "corporate"
@@ -387,10 +385,9 @@ resource "unifi_device" "test" {
 	}
 
 	port_override {
-		number          = 2
-		name            = "Port 2"
-		port_profile_id = data.unifi_port_profile.all.id
-		op_mode         = "switch"
+		number  = 2
+		name    = "Port 2"
+		op_mode = "switch"
 	}
 
 	port_override {
@@ -404,11 +401,14 @@ resource "unifi_device" "test" {
 		poe_mode = "pasv24"
 	}
 
-	# Inline access port: untagged on the native network.
+	# Inline access port: untagged on the native network. The controller
+	# canonicalizes any port that pins a custom native network to
+	# forward = "customize" (it only stores "all" or "customize"), so use
+	# that here to keep the config drift-free on the merge-gate re-plan.
 	port_override {
 		number                = 5
 		name                  = "Access VLAN 97"
-		forward               = "native"
+		forward               = "customize"
 		native_networkconf_id = unifi_network.test_native.id
 		setting_preference    = "manual"
 	}
