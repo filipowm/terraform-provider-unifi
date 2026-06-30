@@ -36,10 +36,12 @@ resource "unifi_device" "us_24_poe" {
 
   # inline access port: untagged on a specific network, without a port profile.
   # per-port VLAN overrides generally require setting_preference = "manual" to persist.
+  # the controller canonicalizes a port that pins a custom native network to
+  # forward = "customize" (it only stores "all" or "customize"), so set it here.
   port_override {
     number                = 3
     name                  = "access vlan"
-    forward               = "native"
+    forward               = "customize"
     native_networkconf_id = var.native_network_id
     setting_preference    = "manual"
   }
