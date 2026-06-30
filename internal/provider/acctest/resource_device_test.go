@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -243,16 +245,15 @@ func TestAccDevice_switch_basic(t *testing.T) {
 }
 
 func TestAccDevice_switch_portOverrides(t *testing.T) {
-	t.Skip("FIXME")
-
 	resourceName := "unifi_device.test"
 	site := "default"
 
 	device, unallocateDevice := allocateDevice(t)
 	defer unallocateDevice()
 
+	importStateVerifyIgnore := []string{"allow_adoption", "forget_on_destroy", "name"}
+
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: "< 7.4",
 		PreCheck: func() {
 			preCheckDeviceExists(t, site, device.MAC)
 		},
@@ -262,28 +263,60 @@ func TestAccDevice_switch_portOverrides(t *testing.T) {
 				Config: testAccDeviceConfig_withPortOverrides(device.MAC),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDeviceExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "port_override.#", "4"),
+					resource.TestCheckResourceAttr(resourceName, "port_override.#", "6"),
 
-					// TODO: Why are these out of order?
-					resource.TestCheckResourceAttr(resourceName, "port_override.0.number", "3"),
-					resource.TestCheckResourceAttr(resourceName, "port_override.0.name", ""),
-					resource.TestCheckResourceAttr(resourceName, "port_override.0.port_profile_id", ""),
-					resource.TestCheckResourceAttr(resourceName, "port_override.0.op_mode", "aggregate"),
-					resource.TestCheckResourceAttr(resourceName, "port_override.0.aggregate_num_ports", "2"),
-
-					resource.TestCheckResourceAttr(resourceName, "port_override.1.number", "1"),
-					resource.TestCheckResourceAttr(resourceName, "port_override.1.name", "Port 1"),
-					resource.TestCheckResourceAttr(resourceName, "port_override.1.port_profile_id", ""),
-					//resource.TestCheckResourceAttr(resourceName, "port_override.1.op_mode", "switch"),
-
-					resource.TestCheckResourceAttr(resourceName, "port_override.2.number", "2"),
-					resource.TestCheckResourceAttr(resourceName, "port_override.2.name", "Port 2"),
-					//resource.TestCheckResourceAttr(resourceName, "port_override.2.port_profile_id", ""),
-					//resource.TestCheckResourceAttr(resourceName, "port_override.2.op_mode", "switch"),
-
-					resource.TestCheckResourceAttr(resourceName, "port_override.3.number", "4"),
-					resource.TestCheckResourceAttr(resourceName, "port_override.3.poe_mode", "pasv24"),
+					// TypeSet membership assertions (order-independent): the
+					// element index reshuffles when the schema changes, so match
+					// on the nested attribute values instead of positional keys.
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
+						"number":              "3",
+						"op_mode":             "aggregate",
+						"aggregate_num_ports": "2",
+					}),
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
+						"number": "1",
+						"name":   "Port 1",
+					}),
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
+						"number": "2",
+						"name":   "Port 2",
+					}),
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
+						"number":   "4",
+						"poe_mode": "pasv24",
+					}),
+					// Inline per-port VLAN overrides: a native (access) port and a
+					// customized trunk that excludes one network. Identify each
+					// element by its declared, deterministic attributes only. The
+					// real native_networkconf_id is a computed network ID, so it is
+					// asserted to be non-empty via the dedicated state check below,
+					// and the PlanOnly merge gate proves it round-trips.
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
+						"number":             "5",
+						"forward":            "customize",
+						"setting_preference": "manual",
+					}),
+					testAccCheckPortOverrideNativeNetworkSet(resourceName, 5),
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
+						"number":             "6",
+						"forward":            "customize",
+						"tagged_vlan_mgmt":   "custom",
+						"setting_preference": "manual",
+					}),
 				),
+			},
+			// Merge gate: the same config must produce no further plan, proving
+			// the inline VLAN overrides actually persisted on the controller (and
+			// that setting_preference=manual is sufficient for persistence).
+			{
+				Config:   testAccDeviceConfig_withPortOverrides(device.MAC),
+				PlanOnly: true,
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importStateVerifyIgnore,
 			},
 			{
 				Config: testAccDeviceConfig(device.MAC),
@@ -321,7 +354,27 @@ resource "unifi_device" "test" {
 
 func testAccDeviceConfig_withPortOverrides(mac string) string {
 	return fmt.Sprintf(`
-data "unifi_port_profile" "all" {}
+resource "unifi_network" "test_native" {
+	name    = "tfacc-device-native"
+	purpose = "corporate"
+
+	subnet       = "10.97.0.1/24"
+	vlan_id      = 97
+	dhcp_start   = "10.97.0.6"
+	dhcp_stop    = "10.97.0.254"
+	dhcp_enabled = true
+}
+
+resource "unifi_network" "test_excluded" {
+	name    = "tfacc-device-excluded"
+	purpose = "corporate"
+
+	subnet       = "10.98.0.1/24"
+	vlan_id      = 98
+	dhcp_start   = "10.98.0.6"
+	dhcp_stop    = "10.98.0.254"
+	dhcp_enabled = true
+}
 
 resource "unifi_device" "test" {
 	mac = %q
@@ -332,10 +385,9 @@ resource "unifi_device" "test" {
 	}
 
 	port_override {
-		number          = 2
-		name            = "Port 2"
-		port_profile_id = data.unifi_port_profile.all.id
-		op_mode         = "switch"
+		number  = 2
+		name    = "Port 2"
+		op_mode = "switch"
 	}
 
 	port_override {
@@ -348,8 +400,58 @@ resource "unifi_device" "test" {
 		number   = 4
 		poe_mode = "pasv24"
 	}
+
+	# Inline access port: untagged on the native network. The controller
+	# canonicalizes any port that pins a custom native network to
+	# forward = "customize" (it only stores "all" or "customize"), so use
+	# that here to keep the config drift-free on the merge-gate re-plan.
+	port_override {
+		number                = 5
+		name                  = "Access VLAN 97"
+		forward               = "customize"
+		native_networkconf_id = unifi_network.test_native.id
+		setting_preference    = "manual"
+	}
+
+	# Inline customized trunk: tag everything except the excluded network.
+	port_override {
+		number               = 6
+		name                 = "Trunk except VLAN 98"
+		forward              = "customize"
+		tagged_vlan_mgmt     = "custom"
+		excluded_network_ids = [unifi_network.test_excluded.id]
+		setting_preference   = "manual"
+	}
 }
 `, mac)
+}
+
+// testAccCheckPortOverrideNativeNetworkSet asserts that the port_override block
+// for the given port number has a non-empty native_networkconf_id. The element's
+// set index is a hash we don't want to hard-code, so locate it by matching the
+// `number` attribute and then inspect that element's native_networkconf_id. This
+// proves the computed network ID actually persisted (paired with the PlanOnly
+// merge-gate step that proves it round-trips with no diff).
+func testAccCheckPortOverrideNativeNetworkSet(resourceName string, number int) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("resource not found: %s", resourceName)
+		}
+		want := strconv.Itoa(number)
+		for k, v := range rs.Primary.Attributes {
+			if !strings.HasPrefix(k, "port_override.") || !strings.HasSuffix(k, ".number") || v != want {
+				continue
+			}
+			hash := strings.TrimSuffix(strings.TrimPrefix(k, "port_override."), ".number")
+			native := rs.Primary.Attributes["port_override."+hash+".native_networkconf_id"]
+			if native == "" {
+				return fmt.Errorf("port_override number %d: expected non-empty native_networkconf_id, got empty", number)
+			}
+			return nil
+		}
+		return fmt.Errorf("port_override with number %d not found in state", number)
+	}
 }
 
 func testAccCheckDeviceDestroy(s *terraform.State) error {
