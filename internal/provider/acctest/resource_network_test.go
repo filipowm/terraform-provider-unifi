@@ -281,6 +281,48 @@ func TestAccNetwork_v6ImportPreserved(t *testing.T) {
 	})
 }
 
+// TestAccNetwork_ipv6SingleNetwork is the issue #99 end-to-end round-trip guard. The plan-time
+// validator now accepts ipv6_interface_type = "single_network" (the offline
+// TestValidateIpV6InterfaceType in the network package is the plan-time regression guard), but
+// single_network has companion controller settings (the single-network interface/LAN binding) that
+// this provider does not yet expose. Widening the allow-list without those fields carries two
+// unverifiable-offline risks: (A) the controller 400s because single_network needs a target LAN,
+// or (B) it accepts but echoes back a normalized/empty value, yielding a perpetual diff. This test
+// is deliberately NOT skipped so `make testacc` / the controller matrix actually exercises a bare
+// single_network corporate network end to end:
+//   - the create step fails if the controller rejects it (risk A);
+//   - the PlanOnly re-plan step asserts an empty plan, failing on any read-back drift (risk B).
+//
+// If it fails on a live controller, expose the companion fields (a follow-up) rather than
+// advertising single_network as fully supported. The read path preserves a configured
+// single_network across an empty echo (resource_network.go), but a non-empty rewrite would still
+// (correctly) surface here.
+func TestAccNetwork_ipv6SingleNetwork(t *testing.T) {
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		// TODO: CheckDestroy: ,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkConfigSingleNetwork(name, subnet, vlan),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "ipv6_interface_type", "single_network"),
+				),
+			},
+			// Round-trip: re-plan the identical config and assert it is empty. PlanOnly fails the
+			// step on any non-empty plan (ExpectNonEmptyPlan defaults to false), so this is what
+			// catches the controller echoing back a normalized/empty value — the perpetual-diff
+			// risk of widening the allow-list without the companion fields.
+			{
+				Config:   testAccNetworkConfigSingleNetwork(name, subnet, vlan),
+				PlanOnly: true,
+			},
+			pt.ImportStep("unifi_network.test"),
+		},
+	})
+}
+
 func TestAccNetwork_wan(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
@@ -670,6 +712,32 @@ resource "unifi_network" "test" {
 	ipv6_ra_enable      = true
 }
 `, name, subnet, vlan, ipv6Type, ipv6Subnet)
+}
+
+// testAccNetworkConfigSingleNetwork is a tailored config for the #99 round-trip test. Unlike
+// testAccNetworkConfigV6 it does NOT set ipv6_static_subnet (which belongs to the "static" mode);
+// it is a deliberately bare single_network corporate network — the three single_network companion
+// fields (the single-network interface/LAN binding) are not exposed by the provider, so this is
+// exactly the minimal config a user can express today, and the test asserts it still round-trips.
+func testAccNetworkConfigSingleNetwork(name string, subnet *net.IPNet, vlan int) string {
+	return fmt.Sprintf(`
+locals {
+	subnet  = "%[2]s"
+	vlan_id = %[3]d
+}
+
+resource "unifi_network" "test" {
+	name    = "%[1]s"
+	purpose = "corporate"
+
+	subnet      = local.subnet
+	vlan_id     = local.vlan_id
+	domain_name = "foo.local"
+
+	ipv6_interface_type = "single_network"
+	ipv6_ra_enable      = true
+}
+`, name, subnet, vlan)
 }
 
 func testWanNetworkConfig(name string, networkGroup string, wanType string, wanIP string, wanEgressQOS int, wanUsername string, wanPassword string, wanDNS1 string, wanDNS2 string) string {

@@ -149,3 +149,42 @@ func TestResourceNetworkIpV6InterfaceTypeValidatorWired(t *testing.T) {
 	assert.NotNil(t, attr, "ipv6_interface_type attribute must exist")
 	assert.NotNil(t, attr.ValidateFunc, "ipv6_interface_type must keep a ValidateFunc wired")
 }
+
+// TestResourceNetworkSetResourceData_IPv6InterfaceTypeReadback covers the issue #99 read-path
+// round-trip hardening. single_network has companion controller settings the provider does not yet
+// expose, so the controller may echo an empty ipv6_interface_type back on read; the read path must
+// not clobber a configured "single_network" with "" (which would be a perpetual diff). It must also
+// preserve the pre-existing WAN normalization ("" -> "none") and store any non-empty controller
+// value verbatim so genuine drift (e.g. the controller rewriting single_network to none) stays
+// visible. This is the offline complement to the acceptance-only TestAccNetwork_ipv6SingleNetwork,
+// which exercises the same path against a live controller.
+func TestResourceNetworkSetResourceData_IPv6InterfaceTypeReadback(t *testing.T) {
+	cases := []struct {
+		name     string
+		respType string // value the controller returns on read
+		purpose  string
+		prior    string // value already in state (the configured value), "" = unset
+		want     string
+	}{
+		{"non-empty single_network stored verbatim", "single_network", "corporate", "", "single_network"},
+		{"empty echo preserves configured single_network (#99)", "", "corporate", "single_network", "single_network"},
+		{"empty echo on WAN still normalizes to none", "", "wan", "none", "none"},
+		{"non-empty echo overrides prior so drift stays visible", "none", "corporate", "single_network", "none"},
+		{"non-empty static stored verbatim", "static", "corporate", "static", "static"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := ResourceNetwork().TestResourceData()
+			d.SetId("net1")
+			if tc.prior != "" {
+				d.Set("ipv6_interface_type", tc.prior)
+			}
+			resp := &unifi.Network{ID: "net1", Name: "n", Purpose: tc.purpose, IPV6InterfaceType: tc.respType}
+
+			diags := resourceNetworkSetResourceData(resp, d, "default")
+
+			assert.False(t, diags.HasError(), "set must not error: %v", diags)
+			assert.Equal(t, tc.want, d.Get("ipv6_interface_type"))
+		})
+	}
+}

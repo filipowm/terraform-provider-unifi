@@ -1223,9 +1223,25 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("internet_access_enabled", resp.InternetAccessEnabled)
 	d.Set("network_isolation_enabled", resp.NetworkIsolationEnabled)
 
+	// ipv6_interface_type round-trip hardening. The controller can return an empty value here,
+	// and clobbering state with "" would produce a perpetual diff: "" is never a valid configured
+	// value (the schema rejects it and defaults to "none"). Two known empty-echo cases are
+	// normalized; in every other case a non-empty controller value is authoritative and is stored
+	// verbatim so genuine drift stays visible.
+	//   - single_network on corporate/LAN networks (#99): this mode has companion controller
+	//     settings (the single-network interface/LAN binding) that the provider does not yet
+	//     expose, so a bare config may echo back empty. Preserve the configured value rather than
+	//     clobbering it with "". A non-empty echo (e.g. the controller rewriting it to "none")
+	//     still wins, surfacing the fact that the bare config did not take.
+	//   - WAN networks: the controller omits the field, so it must read back as the "none" default
+	//     (pre-existing behavior, see commit 352a7b7).
 	ipv6InterfaceType := resp.IPV6InterfaceType
-	if resp.Purpose == "wan" && ipv6InterfaceType == "" {
-		ipv6InterfaceType = "none"
+	if ipv6InterfaceType == "" {
+		if prior, _ := d.Get("ipv6_interface_type").(string); prior == "single_network" {
+			ipv6InterfaceType = prior
+		} else if resp.Purpose == "wan" {
+			ipv6InterfaceType = "none"
+		}
 	}
 	d.Set("ipv6_interface_type", ipv6InterfaceType)
 	d.Set("ipv6_pd_interface", resp.IPV6PDInterface)
