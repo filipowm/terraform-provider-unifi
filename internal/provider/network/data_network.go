@@ -161,7 +161,7 @@ func DataNetwork() *schema.Resource {
 				Computed:    true,
 			},
 			"ipv6_interface_type": {
-				Description: "Specifies which type of IPv6 connection to use. Must be one of either `static`, `pd`, or `none`.",
+				Description: "Specifies which type of IPv6 connection to use. Must be one of either `static`, `pd`, `single_network`, or `none`.",
 				Type:        schema.TypeString,
 				Computed:    true,
 			},

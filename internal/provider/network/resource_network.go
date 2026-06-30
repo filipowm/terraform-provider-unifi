@@ -40,7 +40,11 @@ var (
 	wanV6NetworkGroupRegexp   = regexp.MustCompile("wan[2]?")
 	validateWANV6NetworkGroup = validation.StringMatch(wanV6NetworkGroupRegexp, "invalid WANv6 network group")
 
-	ipV6InterfaceTypeRegexp   = regexp.MustCompile("none|pd|static")
+	// Anchored alternation: the surrounding ^(...)$ is mandatory. Without it, RE2 parses
+	// "none|pd|static|single_network" as (^none)|(pd)|(static)|(single_network$), leaving the
+	// middle branches as unanchored substring matches (e.g. "xstaticy" would pass). The grouped,
+	// fully anchored form rejects anything that is not exactly one of the four accepted values.
+	ipV6InterfaceTypeRegexp   = regexp.MustCompile("^(none|pd|static|single_network)$")
 	validateIpV6InterfaceType = validation.StringMatch(ipV6InterfaceTypeRegexp, "invalid IPv6 interface type")
 
 	// This is a slightly larger range than the UI, it includes some reserved ones, so could be tightened up.
@@ -393,8 +397,12 @@ func ResourceNetwork() *schema.Resource {
 				Description: "Specifies the IPv6 connection type. Must be one of:\n" +
 					"* `none` - IPv6 disabled (default)\n" +
 					"* `static` - Static IPv6 addressing\n" +
-					"* `pd` - Prefix Delegation from upstream\n\n" +
-					"Choose based on your IPv6 deployment strategy and ISP capabilities.",
+					"* `pd` - Prefix Delegation from upstream\n" +
+					"* `single_network` - Share a delegated IPv6 prefix with a single LAN\n\n" +
+					"Choose based on your IPv6 deployment strategy and ISP capabilities. " +
+					"Note: `single_network` has companion controller settings (the single-network " +
+					"interface/LAN binding) that this provider does not yet expose, so a bare " +
+					"`single_network` network may not be fully configurable.",
 				Type:         schema.TypeString,
 				Optional:     true,
 				Default:      "none",
