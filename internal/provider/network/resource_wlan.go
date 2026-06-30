@@ -548,9 +548,19 @@ func resourceWLANUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 	req.SiteID = site
 
+	// go-unifi v1.9.2's updateWLAN converts a successful-but-empty PUT response into
+	// unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98); re-read to
+	// tell a spurious error from a genuine out-of-band deletion.
 	resp, err := c.UpdateWLAN(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.WLAN, error) {
+		return c.GetWLAN(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceWLANSetResourceData(resp, d, meta, site)

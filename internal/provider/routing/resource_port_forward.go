@@ -205,9 +205,19 @@ func resourcePortForwardUpdate(ctx context.Context, d *schema.ResourceData, meta
 	}
 	req.SiteID = site
 
+	// go-unifi v1.9.2's updatePortForward converts a successful-but-empty PUT
+	// response into unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98);
+	// re-read to tell a spurious error from a genuine out-of-band deletion.
 	resp, err := c.UpdatePortForward(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.PortForward, error) {
+		return c.GetPortForward(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourcePortForwardSetResourceData(resp, d, site)

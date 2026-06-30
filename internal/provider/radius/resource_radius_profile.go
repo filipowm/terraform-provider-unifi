@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -365,9 +366,19 @@ func resourceRadiusProfileUpdate(ctx context.Context, d *schema.ResourceData, me
 	}
 	req.SiteID = site
 
+	// go-unifi v1.9.2's updateRADIUSProfile converts a successful-but-empty PUT
+	// response into unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98);
+	// re-read to tell a spurious error from a genuine out-of-band deletion.
 	resp, err := c.UpdateRADIUSProfile(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.RADIUSProfile, error) {
+		return c.GetRADIUSProfile(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceRadiusProfileSetResourceData(resp, d, site)
