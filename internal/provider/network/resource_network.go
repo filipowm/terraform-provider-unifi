@@ -241,17 +241,21 @@ func ResourceNetwork() *schema.Resource {
 				Optional: true,
 			},
 			"dhcpd_gateway_enabled": {
-				Description: "Overrides the default gateway advertised to this network's DHCP clients " +
-					"(the UI's **Default Gateway** Auto/Manual control). When left in **auto** mode " +
-					"(the default) the controller advertises the network's own interface IP as the " +
-					"gateway via DHCP option 3. Set this to `true` to switch to **manual** mode and " +
-					"hand out the address in `dhcpd_gateway` instead — useful for pointing clients at a " +
-					"custom next hop such as a VPN/subnet-router node (e.g. Tailscale).\n\n" +
+				Description: "Controls whether the default gateway advertised to this network's DHCP " +
+					"clients is selected automatically or set manually — equivalent to switching the " +
+					"network's default gateway from automatic to a manually specified address in the " +
+					"UniFi UI (the exact control label and location vary across controller versions). " +
+					"When `false` (automatic, the default) the controller advertises the network's own " +
+					"interface IP as the gateway via DHCP option 3. Set this to `true` to advertise the " +
+					"address in `dhcpd_gateway` instead — useful for pointing clients at a custom next " +
+					"hop such as a VPN/subnet-router node (e.g. Tailscale).\n\n" +
 					"This attribute is `Optional` and `Computed`: when omitted from configuration it " +
 					"inherits the current value reported by the controller (so a value set in the UI " +
 					"is preserved) rather than being reset. When `true`, `dhcpd_gateway` is required.\n\n" +
 					"Only meaningful when this network runs the UniFi DHCP server (`dhcp_enabled = true` " +
-					"and `dhcp_relay_enabled = false`); it has no effect on `wan` or `vlan-only` networks.",
+					"and `dhcp_relay_enabled = false`); it has no effect on `wan` or `vlan-only` networks. " +
+					"Note: on some controller versions the network must also be in manual configuration " +
+					"mode (toggled in the UniFi UI) before a manually-specified gateway is honored.",
 				Type:     schema.TypeBool,
 				Optional: true,
 				Computed: true,
