@@ -10,7 +10,6 @@ import (
 	"github.com/filipowm/go-unifi/unifi/features"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
@@ -70,6 +69,14 @@ func mergedTargetAttributes(additional map[string]schema.Attribute) map[string]s
 			Computed:            true,
 			Default:             booldefault.StaticBool(false),
 		},
+		"network_ids": schema.ListAttribute{
+			MarkdownDescription: "List of network IDs.",
+			Optional:            true,
+			ElementType:         types.StringType,
+			Validators: []validator.List{
+				listvalidator.SizeAtLeast(1),
+			},
+		},
 		"port": schema.Int32Attribute{
 			MarkdownDescription: "Source port.",
 			Optional:            true,
@@ -95,6 +102,7 @@ type FirewallPolicyTargetModel struct {
 	IPs                types.List   `tfsdk:"ips"`
 	MatchOppositeIPs   types.Bool   `tfsdk:"match_opposite_ips"`
 	MatchOppositePorts types.Bool   `tfsdk:"match_opposite_ports"`
+	NetworkIDs         types.List   `tfsdk:"network_ids"`
 	Port               types.Int32  `tfsdk:"port"`
 	PortGroupID        types.String `tfsdk:"port_group_id"`
 	ZoneID             types.String `tfsdk:"zone_id"`
@@ -106,13 +114,14 @@ func (m *FirewallPolicyTargetModel) AttributeTypes() map[string]attr.Type {
 		"ips":                  types.ListType{ElemType: types.StringType},
 		"match_opposite_ips":   types.BoolType,
 		"match_opposite_ports": types.BoolType,
+		"network_ids":          types.ListType{ElemType: types.StringType},
 		"port":                 types.Int32Type,
 		"port_group_id":        types.StringType,
 		"zone_id":              types.StringType,
 	}
 }
 
-func NewFirewallPolicyTargetModel(ipGroupId string, ips []string, matchOppositeIps, matchOppositePorts bool, port string, portGroupId, zoneId string) *FirewallPolicyTargetModel {
+func NewFirewallPolicyTargetModel(ipGroupId string, ips, networkIDs []string, matchOppositeIps, matchOppositePorts bool, port, portGroupId, zoneId string) *FirewallPolicyTargetModel {
 	diags := diag.Diagnostics{}
 	// go-unifi v1.9 models `port` as a string, because the controller API
 	// accepts port ranges and comma-separated lists (`8000-8010,9443`). The
@@ -131,6 +140,7 @@ func NewFirewallPolicyTargetModel(ipGroupId string, ips []string, matchOppositeI
 		IPs:                types.ListNull(types.StringType),
 		MatchOppositeIPs:   types.BoolValue(matchOppositeIps),
 		MatchOppositePorts: types.BoolValue(matchOppositePorts),
+		NetworkIDs:         types.ListNull(types.StringType),
 		Port:               ut.Int32OrNull(portNum),
 		PortGroupID:        ut.StringOrNull(portGroupId),
 		ZoneID:             types.StringValue(zoneId),
@@ -142,6 +152,14 @@ func NewFirewallPolicyTargetModel(ipGroupId string, ips []string, matchOppositeI
 		diags.Append(d...)
 		m.IPs = lIps
 	}
+
+	// Handle Network IDs list
+	if len(networkIDs) > 0 {
+		lNetworkIDs, d := types.ListValueFrom(context.Background(), types.StringType, networkIDs)
+		diags.Append(d...)
+		m.NetworkIDs = lNetworkIDs
+	}
+
 	return m
 }
 
@@ -152,7 +170,6 @@ type FirewallZonePolicySourceModel struct {
 	MAC                   types.String `tfsdk:"mac"`
 	MACs                  types.List   `tfsdk:"macs"`
 	MatchOppositeNetworks types.Bool   `tfsdk:"match_opposite_networks"`
-	NetworkIDs            types.List   `tfsdk:"network_ids"`
 }
 
 func (m *FirewallZonePolicySourceModel) AttributeTypes() map[string]attr.Type {
@@ -165,9 +182,6 @@ func (m *FirewallZonePolicySourceModel) AttributeTypes() map[string]attr.Type {
 			ElemType: types.StringType,
 		},
 		"match_opposite_networks": types.BoolType,
-		"network_ids": types.ListType{
-			ElemType: types.StringType,
-		},
 	}
 	maps.Copy(attrs, m.FirewallPolicyTargetModel.AttributeTypes())
 	return attrs
@@ -378,6 +392,11 @@ func (m *FirewallZonePolicyModel) AsUnifiModel(ctx context.Context) (interface{}
 			unifiDestination.MatchingTarget = "IP"
 			unifiDestination.MatchingTargetType = "OBJECT"
 		}
+		if len(destination.NetworkIDs.Elements()) > 0 {
+			diags.Append(ut.ListElementsAs(destination.NetworkIDs, &unifiDestination.NetworkIDs)...)
+			unifiDestination.MatchingTarget = "NETWORK"
+			unifiDestination.MatchingTargetType = "SPECIFIC"
+		}
 		if len(destination.Regions.Elements()) > 0 {
 			diags.Append(ut.ListElementsAs(destination.Regions, &unifiDestination.Regions)...)
 			unifiDestination.MatchingTarget = "REGION"
@@ -418,12 +437,11 @@ func (m *FirewallZonePolicyModel) mergeSource(ctx context.Context, model *unifi.
 	diags := diag.Diagnostics{}
 
 	sourceModel := &FirewallZonePolicySourceModel{
-		FirewallPolicyTargetModel: *NewFirewallPolicyTargetModel(model.Source.IPGroupID, model.Source.IPs, model.Source.MatchOppositeIPs, model.Source.MatchOppositePorts, model.Source.Port, model.Source.PortGroupID, model.Source.ZoneID),
+		FirewallPolicyTargetModel: *NewFirewallPolicyTargetModel(model.Source.IPGroupID, model.Source.IPs, model.Source.NetworkIDs, model.Source.MatchOppositeIPs, model.Source.MatchOppositePorts, model.Source.Port, model.Source.PortGroupID, model.Source.ZoneID),
 		MAC:                       ut.StringOrNull(model.Source.MAC),
 		MatchOppositeNetworks:     types.BoolValue(model.Source.MatchOppositeNetworks),
 		MACs:                      types.ListNull(types.StringType),
 		ClientMACs:                types.ListNull(types.StringType),
-		NetworkIDs:                types.ListNull(types.StringType),
 	}
 
 	switch model.Source.MatchingTarget {
@@ -458,7 +476,7 @@ func (m *FirewallZonePolicyModel) mergeSource(ctx context.Context, model *unifi.
 func (m *FirewallZonePolicyModel) mergeDestination(ctx context.Context, model *unifi.FirewallZonePolicy) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 	destModel := &FirewallZonePolicyDestinationModel{
-		FirewallPolicyTargetModel: *NewFirewallPolicyTargetModel(model.Destination.IPGroupID, model.Destination.IPs, model.Destination.MatchOppositeIPs, model.Destination.MatchOppositePorts, model.Destination.Port, model.Destination.PortGroupID, model.Destination.ZoneID),
+		FirewallPolicyTargetModel: *NewFirewallPolicyTargetModel(model.Destination.IPGroupID, model.Destination.IPs, model.Destination.NetworkIDs, model.Destination.MatchOppositeIPs, model.Destination.MatchOppositePorts, model.Destination.Port, model.Destination.PortGroupID, model.Destination.ZoneID),
 		AppCategoryIDs:            types.ListNull(types.StringType),
 		AppIDs:                    types.ListNull(types.StringType),
 		Regions:                   types.ListNull(types.StringType),
@@ -473,6 +491,10 @@ func (m *FirewallZonePolicyModel) mergeDestination(ctx context.Context, model *u
 		apps, d := types.ListValueFrom(ctx, types.StringType, model.Destination.AppIDs)
 		diags.Append(d...)
 		destModel.AppIDs = apps
+	case "NETWORK":
+		networks, d := types.ListValueFrom(ctx, types.StringType, model.Destination.NetworkIDs)
+		diags.Append(d...)
+		destModel.NetworkIDs = networks
 	case "REGION":
 		regions, d := types.ListValueFrom(ctx, types.StringType, model.Destination.Regions)
 		diags.Append(d...)
@@ -728,7 +750,7 @@ func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.Sche
 						MarkdownDescription: "Source MAC address.",
 						Optional:            true,
 						Validators: []validator.String{
-							stringvalidator.RegexMatches(utils.MacAddressRegexp, "must be a valid MAC address"),
+							validators.Mac,
 							stringvalidator.Any(
 								stringvalidator.AlsoRequires(path.MatchRoot("source").AtName("ips")),
 								stringvalidator.AlsoRequires(path.MatchRoot("source").AtName("network_ids")),
@@ -741,9 +763,7 @@ func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.Sche
 						ElementType:         types.StringType,
 						Validators: []validator.List{
 							listvalidator.SizeAtLeast(1),
-							listvalidator.ValueStringsAre(
-								stringvalidator.RegexMatches(utils.MacAddressRegexp, "must be a valid MAC address"),
-							),
+							listvalidator.ValueStringsAre(validators.Mac),
 							listvalidator.ConflictsWith(
 								path.MatchRoot("source").AtName("client_macs"),
 								path.MatchRoot("source").AtName("ips"),
@@ -758,27 +778,12 @@ func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.Sche
 						ElementType:         types.StringType,
 						Validators: []validator.List{
 							listvalidator.SizeAtLeast(1),
-							listvalidator.ValueStringsAre(
-								stringvalidator.RegexMatches(utils.MacAddressRegexp, "must be a valid MAC address"),
-							),
+							listvalidator.ValueStringsAre(validators.Mac),
 							listvalidator.ConflictsWith(
 								path.MatchRoot("source").AtName("ips"),
 								path.MatchRoot("source").AtName("mac"),
 								path.MatchRoot("source").AtName("macs"),
 								path.MatchRoot("source").AtName("network_ids"),
-							),
-						},
-					},
-					"network_ids": schema.ListAttribute{
-						MarkdownDescription: "List of network IDs.",
-						Optional:            true,
-						ElementType:         types.StringType,
-						Validators: []validator.List{
-							listvalidator.SizeAtLeast(1),
-							listvalidator.ConflictsWith(
-								path.MatchRoot("source").AtName("client_macs"),
-								path.MatchRoot("source").AtName("ips"),
-								path.MatchRoot("source").AtName("macs"),
 							),
 						},
 					},
@@ -806,6 +811,7 @@ func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.Sche
 							listvalidator.ConflictsWith(
 								path.MatchRoot("destination").AtName("app_ids"),
 								path.MatchRoot("destination").AtName("ips"),
+								path.MatchRoot("destination").AtName("network_ids"),
 								path.MatchRoot("destination").AtName("regions"),
 								path.MatchRoot("destination").AtName("web_domains"),
 							),
@@ -820,6 +826,7 @@ func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.Sche
 							listvalidator.ConflictsWith(
 								path.MatchRoot("destination").AtName("app_category_ids"),
 								path.MatchRoot("destination").AtName("ips"),
+								path.MatchRoot("destination").AtName("network_ids"),
 								path.MatchRoot("destination").AtName("regions"),
 								path.MatchRoot("destination").AtName("web_domains"),
 							),
@@ -836,6 +843,7 @@ func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.Sche
 								path.MatchRoot("destination").AtName("app_category_ids"),
 								path.MatchRoot("destination").AtName("app_ids"),
 								path.MatchRoot("destination").AtName("ips"),
+								path.MatchRoot("destination").AtName("network_ids"),
 								path.MatchRoot("destination").AtName("web_domains"),
 							),
 						},
@@ -853,6 +861,7 @@ func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.Sche
 								path.MatchRoot("destination").AtName("app_category_ids"),
 								path.MatchRoot("destination").AtName("app_ids"),
 								path.MatchRoot("destination").AtName("ips"),
+								path.MatchRoot("destination").AtName("network_ids"),
 								path.MatchRoot("destination").AtName("regions"),
 							),
 						},
