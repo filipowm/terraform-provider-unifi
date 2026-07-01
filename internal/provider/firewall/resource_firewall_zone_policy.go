@@ -3,6 +3,9 @@ package firewall
 import (
 	"context"
 	"fmt"
+	"maps"
+	"strconv"
+
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/go-unifi/unifi/features"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
@@ -25,8 +28,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"maps"
-	"strconv"
 )
 
 var (
@@ -50,7 +51,10 @@ func mergedTargetAttributes(additional map[string]schema.Attribute) map[string]s
 			ElementType:         types.StringType,
 			Validators: []validator.List{
 				listvalidator.ValueStringsAre(
-					validators.IPv4(),
+					stringvalidator.Any(
+						validators.IPv4(),
+						validators.IPv6(),
+					),
 				),
 			},
 		},
