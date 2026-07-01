@@ -1444,7 +1444,10 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 	id := d.Id()
 
 	err := c.DeleteNetwork(ctx, site, id)
-	if errors.Is(err, unifi.ErrNotFound) {
+	// Treat an already-deleted network as success. A GET of a missing network
+	// yields ErrNotFound (404), but DELETE of one already removed out-of-band
+	// returns a 400 "api.err.IdInvalid" instead, so match both.
+	if errors.Is(err, unifi.ErrNotFound) || utils.IsServerErrorContains(err, "api.err.IdInvalid") {
 		return nil
 	}
 	return diag.FromErr(err)
