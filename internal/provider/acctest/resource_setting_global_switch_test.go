@@ -139,7 +139,8 @@ resource "unifi_setting_global_switch" "test" {
 `
 
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGlobalSwitchLock,
+		VersionConstraint: ">= 7.2",
+		Lock:              settingGlobalSwitchLock,
 		Steps: []resource.TestStep{
 			{
 				Config: one,
@@ -191,7 +192,8 @@ resource "unifi_setting_global_switch" "test" {
 	wantMAC := strings.ToUpper(strings.ReplaceAll(macs[0], ":", "-"))
 
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGlobalSwitchLock,
+		VersionConstraint: ">= 7.2",
+		Lock:              settingGlobalSwitchLock,
 		Steps: []resource.TestStep{
 			{
 				Config: noncanonical,
@@ -233,7 +235,8 @@ resource "unifi_setting_global_switch" "test" {
 `
 
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGlobalSwitchLock,
+		VersionConstraint: ">= 7.2",
+		Lock:              settingGlobalSwitchLock,
 		Steps: []resource.TestStep{
 			{
 				PreConfig: func() { gsSeedJumboframe(t) },
@@ -262,7 +265,8 @@ resource "unifi_setting_global_switch" "test" {
 // isolation attributes configured; every controller field must be preserved.
 func TestAccSettingGlobalSwitch_adoptWithoutManaging(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGlobalSwitchLock,
+		VersionConstraint: ">= 7.2",
+		Lock:              settingGlobalSwitchLock,
 		Steps: []resource.TestStep{
 			{
 				PreConfig: func() { gsSeedJumboframe(t) },
@@ -284,7 +288,8 @@ func TestAccSettingGlobalSwitch_adoptWithoutManaging(t *testing.T) {
 func TestAccSettingGlobalSwitch_aclL3Isolation(t *testing.T) {
 	pt.SkipIfEnvLocalMissing(t, "Skipping: acl_l3_isolation requires an adopted gateway with L3-isolation support not available on the Docker test controller")
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGlobalSwitchLock,
+		VersionConstraint: ">= 7.2",
+		Lock:              settingGlobalSwitchLock,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSettingGlobalSwitchL3("unifi_network.src.id", "unifi_network.dst.id"),
@@ -301,7 +306,8 @@ func TestAccSettingGlobalSwitch_aclL3Isolation(t *testing.T) {
 // and separator) are rejected before any controller call.
 func TestAccSettingGlobalSwitch_duplicateMacRejected(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGlobalSwitchLock,
+		VersionConstraint: ">= 7.2",
+		Lock:              settingGlobalSwitchLock,
 		Steps: []resource.TestStep{
 			{
 				Config: `resource "unifi_setting_global_switch" "test" {
@@ -317,7 +323,8 @@ func TestAccSettingGlobalSwitch_duplicateMacRejected(t *testing.T) {
 // empty-collection guard (SizeAtLeast(1)).
 func TestAccSettingGlobalSwitch_emptyCollectionRejected(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGlobalSwitchLock,
+		VersionConstraint: ">= 7.2",
+		Lock:              settingGlobalSwitchLock,
 		Steps: []resource.TestStep{
 			{
 				Config: `resource "unifi_setting_global_switch" "test" {
@@ -333,7 +340,8 @@ func TestAccSettingGlobalSwitch_emptyCollectionRejected(t *testing.T) {
 // source_network uniqueness validator.
 func TestAccSettingGlobalSwitch_duplicateSourceNetwork(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGlobalSwitchLock,
+		VersionConstraint: ">= 7.2",
+		Lock:              settingGlobalSwitchLock,
 		Steps: []resource.TestStep{
 			{
 				Config: `resource "unifi_setting_global_switch" "test" {
@@ -360,7 +368,8 @@ resource "unifi_setting_global_switch" "test" {
 `
 
 	AcceptanceTest(t, AcceptanceTestCase{
-		Lock: settingGlobalSwitchLock,
+		VersionConstraint: ">= 7.2",
+		Lock:              settingGlobalSwitchLock,
 		Steps: []resource.TestStep{
 			{
 				Config: config,

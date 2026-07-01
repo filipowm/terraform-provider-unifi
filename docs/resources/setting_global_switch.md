@@ -5,6 +5,7 @@ subcategory: ""
 description: |-
   The unifi_setting_global_switch resource manages the switch isolation settings (device isolation and ACL-based layer-3 isolation) for a UniFi site, exposed in the controller UI under Settings → Network → Switch Isolation Settings.
   This resource is intentionally narrow: it manages only the isolation-related fields of the controller's global_switch setting object. All other fields of that object (such as DHCP snooping, 802.1X, STP, jumbo frames, and flow control) are preserved untouched using a read-modify-write write path, so this resource can be adopted without clobbering settings managed elsewhere (for example, DHCP snooping via unifi_setting_usw).
+  ~> Requires controller version 7.2 or later. The Switch Isolation Settings are only available on UniFi Network controllers from version 7.2 onward.
   ~> Clearing collections is not supported. Because the underlying controller fields are omitempty, setting any of acl_device_isolation, acl_l3_isolation, or switch_exclusions to an empty value cannot reliably clear it via the API. Configure at least one element. Removing theattribute does not unmanage or clear it: the last applied value is retained and kept in sync. Empty values are rejected at plan time.
 ---
 
@@ -13,6 +14,8 @@ description: |-
 The `unifi_setting_global_switch` resource manages the switch isolation settings (device isolation and ACL-based layer-3 isolation) for a UniFi site, exposed in the controller UI under **Settings → Network → Switch Isolation Settings**.
 
 This resource is intentionally narrow: it manages only the isolation-related fields of the controller's `global_switch` setting object. All other fields of that object (such as DHCP snooping, 802.1X, STP, jumbo frames, and flow control) are preserved untouched using a read-modify-write write path, so this resource can be adopted without clobbering settings managed elsewhere (for example, DHCP snooping via `unifi_setting_usw`).
+
+~> **Requires controller version 7.2 or later.** The Switch Isolation Settings are only available on UniFi Network controllers from version 7.2 onward.
 
 ~> **Clearing collections is not supported.** Because the underlying controller fields are `omitempty`, setting any of `acl_device_isolation`, `acl_l3_isolation`, or `switch_exclusions` to an empty value cannot reliably clear it via the API. Configure at least one element. Removing theattribute does not unmanage or clear it: the last applied value is retained and kept in sync. Empty values are rejected at plan time.
 

@@ -226,6 +226,14 @@ func NewGlobalSwitchResource() resource.Resource {
 	return r
 }
 
+// ModifyPlan gates the resource on the minimum controller version that exposes
+// the Switch Isolation Settings. These global_switch isolation fields only exist
+// on UniFi controllers from version 7.2 onward, so surface a clear diagnostic on
+// older controllers instead of an opaque API error.
+func (r *globalSwitchResource) ModifyPlan(_ context.Context, _ resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	resp.Diagnostics.Append(r.RequireMinVersion("7.2")...)
+}
+
 func (r *globalSwitchResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_setting_global_switch` resource manages the switch isolation settings " +
@@ -236,6 +244,8 @@ func (r *globalSwitchResource) Schema(_ context.Context, _ resource.SchemaReques
 			"802.1X, STP, jumbo frames, and flow control) are preserved untouched using a read-modify-write write " +
 			"path, so this resource can be adopted without clobbering settings managed elsewhere " +
 			"(for example, DHCP snooping via `unifi_setting_usw`).\n\n" +
+			"~> **Requires controller version 7.2 or later.** The Switch Isolation Settings are only " +
+			"available on UniFi Network controllers from version 7.2 onward.\n\n" +
 			"~> **Clearing collections is not supported.** Because the underlying controller fields are " +
 			"`omitempty`, setting any of `acl_device_isolation`, `acl_l3_isolation`, or `switch_exclusions` to an " +
 			"empty value cannot reliably clear it via the API. Configure at least one element. Removing the" +
@@ -496,5 +506,6 @@ var (
 	_ resource.Resource                = &globalSwitchResource{}
 	_ resource.ResourceWithConfigure   = &globalSwitchResource{}
 	_ resource.ResourceWithImportState = &globalSwitchResource{}
+	_ resource.ResourceWithModifyPlan  = &globalSwitchResource{}
 	_ validator.Set                    = uniqueSourceNetworkValidator{}
 )
