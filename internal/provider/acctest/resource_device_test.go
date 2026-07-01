@@ -244,7 +244,96 @@ func TestAccDevice_switch_basic(t *testing.T) {
 	})
 }
 
+// TestAccDevice_switch_portOverrides covers the port_override attributes the
+// Dockerized demo switches reliably accept and persist: per-port name, op_mode,
+// and poe_mode. Advanced overrides that the demo controller cannot faithfully
+// persist — LAG aggregation and the inline per-port VLAN cluster — are covered
+// by TestAccDevice_switch_portOverrides_inlineVLAN (gated on TF_ACC_LOCAL) and by
+// the offline unit tests in the device package. See the note on that test.
 func TestAccDevice_switch_portOverrides(t *testing.T) {
+	resourceName := "unifi_device.test"
+	site := "default"
+
+	device, unallocateDevice := allocateDevice(t)
+	defer unallocateDevice()
+
+	importStateVerifyIgnore := []string{"allow_adoption", "forget_on_destroy", "name"}
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		PreCheck: func() {
+			preCheckDeviceExists(t, site, device.MAC)
+		},
+		CheckDestroy: testAccCheckDeviceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDeviceConfig_withPortOverridesBasic(device.MAC),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckDeviceExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "port_override.#", "3"),
+
+					// TypeSet membership assertions (order-independent): the
+					// element index reshuffles when the schema changes, so match
+					// on the nested attribute values instead of positional keys.
+					// op_mode is intentionally not asserted for port 2: the
+					// controller drops op_mode="switch" (the omitempty default), so
+					// it reads back as "" (see the DiffSuppressFunc on op_mode).
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
+						"number": "1",
+						"name":   "Port 1",
+					}),
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
+						"number": "2",
+						"name":   "Port 2",
+					}),
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
+						"number":   "4",
+						"poe_mode": "pasv24",
+					}),
+				),
+			},
+			// Merge gate: the same config must produce no further plan, proving
+			// these overrides persisted on the controller with no perpetual diff.
+			{
+				Config:   testAccDeviceConfig_withPortOverridesBasic(device.MAC),
+				PlanOnly: true,
+			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: importStateVerifyIgnore,
+			},
+			{
+				Config: testAccDeviceConfig(device.MAC),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckDeviceExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "port_override.#", "0"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccDevice_switch_portOverrides_inlineVLAN verifies the LAG aggregation and
+// inline per-port VLAN cluster (native_networkconf_id, forward, tagged_vlan_mgmt,
+// excluded_network_ids, setting_preference) end-to-end against a real controller.
+//
+// It is gated on TF_ACC_LOCAL because the Dockerized demo switches do NOT
+// faithfully persist these fields: v9.x controllers reject the LAG member range
+// with api.err.InvalidAggregateRange, and older controllers silently drop both
+// the aggregate members and the inline VLAN fields (they read back empty). The
+// provider-side conversion is covered offline by the device-package unit tests
+// (TestToPortOverride_VLANFields, TestPortOverride_VLANRoundTrip,
+// TestToPortOverrideAggregateTranslation, …); this test proves the round-trip
+// against real switch hardware where the controller actually persists them.
+//
+// Note: the LAG members (ports 3-4) must not carry their own port_override — a
+// port cannot be both an aggregate member and individually configured. Real LAG
+// port ranges are switch-model specific; adjust the port numbers to match the
+// hardware under test if needed.
+func TestAccDevice_switch_portOverrides_inlineVLAN(t *testing.T) {
+	pt.SkipIfEnvLocalMissing(t, "inline per-port VLAN overrides and LAG aggregation require real switch hardware not available on the Docker test controller")
+
 	resourceName := "unifi_device.test"
 	site := "default"
 
@@ -263,27 +352,14 @@ func TestAccDevice_switch_portOverrides(t *testing.T) {
 				Config: testAccDeviceConfig_withPortOverrides(device.MAC),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDeviceExists(resourceName),
-					resource.TestCheckResourceAttr(resourceName, "port_override.#", "6"),
+					resource.TestCheckResourceAttr(resourceName, "port_override.#", "3"),
 
-					// TypeSet membership assertions (order-independent): the
-					// element index reshuffles when the schema changes, so match
-					// on the nested attribute values instead of positional keys.
+					// LAG aggregation: port 3 aggregates the contiguous range
+					// [3, 4]; port 4 is deliberately not declared separately.
 					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
 						"number":              "3",
 						"op_mode":             "aggregate",
 						"aggregate_num_ports": "2",
-					}),
-					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
-						"number": "1",
-						"name":   "Port 1",
-					}),
-					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
-						"number": "2",
-						"name":   "Port 2",
-					}),
-					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "port_override.*", map[string]string{
-						"number":   "4",
-						"poe_mode": "pasv24",
 					}),
 					// Inline per-port VLAN overrides: a native (access) port and a
 					// customized trunk that excludes one network. Identify each
@@ -352,6 +428,39 @@ resource "unifi_device" "test" {
 `, mac, name)
 }
 
+// testAccDeviceConfig_withPortOverridesBasic renders the port_override fields the
+// Dockerized demo switches reliably persist (name, op_mode, poe_mode). Used by the
+// always-on TestAccDevice_switch_portOverrides.
+func testAccDeviceConfig_withPortOverridesBasic(mac string) string {
+	return fmt.Sprintf(`
+resource "unifi_device" "test" {
+	mac = %q
+
+	port_override {
+		number = 1
+		name   = "Port 1"
+	}
+
+	port_override {
+		number  = 2
+		name    = "Port 2"
+		op_mode = "switch"
+	}
+
+	port_override {
+		number   = 4
+		poe_mode = "pasv24"
+	}
+}
+`, mac)
+}
+
+// testAccDeviceConfig_withPortOverrides renders the LAG aggregation and inline
+// per-port VLAN cluster. Used only by the TF_ACC_LOCAL-gated
+// TestAccDevice_switch_portOverrides_inlineVLAN, because the Dockerized demo
+// switches do not persist these fields. Port 4 is intentionally NOT declared: it
+// is an aggregate member of port 3 (a port cannot be both a LAG member and
+// individually overridden — that is what triggers api.err.InvalidAggregateRange).
 func testAccDeviceConfig_withPortOverrides(mac string) string {
 	return fmt.Sprintf(`
 resource "unifi_network" "test_native" {
@@ -379,26 +488,12 @@ resource "unifi_network" "test_excluded" {
 resource "unifi_device" "test" {
 	mac = %q
 
-	port_override {
-		number = 1
-		name   = "Port 1"
-	}
-
-	port_override {
-		number  = 2
-		name    = "Port 2"
-		op_mode = "switch"
-	}
-
+	# LAG aggregation over the contiguous range [3, 4]. The member ports must
+	# not carry their own port_override.
 	port_override {
 		number              = 3
 		op_mode             = "aggregate"
 		aggregate_num_ports = 2
-	}
-
-	port_override {
-		number   = 4
-		poe_mode = "pasv24"
 	}
 
 	# Inline access port: untagged on the native network. The controller
