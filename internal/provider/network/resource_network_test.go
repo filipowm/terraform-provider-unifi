@@ -165,11 +165,28 @@ func TestValidateDefaultGatewayRawConfig(t *testing.T) {
 	gw := cty.StringVal("10.0.0.1")
 	nullGw := cty.NullVal(cty.String)
 	emptyGw := cty.StringVal("")
+	start := cty.StringVal("10.0.0.100")
+	stop := cty.StringVal("10.0.0.254")
+	nullStr := cty.NullVal(cty.String)
 
+	// rawConfig builds a config with a valid DHCP range by default so the range gate
+	// (only fired when the override is enabled) does not mask the toggle/gateway cases.
 	rawConfig := func(enabled, gateway cty.Value) cty.Value {
 		return cty.ObjectVal(map[string]cty.Value{
 			"dhcpd_gateway_enabled": enabled,
 			"dhcpd_gateway":         gateway,
+			"dhcp_start":            start,
+			"dhcp_stop":             stop,
+		})
+	}
+	// rawConfigRange is rawConfig with explicit control over the DHCP range, for the
+	// range gate cases.
+	rawConfigRange := func(enabled, gateway, dhcpStart, dhcpStop cty.Value) cty.Value {
+		return cty.ObjectVal(map[string]cty.Value{
+			"dhcpd_gateway_enabled": enabled,
+			"dhcpd_gateway":         gateway,
+			"dhcp_start":            dhcpStart,
+			"dhcp_stop":             dhcpStop,
 		})
 	}
 
@@ -220,6 +237,28 @@ func TestValidateDefaultGatewayRawConfig(t *testing.T) {
 		{
 			name: "override unknown, gateway set",
 			raw:  rawConfig(cty.UnknownVal(cty.Bool), gw),
+		},
+		{
+			// Range gate: override enabled + gateway but no DHCP range → the controller
+			// 500s at apply, so reject at plan.
+			name:    "override enabled, range omitted",
+			raw:     rawConfigRange(cty.True, gw, nullStr, nullStr),
+			wantErr: true,
+		},
+		{
+			name:    "override enabled, dhcp_start omitted",
+			raw:     rawConfigRange(cty.True, gw, nullStr, stop),
+			wantErr: true,
+		},
+		{
+			name:    "override enabled, dhcp_stop empty",
+			raw:     rawConfigRange(cty.True, gw, start, cty.StringVal("")),
+			wantErr: true,
+		},
+		{
+			// Range omitted but the override is off — the range gate must not fire.
+			name: "override disabled, range omitted",
+			raw:  rawConfigRange(cty.False, nullGw, nullStr, nullStr),
 		},
 		{
 			// No config at all (e.g. destroy).

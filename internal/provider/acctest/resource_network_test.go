@@ -1104,8 +1104,33 @@ func TestAccNetwork_defaultGatewayValidation(t *testing.T) {
 				Config:      testAccNetworkConfigDefaultGateway(name, subnet, vlan, true, ""),
 				ExpectError: regexp.MustCompile(regexp.QuoteMeta(`"dhcpd_gateway" is required`)),
 			},
+			// Override enabled + gateway but no DHCP range → cross-field error (the
+			// controller would otherwise 500 at apply; see TestAccDataNetwork_defaultGateway).
+			{
+				Config:      testAccNetworkConfigDefaultGatewayNoRange(name, subnet, vlan, mustHost(t, subnet, 100)),
+				ExpectError: regexp.MustCompile(regexp.QuoteMeta(`"dhcp_start" and "dhcp_stop" are required`)),
+			},
 		},
 	})
+}
+
+// testAccNetworkConfigDefaultGatewayNoRange renders a corporate DHCP network with the
+// default-gateway override enabled but no dhcp_start/dhcp_stop, exercising the range
+// gate in customizeNetworkDefaultGateway.
+func testAccNetworkConfigDefaultGatewayNoRange(name string, subnet *net.IPNet, vlan int, gateway string) string {
+	return fmt.Sprintf(`
+resource "unifi_network" "test" {
+	name    = %[1]q
+	purpose = "corporate"
+
+	subnet       = %[2]q
+	vlan_id      = %[3]d
+	dhcp_enabled = true
+
+	dhcpd_gateway_enabled = true
+	dhcpd_gateway         = %[4]q
+}
+`, name, subnet.String(), vlan, gateway)
 }
 
 // TestAccNetwork_disappears deletes the network out-of-band and asserts the next plan

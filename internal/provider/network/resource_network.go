@@ -257,7 +257,9 @@ func ResourceNetwork() *schema.Resource {
 					"inherits the current value reported by the controller (so a value set in the UI " +
 					"is preserved) rather than being reset. When `true`, `dhcpd_gateway` is required.\n\n" +
 					"Only meaningful when this network runs the UniFi DHCP server (`dhcp_enabled = true` " +
-					"and `dhcp_relay_enabled = false`); it has no effect on `wan` or `vlan-only` networks. " +
+					"and `dhcp_relay_enabled = false`) with an address range (`dhcp_start`/`dhcp_stop`) " +
+					"configured — the override is DHCP option 3 and the controller rejects a manual " +
+					"gateway with no pool to hand out. It has no effect on `wan` or `vlan-only` networks. " +
 					"Note: on some controller versions the network must also be in manual configuration " +
 					"mode (toggled in the UniFi UI) before a manually-specified gateway is honored.",
 				Type:     schema.TypeBool,
@@ -1148,6 +1150,18 @@ func validateDefaultGatewayRawConfig(raw cty.Value) error {
 	// unrelated Update (gateway preserved via Optional+Computed) is not tripped.
 	if enabledKnown && enabled.True() && !gatewaySet {
 		return fmt.Errorf("%q is required when %q is true: set the IPv4 gateway to advertise to DHCP clients, or set %q = false", "dhcpd_gateway", "dhcpd_gateway_enabled", "dhcpd_gateway_enabled")
+	}
+	// Override explicitly on but no DHCP address range: the manual gateway is DHCP
+	// option 3, which the controller only honors when its DHCP server has a pool to
+	// hand out. dhcp_start/dhcp_stop are Optional (not Computed), so an unset value is
+	// sent as "" and cannot be inherited — a missing range here makes the controller
+	// reject the create with an opaque HTTP 500 (surfaced as a JSON-decode error)
+	// rather than a clean 400. Catch it at plan time instead. Only fire on an explicit
+	// enable, like the checks above.
+	if enabledKnown && enabled.True() {
+		if !utils.IsRawConfigSet(raw, "dhcp_start") || !utils.IsRawConfigSet(raw, "dhcp_stop") {
+			return fmt.Errorf("%q and %q are required when %q is true: the DHCP default-gateway override only applies to a DHCP server with an address range", "dhcp_start", "dhcp_stop", "dhcpd_gateway_enabled")
+		}
 	}
 	return nil
 }

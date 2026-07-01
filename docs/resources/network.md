@@ -189,7 +189,7 @@ This attribute is `Optional` and `Computed`: when omitted it inherits the curren
 
 This attribute is `Optional` and `Computed`: when omitted from configuration it inherits the current value reported by the controller (so a value set in the UI is preserved) rather than being reset. When `true`, `dhcpd_gateway` is required.
 
-Only meaningful when this network runs the UniFi DHCP server (`dhcp_enabled = true` and `dhcp_relay_enabled = false`); it has no effect on `wan` or `vlan-only` networks. Note: on some controller versions the network must also be in manual configuration mode (toggled in the UniFi UI) before a manually-specified gateway is honored.
+Only meaningful when this network runs the UniFi DHCP server (`dhcp_enabled = true` and `dhcp_relay_enabled = false`) with an address range (`dhcp_start`/`dhcp_stop`) configured — the override is DHCP option 3 and the controller rejects a manual gateway with no pool to hand out. It has no effect on `wan` or `vlan-only` networks. Note: on some controller versions the network must also be in manual configuration mode (toggled in the UniFi UI) before a manually-specified gateway is honored.
 - `domain_name` (String) The domain name for this network. Examples:
 * 'corp.example.com' - For corporate networks
 * 'guest.example.com' - For guest networks

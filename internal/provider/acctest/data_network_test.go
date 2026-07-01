@@ -136,6 +136,8 @@ resource "unifi_network" "test" {
 	vlan_id = %[3]d
 
 	dhcp_enabled          = true
+	dhcp_start            = cidrhost(%[2]q, 6)
+	dhcp_stop             = cidrhost(%[2]q, 254)
 	dhcpd_gateway_enabled = true
 	dhcpd_gateway         = %[4]q
 }
