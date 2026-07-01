@@ -155,3 +155,171 @@ func TestValidateDHCPGuardingRawConfig(t *testing.T) {
 		})
 	}
 }
+
+// TestValidateDefaultGatewayRawConfig covers the cross-field rule for the DHCP
+// default-gateway override (issue #120). Like the DHCP Guarding gate it is driven off
+// the raw config so an Update that omits the attributes (inheriting the controller's
+// values via Optional+Computed) does not false-positive; each rule keys on the
+// explicit config of its counterpart.
+func TestValidateDefaultGatewayRawConfig(t *testing.T) {
+	gw := cty.StringVal("10.0.0.1")
+	nullGw := cty.NullVal(cty.String)
+	emptyGw := cty.StringVal("")
+	start := cty.StringVal("10.0.0.100")
+	stop := cty.StringVal("10.0.0.254")
+	nullStr := cty.NullVal(cty.String)
+
+	// rawConfig builds a config with a valid DHCP range by default so the range gate
+	// (only fired when the override is enabled) does not mask the toggle/gateway cases.
+	rawConfig := func(enabled, gateway cty.Value) cty.Value {
+		return cty.ObjectVal(map[string]cty.Value{
+			"dhcpd_gateway_enabled": enabled,
+			"dhcpd_gateway":         gateway,
+			"dhcp_start":            start,
+			"dhcp_stop":             stop,
+		})
+	}
+	// rawConfigRange is rawConfig with explicit control over the DHCP range, for the
+	// range gate cases.
+	rawConfigRange := func(enabled, gateway, dhcpStart, dhcpStop cty.Value) cty.Value {
+		return cty.ObjectVal(map[string]cty.Value{
+			"dhcpd_gateway_enabled": enabled,
+			"dhcpd_gateway":         gateway,
+			"dhcp_start":            dhcpStart,
+			"dhcp_stop":             dhcpStop,
+		})
+	}
+
+	tests := []struct {
+		name    string
+		raw     cty.Value
+		wantErr bool
+	}{
+		{
+			// Decisive #120/#123-style case: both omitted on an Update (inherited).
+			name: "both omitted (inherited)",
+			raw:  rawConfig(cty.NullVal(cty.Bool), nullGw),
+		},
+		{
+			name: "override enabled with gateway",
+			raw:  rawConfig(cty.True, gw),
+		},
+		{
+			name:    "override enabled, gateway omitted",
+			raw:     rawConfig(cty.True, nullGw),
+			wantErr: true,
+		},
+		{
+			name:    "override enabled, gateway explicitly empty",
+			raw:     rawConfig(cty.True, emptyGw),
+			wantErr: true,
+		},
+		{
+			name:    "gateway set, override explicitly disabled",
+			raw:     rawConfig(cty.False, gw),
+			wantErr: true,
+		},
+		{
+			name: "override explicitly disabled, no gateway",
+			raw:  rawConfig(cty.False, nullGw),
+		},
+		{
+			// Gateway set while the toggle is omitted: it may inherit true, so the
+			// conservative gate does not fire (matches the inherit-from-controller path).
+			name: "gateway set, override omitted (inherited)",
+			raw:  rawConfig(cty.NullVal(cty.Bool), gw),
+		},
+		{
+			// Interpolated toggle (var.x) — unresolved at plan, can't validate.
+			name: "override unknown, gateway omitted",
+			raw:  rawConfig(cty.UnknownVal(cty.Bool), nullGw),
+		},
+		{
+			name: "override unknown, gateway set",
+			raw:  rawConfig(cty.UnknownVal(cty.Bool), gw),
+		},
+		{
+			// Range gate: override enabled + gateway but no DHCP range → the controller
+			// 500s at apply, so reject at plan.
+			name:    "override enabled, range omitted",
+			raw:     rawConfigRange(cty.True, gw, nullStr, nullStr),
+			wantErr: true,
+		},
+		{
+			name:    "override enabled, dhcp_start omitted",
+			raw:     rawConfigRange(cty.True, gw, nullStr, stop),
+			wantErr: true,
+		},
+		{
+			name:    "override enabled, dhcp_stop empty",
+			raw:     rawConfigRange(cty.True, gw, start, cty.StringVal("")),
+			wantErr: true,
+		},
+		{
+			// Range omitted but the override is off — the range gate must not fire.
+			name: "override disabled, range omitted",
+			raw:  rawConfigRange(cty.False, nullGw, nullStr, nullStr),
+		},
+		{
+			// No config at all (e.g. destroy).
+			name: "null raw config",
+			raw:  cty.NullVal(cty.Object(map[string]cty.Type{"dhcpd_gateway_enabled": cty.Bool, "dhcpd_gateway": cty.String})),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateDefaultGatewayRawConfig(tt.raw)
+			if tt.wantErr && err == nil {
+				t.Fatalf("expected an error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("expected no error, got: %s", err)
+			}
+		})
+	}
+}
+
+// TestResourceNetworkGetResourceData_defaultGateway guards the write path: the mapper
+// must carry the override toggle and gateway IP into the go-unifi request struct
+// (neither field has omitempty, so an unmapped value would silently serialize as
+// auto/empty on every PUT — the issue #120 gap).
+func TestResourceNetworkGetResourceData_defaultGateway(t *testing.T) {
+	raw := map[string]interface{}{
+		"name":                  "tfacc-default-gateway",
+		"purpose":               "corporate",
+		"dhcpd_gateway_enabled": true,
+		"dhcpd_gateway":         "10.0.0.1",
+	}
+
+	d := schema.TestResourceDataRaw(t, ResourceNetwork().Schema, raw)
+
+	req, err := resourceNetworkGetResourceData(d, nil)
+	if err != nil {
+		t.Fatalf("resourceNetworkGetResourceData returned error: %s", err)
+	}
+	if !req.DHCPDGatewayEnabled {
+		t.Fatalf("expected DHCPDGatewayEnabled to be true, got false")
+	}
+	if req.DHCPDGateway != "10.0.0.1" {
+		t.Fatalf("expected DHCPDGateway to be %q, got %q", "10.0.0.1", req.DHCPDGateway)
+	}
+}
+
+// TestResourceNetworkSetResourceData_defaultGateway is the symmetric read-path guard:
+// the controller values must be flattened back so an omitted config inherits them
+// (Optional+Computed) and imports round-trip.
+func TestResourceNetworkSetResourceData_defaultGateway(t *testing.T) {
+	d := schema.TestResourceDataRaw(t, ResourceNetwork().Schema, map[string]interface{}{})
+
+	resp := &unifi.Network{DHCPDGatewayEnabled: true, DHCPDGateway: "10.0.0.1"}
+	if diags := resourceNetworkSetResourceData(resp, d, "default"); diags.HasError() {
+		t.Fatalf("resourceNetworkSetResourceData returned diagnostics: %v", diags)
+	}
+	if got := d.Get("dhcpd_gateway_enabled").(bool); !got {
+		t.Fatalf("expected dhcpd_gateway_enabled to be true in state, got false")
+	}
+	if got := d.Get("dhcpd_gateway").(string); got != "10.0.0.1" {
+		t.Fatalf("expected dhcpd_gateway to be %q in state, got %q", "10.0.0.1", got)
+	}
+}

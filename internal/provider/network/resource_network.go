@@ -79,11 +79,14 @@ func ResourceNetwork() *schema.Resource {
 
 		// Cross-field validation the per-attribute schema can't express: a
 		// vpn-client requires its companion fields and rejects wireguard_* on other
-		// purposes, and DHCP Guarding requires at least one trusted server. Catches
-		// misconfigurations at plan time instead of as an opaque controller 400.
+		// purposes, DHCP Guarding requires at least one trusted server, and the
+		// default-gateway override must keep its enable toggle and gateway IP
+		// consistent. Catches misconfigurations at plan time instead of as an opaque
+		// controller 400.
 		CustomizeDiff: customdiff.All(
 			customizeNetworkVPNClient,
 			customizeNetworkDHCPGuarding,
+			customizeNetworkDefaultGateway,
 		),
 
 		Schema: map[string]*schema.Schema{
@@ -240,6 +243,43 @@ func ResourceNetwork() *schema.Resource {
 					"* Custom paths for specific boot images",
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			"dhcpd_gateway_enabled": {
+				Description: "Controls whether the default gateway advertised to this network's DHCP " +
+					"clients is selected automatically or set manually — equivalent to switching the " +
+					"network's default gateway from automatic to a manually specified address in the " +
+					"UniFi UI (the exact control label and location vary across controller versions). " +
+					"When `false` (automatic, the default) the controller advertises the network's own " +
+					"interface IP as the gateway via DHCP option 3. Set this to `true` to advertise the " +
+					"address in `dhcpd_gateway` instead — useful for pointing clients at a custom next " +
+					"hop such as a VPN/subnet-router node (e.g. Tailscale).\n\n" +
+					"This attribute is `Optional` and `Computed`: when omitted from configuration it " +
+					"inherits the current value reported by the controller (so a value set in the UI " +
+					"is preserved) rather than being reset. When `true`, `dhcpd_gateway` is required.\n\n" +
+					"Only meaningful when this network runs the UniFi DHCP server (`dhcp_enabled = true` " +
+					"and `dhcp_relay_enabled = false`) with an address range (`dhcp_start`/`dhcp_stop`) " +
+					"configured — the override is DHCP option 3 and the controller rejects a manual " +
+					"gateway with no pool to hand out. It has no effect on `wan` or `vlan-only` networks. " +
+					"Note: on some controller versions the network must also be in manual configuration " +
+					"mode (toggled in the UniFi UI) before a manually-specified gateway is honored.",
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+			},
+			"dhcpd_gateway": {
+				Description: "The IPv4 default gateway to advertise to this network's DHCP clients (DHCP " +
+					"option 3) when `dhcpd_gateway_enabled` is `true`. Typically an address inside this " +
+					"network's `subnet`; an off-subnet address (e.g. a 100.64.0.0/10 Tailscale CGNAT " +
+					"address) passes validation here but may be rejected by the controller at apply. " +
+					"IPv4 only — there is no IPv6 default-gateway override.\n\n" +
+					"This attribute is `Optional` and `Computed`: when omitted it inherits the current " +
+					"value reported by the controller (so a manually-set gateway, or a value the " +
+					"controller echoes in auto mode, does not show as drift). Set it together with " +
+					"`dhcpd_gateway_enabled = true` to manage the override from Terraform.",
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ValidateFunc: validation.IsIPv4Address,
 			},
 			"dhcp_relay_enabled": {
 				Description: "Enables DHCP relay for this network. When enabled:\n" +
@@ -879,8 +919,14 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		DHCPDBootEnabled:  d.Get("dhcpd_boot_enabled").(bool),
 		DHCPDBootServer:   d.Get("dhcpd_boot_server").(string),
 		DHCPDBootFilename: d.Get("dhcpd_boot_filename").(string),
-		DHCPRelayEnabled:  d.Get("dhcp_relay_enabled").(bool),
-		DHCPguardEnabled:  d.Get("dhcp_guarding").(bool),
+		// DHCP default-gateway override (UI "Default Gateway" Auto/Manual). Both
+		// fields lack omitempty so they serialize on every PUT; Optional+Computed
+		// means an omitted attribute re-sends the controller's read-back value
+		// rather than clobbering a UI-set gateway.
+		DHCPDGatewayEnabled: d.Get("dhcpd_gateway_enabled").(bool),
+		DHCPDGateway:        d.Get("dhcpd_gateway").(string),
+		DHCPRelayEnabled:    d.Get("dhcp_relay_enabled").(bool),
+		DHCPguardEnabled:    d.Get("dhcp_guarding").(bool),
 		// Trusted DHCP servers for DHCP Guarding. Same hackish positional fan-out as
 		// DHCPDDNS{x}; an empty list maps to "" entries. ¯\_(ツ)_/¯
 		DHCPDIP1:       append(dhcpGuardServers, "")[0],
@@ -1068,6 +1114,58 @@ func validateDHCPGuardingRawConfig(raw cty.Value) error {
 	return nil
 }
 
+// customizeNetworkDefaultGateway enforces that the DHCP default-gateway override
+// keeps its enable toggle and gateway IP consistent at plan time. The controller
+// would otherwise either silently ignore a gateway written with the override off,
+// or reject an override turned on with no gateway. Driven off the *raw config* (not
+// d.Get) for the same reason as customizeNetworkDHCPGuarding: both attributes are
+// Optional+Computed, so on an Update that omits them they inherit the controller's
+// values, and gating on the inherited value would wrongly fire on an unrelated
+// change. Each rule therefore keys on the *explicit* config of its counterpart.
+func customizeNetworkDefaultGateway(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
+	return validateDefaultGatewayRawConfig(d.GetRawConfig())
+}
+
+// validateDefaultGatewayRawConfig holds the pure raw-config logic so it is
+// unit-testable without constructing a ResourceDiff. See customizeNetworkDefaultGateway.
+func validateDefaultGatewayRawConfig(raw cty.Value) error {
+	if raw.IsNull() || !raw.Type().HasAttribute("dhcpd_gateway_enabled") {
+		return nil
+	}
+	// dhcpd_gateway_enabled is a bool, so read it from raw config directly
+	// (IsRawConfigSet is for strings/numbers/collections and would panic on a bool).
+	// null = omitted (inherits), unknown = interpolated (can't validate at plan).
+	enabled := raw.GetAttr("dhcpd_gateway_enabled")
+	enabledKnown := !enabled.IsNull() && enabled.IsKnown()
+	gatewaySet := utils.IsRawConfigSet(raw, "dhcpd_gateway")
+
+	// Override explicitly off but a gateway IP supplied: the controller would ignore
+	// the gateway. Only fire on an explicit false so an omitted (inherited) toggle
+	// that may already be true is not tripped.
+	if gatewaySet && enabledKnown && enabled.False() {
+		return fmt.Errorf("%q must be true when %q is set: enable the default-gateway override, or remove %q", "dhcpd_gateway_enabled", "dhcpd_gateway", "dhcpd_gateway")
+	}
+	// Override explicitly on but no gateway IP: mirrors the DHCP Guarding gate. Only
+	// fire when the user enables it in *this* config, so an inherited true on an
+	// unrelated Update (gateway preserved via Optional+Computed) is not tripped.
+	if enabledKnown && enabled.True() && !gatewaySet {
+		return fmt.Errorf("%q is required when %q is true: set the IPv4 gateway to advertise to DHCP clients, or set %q = false", "dhcpd_gateway", "dhcpd_gateway_enabled", "dhcpd_gateway_enabled")
+	}
+	// Override explicitly on but no DHCP address range: the manual gateway is DHCP
+	// option 3, which the controller only honors when its DHCP server has a pool to
+	// hand out. dhcp_start/dhcp_stop are Optional (not Computed), so an unset value is
+	// sent as "" and cannot be inherited — a missing range here makes the controller
+	// reject the create with an opaque HTTP 500 (surfaced as a JSON-decode error)
+	// rather than a clean 400. Catch it at plan time instead. Only fire on an explicit
+	// enable, like the checks above.
+	if enabledKnown && enabled.True() {
+		if !utils.IsRawConfigSet(raw, "dhcp_start") || !utils.IsRawConfigSet(raw, "dhcp_stop") {
+			return fmt.Errorf("%q and %q are required when %q is true: the DHCP default-gateway override only applies to a DHCP server with an address range", "dhcp_start", "dhcp_stop", "dhcpd_gateway_enabled")
+		}
+	}
+	return nil
+}
+
 // generateWireguardPrivateKey returns a base64-encoded Curve25519 private key in the
 // same format as `wg genkey` and the UniFi UI: 32 random bytes, clamped per the
 // Curve25519 requirements. Used to mint the gateway's own key when the user omits
@@ -1216,6 +1314,8 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	d.Set("dhcpd_boot_enabled", resp.DHCPDBootEnabled)
 	d.Set("dhcpd_boot_filename", resp.DHCPDBootFilename)
 	d.Set("dhcpd_boot_server", resp.DHCPDBootServer)
+	d.Set("dhcpd_gateway_enabled", resp.DHCPDGatewayEnabled)
+	d.Set("dhcpd_gateway", resp.DHCPDGateway)
 	d.Set("domain_name", resp.DomainName)
 	d.Set("enabled", resp.Enabled)
 	d.Set("igmp_snooping", resp.IGMPSnooping)
@@ -1358,7 +1458,10 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 	id := d.Id()
 
 	err := c.DeleteNetwork(ctx, site, id)
-	if errors.Is(err, unifi.ErrNotFound) {
+	// Treat an already-deleted network as success. A GET of a missing network
+	// yields ErrNotFound (404), but DELETE of one already removed out-of-band
+	// returns a 400 "api.err.IdInvalid" instead, so match both.
+	if errors.Is(err, unifi.ErrNotFound) || utils.IsServerErrorContains(err, "api.err.IdInvalid") {
 		return nil
 	}
 	return diag.FromErr(err)
