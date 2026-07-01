@@ -195,8 +195,9 @@ Recommended for networks with multicast traffic.
 * `none` - IPv6 disabled (default)
 * `static` - Static IPv6 addressing
 * `pd` - Prefix Delegation from upstream
+* `single_network` - Share a delegated IPv6 prefix with a single LAN
 
-Choose based on your IPv6 deployment strategy and ISP capabilities. Defaults to `none`.
+Choose based on your IPv6 deployment strategy and ISP capabilities. Note: `single_network` has companion controller settings (the single-network interface/LAN binding) that this provider does not yet expose, so a bare `single_network` network may not be fully configurable. Defaults to `none`.
 - `ipv6_pd_interface` (String) The WAN interface to use for IPv6 Prefix Delegation. Options:
 * `wan` - Primary WAN interface
 * `wan2` - Secondary WAN interface

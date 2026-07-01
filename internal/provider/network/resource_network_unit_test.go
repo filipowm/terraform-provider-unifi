@@ -125,3 +125,27 @@ func TestResourceNetwork_ipv6FieldsOptionalComputed(t *testing.T) {
 		assert.False(t, attr.Computed, "ipv6_pd_prefixid must stay Optional-only: it has no go-unifi omitempty tag, so making it Computed would break clear-by-omit (issue #96)")
 	}
 }
+
+// TestValidateIpV6InterfaceType is the issue #99 regression guard: `single_network` must be
+// accepted by the plan-time validator (previously the allow-list was only none|pd|static, so the
+// value was rejected at terraform plan/validate before any controller call). The invalid set is
+// coupled to the anchored regexp form (`^(none|pd|static|single_network)$`): "xstaticy" only fails
+// because of anchoring; if the validator is ever loosened to an unanchored alternation, drop it.
+func TestValidateIpV6InterfaceType(t *testing.T) {
+	for _, v := range []string{"none", "static", "pd", "single_network"} { // single_network = #99 guard
+		_, errs := validateIpV6InterfaceType(v, "ipv6_interface_type")
+		assert.Emptyf(t, errs, "%q must be accepted", v)
+	}
+	for _, v := range []string{"", "bogus", "xstaticy", "PD", "single"} { // anchored form
+		_, errs := validateIpV6InterfaceType(v, "ipv6_interface_type")
+		assert.NotEmptyf(t, errs, "%q must be rejected", v)
+	}
+}
+
+// TestResourceNetworkIpV6InterfaceTypeValidatorWired guards against a future detachment of the
+// validator from the schema attribute (the #99 fix is only effective while it stays wired).
+func TestResourceNetworkIpV6InterfaceTypeValidatorWired(t *testing.T) {
+	attr := ResourceNetwork().Schema["ipv6_interface_type"]
+	assert.NotNil(t, attr, "ipv6_interface_type attribute must exist")
+	assert.NotNil(t, attr.ValidateFunc, "ipv6_interface_type must keep a ValidateFunc wired")
+}

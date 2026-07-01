@@ -56,7 +56,7 @@ data "unifi_network" "my_network" {
 - `domain_name` (String) The domain name of this network.
 - `firewall_zone_id` (String) The ID of the Zone-Based Firewall (ZBF) zone this network belongs to. Only meaningful on UniFi OS 9.x controllers with Zone-Based Firewall enabled; empty otherwise. The zone ID is site-scoped.
 - `igmp_snooping` (Boolean) Specifies whether IGMP snooping is enabled or not.
-- `ipv6_interface_type` (String) Specifies which type of IPv6 connection to use. Must be one of either `static`, `pd`, or `none`.
+- `ipv6_interface_type` (String) Specifies which type of IPv6 connection to use. Must be one of either `static`, `pd`, `single_network`, or `none`.
 - `ipv6_pd_interface` (String) Specifies which WAN interface to use for IPv6 PD. Must be one of either `wan` or `wan2`.
 - `ipv6_pd_prefixid` (String) Specifies the IPv6 Prefix ID.
 - `ipv6_pd_start` (String) start address of the DHCPv6 range. Used if `ipv6_interface_type` is set to `pd`.

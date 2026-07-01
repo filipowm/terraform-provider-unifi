@@ -281,6 +281,56 @@ func TestAccNetwork_v6ImportPreserved(t *testing.T) {
 	})
 }
 
+// TestAccNetwork_ipv6SingleNetwork is the deferred issue #99 end-to-end round-trip probe. Plan-time
+// acceptance of ipv6_interface_type = "single_network" is already resolved and guarded offline by
+// TestValidateIpV6InterfaceType in the network package; that is the actual #99 regression guard.
+//
+// This test exists to verify what an offline test cannot: that a bare single_network corporate
+// network round-trips cleanly against a real controller. single_network has companion controller
+// settings (the single-network interface/LAN binding) that this provider does not yet expose, so
+// the live behavior is genuinely unverified and carries two risks: (A) the controller rejects the
+// create because single_network needs a target LAN, or (B) it accepts but echoes back a
+// normalized/empty value, yielding a perpetual diff. The steps would catch these as:
+//   - create: fails if the controller rejects the config (risk A);
+//   - PlanOnly re-plan: fails on any non-empty plan, catching read-back drift (risk B). The read
+//     path stores the controller's value verbatim (resource_network.go), so a controller that
+//     rewrites or drops single_network surfaces here as a diff rather than being masked;
+//   - ImportStep: re-reads from scratch and verifies the imported state matches, catching any
+//     import/refresh asymmetry.
+//
+// It is skipped (matching the sibling TestAccNetwork_v6) until the round-trip has been verified
+// green against a live controller: its pass/fail is unknown today and the demo controller has known
+// IPv6/feature limits, so leaving it un-skipped could red the shared acceptance matrix. When a live
+// run confirms behavior, drop the Skip; if it stays red, expose the companion fields (a follow-up)
+// rather than advertising single_network as fully supported.
+func TestAccNetwork_ipv6SingleNetwork(t *testing.T) {
+	t.Skip("FIXME: unverified single_network round-trip; see #99 companion-field follow-up")
+
+	name := acctest.RandomWithPrefix("tfacc")
+	subnet, vlan := pt.GetTestVLAN(t)
+
+	AcceptanceTest(t, AcceptanceTestCase{
+		// TODO: CheckDestroy: ,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccNetworkConfigSingleNetwork(name, subnet, vlan),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_network.test", "ipv6_interface_type", "single_network"),
+				),
+			},
+			// Round-trip: re-plan the identical config and assert it is empty. PlanOnly fails the
+			// step on any non-empty plan (ExpectNonEmptyPlan defaults to false), so this is what
+			// catches the controller echoing back a normalized/empty value — the perpetual-diff
+			// risk of widening the allow-list without the companion fields.
+			{
+				Config:   testAccNetworkConfigSingleNetwork(name, subnet, vlan),
+				PlanOnly: true,
+			},
+			pt.ImportStep("unifi_network.test"),
+		},
+	})
+}
+
 func TestAccNetwork_wan(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
@@ -670,6 +720,32 @@ resource "unifi_network" "test" {
 	ipv6_ra_enable      = true
 }
 `, name, subnet, vlan, ipv6Type, ipv6Subnet)
+}
+
+// testAccNetworkConfigSingleNetwork is a tailored config for the #99 round-trip test. Unlike
+// testAccNetworkConfigV6 it does NOT set ipv6_static_subnet (which belongs to the "static" mode);
+// it is a deliberately bare single_network corporate network — the three single_network companion
+// fields (the single-network interface/LAN binding) are not exposed by the provider, so this is
+// exactly the minimal config a user can express today, and the test asserts it still round-trips.
+func testAccNetworkConfigSingleNetwork(name string, subnet *net.IPNet, vlan int) string {
+	return fmt.Sprintf(`
+locals {
+	subnet  = "%[2]s"
+	vlan_id = %[3]d
+}
+
+resource "unifi_network" "test" {
+	name    = "%[1]s"
+	purpose = "corporate"
+
+	subnet      = local.subnet
+	vlan_id     = local.vlan_id
+	domain_name = "foo.local"
+
+	ipv6_interface_type = "single_network"
+	ipv6_ra_enable      = true
+}
+`, name, subnet, vlan)
 }
 
 func testWanNetworkConfig(name string, networkGroup string, wanType string, wanIP string, wanEgressQOS int, wanUsername string, wanPassword string, wanDNS1 string, wanDNS2 string) string {
