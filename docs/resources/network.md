@@ -145,8 +145,12 @@ Default is true for easier management. Defaults to `true`.
 Typically longer than IPv4 DHCP leases. Defaults to `86400`.
 - `dhcp_v6_start` (String) The starting IPv6 address for the DHCPv6 range. Used in static DHCPv6 configuration.
 Must be a valid IPv6 address within your allocated IPv6 subnet.
+
+This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the current value reported by the controller, so a value configured in the UI (or read in via `terraform import`) is preserved rather than planned for removal. Note the standard `Optional`+`Computed` "sticky value" semantics — once the controller has a value, removing the attribute from configuration leaves that value in place rather than clearing it (the provider serializes this field with `omitempty`, so an empty value is never sent). There is therefore no way to clear it by deleting it from configuration; turn DHCPv6 off with `dhcp_v6_enabled`/`ipv6_interface_type` instead. Set it explicitly to manage the value from Terraform.
 - `dhcp_v6_stop` (String) The ending IPv6 address for the DHCPv6 range. Used in static DHCPv6 configuration.
 Must be after dhcp_v6_start in the IPv6 address space.
+
+This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the current value reported by the controller, so a value configured in the UI (or read in via `terraform import`) is preserved rather than planned for removal. Note the standard `Optional`+`Computed` "sticky value" semantics — once the controller has a value, removing the attribute from configuration leaves that value in place rather than clearing it (the provider serializes this field with `omitempty`, so an empty value is never sent). There is therefore no way to clear it by deleting it from configuration; turn DHCPv6 off with `dhcp_v6_enabled`/`ipv6_interface_type` instead. Set it explicitly to manage the value from Terraform.
 - `dhcpd_boot_enabled` (Boolean) Enables DHCP boot options for PXE boot or network boot configurations. When enabled:
 * Allows network devices to boot from a TFTP server
 * Requires dhcpd_boot_server and dhcpd_boot_filename to be set
@@ -197,6 +201,8 @@ Choose based on your IPv6 deployment strategy and ISP capabilities. Defaults to 
 * `wan` - Primary WAN interface
 * `wan2` - Secondary WAN interface
 Only applicable when `ipv6_interface_type` is 'pd'.
+
+This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the current value reported by the controller, so a value configured in the UI (or read in via `terraform import`) is preserved rather than planned for removal. Note the standard `Optional`+`Computed` "sticky value" semantics — once the controller has a value, removing the attribute from configuration leaves that value in place rather than clearing it (the provider serializes this field with `omitempty`, so an empty value is never sent). There is therefore no way to clear it by deleting it from configuration; switch `ipv6_interface_type` away from 'pd' to disable Prefix Delegation instead. Set it explicitly to manage the value from Terraform.
 - `ipv6_pd_prefixid` (String) The IPv6 Prefix ID for Prefix Delegation. Used to:
 * Differentiate multiple delegated prefixes
 * Create unique subnets from the delegated prefix
@@ -204,9 +210,13 @@ Typically a hexadecimal value (e.g., '0', '1', 'a1').
 - `ipv6_pd_start` (String) The starting IPv6 address for Prefix Delegation range.
 Only used when `ipv6_interface_type` is 'pd'.
 Must be within the delegated prefix range.
+
+This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the current value reported by the controller, so a value configured in the UI (or read in via `terraform import`) is preserved rather than planned for removal. Note the standard `Optional`+`Computed` "sticky value" semantics — once the controller has a value, removing the attribute from configuration leaves that value in place rather than clearing it (the provider serializes this field with `omitempty`, so an empty value is never sent). There is therefore no way to clear it by deleting it from configuration; switch `ipv6_interface_type` away from 'pd' to disable Prefix Delegation instead. Set it explicitly to manage the value from Terraform.
 - `ipv6_pd_stop` (String) The ending IPv6 address for Prefix Delegation range.
 Only used when `ipv6_interface_type` is 'pd'.
 Must be after `ipv6_pd_start` within the delegated prefix.
+
+This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the current value reported by the controller, so a value configured in the UI (or read in via `terraform import`) is preserved rather than planned for removal. Note the standard `Optional`+`Computed` "sticky value" semantics — once the controller has a value, removing the attribute from configuration leaves that value in place rather than clearing it (the provider serializes this field with `omitempty`, so an empty value is never sent). There is therefore no way to clear it by deleting it from configuration; switch `ipv6_interface_type` away from 'pd' to disable Prefix Delegation instead. Set it explicitly to manage the value from Terraform.
 - `ipv6_ra_enable` (Boolean) Enables IPv6 Router Advertisements (RA). When enabled:
 * Announces IPv6 prefix information to clients
 * Enables SLAAC address configuration
@@ -220,6 +230,8 @@ Must be after `ipv6_pd_start` within the delegated prefix.
 * `medium` - Standard priority
 * `low` - For backup or secondary networks
 Affects router selection when multiple IPv6 routers exist.
+
+This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the current value reported by the controller, so a value configured in the UI (or read in via `terraform import`) is preserved rather than planned for removal. Note the standard `Optional`+`Computed` "sticky value" semantics — once the controller has a value, removing the attribute from configuration leaves that value in place rather than clearing it (the provider serializes this field with `omitempty`, so an empty value is never sent). There is therefore no way to clear it by deleting it from configuration; turn Router Advertisements off with `ipv6_ra_enable` instead. Set it explicitly to manage the value from Terraform.
 - `ipv6_ra_valid_lifetime` (Number) The valid lifetime (in seconds) for IPv6 addresses in Router Advertisements.
 * Must be greater than or equal to `ipv6_ra_preferred_lifetime`
 * Default: 86400 (24 hours)
@@ -227,6 +239,8 @@ Affects router selection when multiple IPv6 routers exist.
 - `ipv6_static_subnet` (String) The static IPv6 subnet in CIDR notation (e.g., '2001:db8::/64') when using static IPv6.
 Only applicable when `ipv6_interface_type` is 'static'.
 Must be a valid IPv6 subnet allocated to your organization.
+
+This attribute is `Optional` + `Computed`: when omitted from configuration it inherits the current value reported by the controller, so a value configured in the UI (or read in via `terraform import`) is preserved rather than planned for removal. Note the standard `Optional`+`Computed` "sticky value" semantics — once the controller has a value, removing the attribute from configuration leaves that value in place rather than clearing it (the provider serializes this field with `omitempty`, so an empty value is never sent). There is therefore no way to clear it by deleting it from configuration; switch `ipv6_interface_type` away from 'static' to disable static IPv6 instead. Set it explicitly to manage the value from Terraform.
 - `multicast_dns` (Boolean) Enables Multicast DNS (mDNS/Bonjour/Avahi) on the network. When enabled:
 * Allows device discovery (e.g., printers, Chromecasts)
 * Supports zero-configuration networking

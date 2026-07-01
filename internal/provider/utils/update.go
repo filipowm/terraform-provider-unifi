@@ -6,7 +6,7 @@ import (
 	"github.com/filipowm/go-unifi/unifi"
 )
 
-// ReReadOnUpdateNotFound works around a go-unifi v1.9.2 defect shared by every
+// ReReadOnUpdateNotFound works around a go-unifi v1.9.3 defect shared by every
 // generated update* function: after a successful PUT they apply a
 // `len(respBody.Data) != 1 -> unifi.ErrNotFound` guard, so a successful-but-empty
 // response (HTTP 200, {"meta":{"rc":"ok"},"data":[]}) — which some UniFi

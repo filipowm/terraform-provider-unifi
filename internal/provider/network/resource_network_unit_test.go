@@ -35,7 +35,7 @@ func (f *fakeNetworkClient) GetNetwork(_ context.Context, _ string, id string) (
 	return f.getResp, f.getErr
 }
 
-// TestResourceNetworkUpdate_ReReadOnNotFound covers the issue #98 regression: go-unifi v1.9.2
+// TestResourceNetworkUpdate_ReReadOnNotFound covers the issue #98 regression: go-unifi v1.9.3
 // turns a successful-but-empty PUT into unifi.ErrNotFound, so the Update handler must re-read
 // instead of surfacing the spurious error.
 func TestResourceNetworkUpdate_ReReadOnNotFound(t *testing.T) {
@@ -84,4 +84,44 @@ func TestResourceNetworkUpdate_ReReadOnNotFound(t *testing.T) {
 		assert.True(t, fake.getCalled, "Update must re-read via GetNetwork on ErrNotFound")
 		assert.Equal(t, "", d.Id(), "genuinely deleted network must clear the ID so it is recreated")
 	})
+}
+
+// TestResourceNetwork_ipv6FieldsOptionalComputed is the offline guard for issue #96.
+// The IPv6/DHCPv6 value fields whose go-unifi struct tags carry `,omitempty` must be
+// Optional+Computed so a sparse post-import config inherits the controller's value
+// instead of planning it to null (a diff the controller can never apply, producing a
+// perpetual post-import diff). This Docker-free test catches accidental removal of the
+// `Computed:` flag even when the acceptance coverage is skipped.
+func TestResourceNetwork_ipv6FieldsOptionalComputed(t *testing.T) {
+	s := ResourceNetwork().Schema
+
+	// These five reported fields plus the two same-class siblings carry `,omitempty`
+	// in the go-unifi Network struct, so they must round-trip via Optional+Computed.
+	computed := []string{
+		"dhcp_v6_start",
+		"dhcp_v6_stop",
+		"ipv6_pd_start",
+		"ipv6_pd_stop",
+		"ipv6_ra_priority",
+		"ipv6_static_subnet",
+		"ipv6_pd_interface",
+	}
+	for _, name := range computed {
+		attr, ok := s[name]
+		assert.True(t, ok, "schema must define %q", name)
+		if !ok {
+			continue
+		}
+		assert.True(t, attr.Optional, "%q must remain Optional", name)
+		assert.True(t, attr.Computed, "%q must be Computed so a sparse post-import config inherits the controller value (issue #96)", name)
+		// Computed + Default is rejected by SDKv2 at init; these must stay Default-free.
+		assert.Nil(t, attr.Default, "%q must not declare a Default (illegal with Computed)", name)
+	}
+
+	// ipv6_pd_prefixid is deliberately EXCLUDED: its go-unifi tag has no `,omitempty`,
+	// so an empty config value IS sent and clears it. Making it Computed would silently
+	// remove that working clear-by-omit behavior — a real BC break. Guard against it.
+	if attr, ok := s["ipv6_pd_prefixid"]; ok {
+		assert.False(t, attr.Computed, "ipv6_pd_prefixid must stay Optional-only: it has no go-unifi omitempty tag, so making it Computed would break clear-by-omit (issue #96)")
+	}
 }
