@@ -3,9 +3,10 @@ package base
 import (
 	"context"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"strings"
 	"sync"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -97,7 +98,7 @@ func (v *featureEnabledValidator) requireFeatures(ctx context.Context, site stri
 	}
 	pathInfo := ""
 	if attrPath != nil {
-		pathInfo = fmt.Sprintf("%s is not supported. ", attrPath.String())
+		pathInfo = attrPath.String() + " is not supported. "
 	}
 	if len(unavailableFeatures) > 0 {
 		diags.AddError("Controller features not available", fmt.Sprintf("%sFeatures %s must be available on controller, but %s are not", pathInfo, strings.Join(features, ", "), strings.Join(unavailableFeatures, ", ")))
@@ -106,7 +107,6 @@ func (v *featureEnabledValidator) requireFeatures(ctx context.Context, site stri
 		diags.AddError("Controller features not disabled", fmt.Sprintf("%sFeatures %s must be enabled on controller, but %s are disabled", pathInfo, strings.Join(features, ", "), strings.Join(disabledFeatures, ", ")))
 	}
 	return diags
-
 }
 
 func (v *featureEnabledValidator) RequireFeaturesEnabled(ctx context.Context, site string, features ...string) diag.Diagnostics {
@@ -116,7 +116,7 @@ func (v *featureEnabledValidator) RequireFeaturesEnabled(ctx context.Context, si
 func (v *featureEnabledValidator) RequireFeaturesEnabledForPath(ctx context.Context, site string, attrPath path.Path, config tfsdk.Config, features ...string) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 	var val attr.Value
-	diags.Append(config.GetAttribute(context.Background(), attrPath, &val)...)
+	diags.Append(config.GetAttribute(ctx, attrPath, &val)...)
 	if diags.HasError() {
 		return diags
 	}

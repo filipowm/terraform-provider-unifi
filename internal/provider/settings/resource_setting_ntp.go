@@ -2,10 +2,8 @@ package settings
 
 import (
 	"context"
+
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -14,6 +12,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 // ntpModel represents the data model for NTP (Network Time Protocol) settings.
@@ -172,7 +174,8 @@ func NewNtpResource() resource.Resource {
 			return client.GetSettingNtp(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingNtp(ctx, site, body.(*unifi.SettingNtp))
+			b, _ := body.(*unifi.SettingNtp)
+			return client.UpdateSettingNtp(ctx, site, b)
 		},
 	)
 	return r

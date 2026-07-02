@@ -1,9 +1,10 @@
 package acctest
 
 import (
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"sync"
 	"testing"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
@@ -15,7 +16,7 @@ func TestAccSettingRadius_basic(t *testing.T) {
 		Lock: &settingRadiusLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingRadiusConfig_basic(),
+				Config: testAccSettingRadiusConfigBasic(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 			pt.ImportStep("unifi_setting_radius.test"),
@@ -28,7 +29,7 @@ func TestAccSettingRadius_site(t *testing.T) {
 		Lock: &settingRadiusLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingRadiusConfig_site(),
+				Config: testAccSettingRadiusConfigSite(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 			{
@@ -46,7 +47,7 @@ func TestAccSettingRadius_full(t *testing.T) {
 		Lock: &settingRadiusLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingRadiusConfig_full(),
+				Config: testAccSettingRadiusConfigFull(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 			{
@@ -64,7 +65,7 @@ func TestAccSettingRadius_vlan(t *testing.T) {
 		Lock: &settingRadiusLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingRadiusConfig_vlan(),
+				Config: testAccSettingRadiusConfigVlan(),
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 			pt.ImportStep("unifi_setting_radius.test"),
@@ -72,7 +73,7 @@ func TestAccSettingRadius_vlan(t *testing.T) {
 	})
 }
 
-func testAccSettingRadiusConfig_basic() string {
+func testAccSettingRadiusConfigBasic() string {
 	return `
 resource "unifi_setting_radius" "test" {
 	enabled = true
@@ -81,7 +82,7 @@ resource "unifi_setting_radius" "test" {
 `
 }
 
-func testAccSettingRadiusConfig_site() string {
+func testAccSettingRadiusConfigSite() string {
 	return `
 resource "unifi_site" "test" {
 	description = "test"
@@ -95,7 +96,7 @@ resource "unifi_setting_radius" "test" {
 `
 }
 
-func testAccSettingRadiusConfig_full() string {
+func testAccSettingRadiusConfigFull() string {
 	return `
 resource "unifi_setting_radius" "test" {
 	enabled = true
@@ -106,7 +107,7 @@ resource "unifi_setting_radius" "test" {
 `
 }
 
-func testAccSettingRadiusConfig_vlan() string {
+func testAccSettingRadiusConfigVlan() string {
 	return `
 resource "unifi_setting_radius" "test" {
 	enabled = true

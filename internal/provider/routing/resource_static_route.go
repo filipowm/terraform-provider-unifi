@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 )
 
 func ResourceStaticRoute() *schema.Resource {
@@ -90,14 +92,17 @@ func ResourceStaticRoute() *schema.Resource {
 }
 
 func resourceStaticRouteCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	req, err := resourceStaticRouteGetResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -113,23 +118,26 @@ func resourceStaticRouteCreate(ctx context.Context, d *schema.ResourceData, meta
 }
 
 func resourceStaticRouteGetResourceData(d *schema.ResourceData) (*unifi.Routing, error) {
-	t := d.Get("type").(string)
+	t, _ := d.Get("type").(string)
 
+	name, _ := d.Get("name").(string)
+	network, _ := d.Get("network").(string)
+	distance, _ := d.Get("distance").(int)
 	r := &unifi.Routing{
 		Enabled: true,
 		Type:    "static-route",
 
-		Name:                d.Get("name").(string),
-		StaticRouteNetwork:  utils.CidrZeroBased(d.Get("network").(string)),
-		StaticRouteDistance: d.Get("distance").(int),
+		Name:                name,
+		StaticRouteNetwork:  utils.CidrZeroBased(network),
+		StaticRouteDistance: distance,
 		StaticRouteType:     t,
 	}
 
 	switch t {
 	case "interface-route":
-		r.StaticRouteInterface = d.Get("interface").(string)
+		r.StaticRouteInterface, _ = d.Get("interface").(string)
 	case "nexthop-route":
-		r.StaticRouteNexthop = d.Get("next_hop").(string)
+		r.StaticRouteNexthop, _ = d.Get("next_hop").(string)
 	case "blackhole":
 	default:
 		return nil, fmt.Errorf("unexpected route type: %q", t)
@@ -139,22 +147,40 @@ func resourceStaticRouteGetResourceData(d *schema.ResourceData) (*unifi.Routing,
 }
 
 func resourceStaticRouteSetResourceData(resp *unifi.Routing, d *schema.ResourceData, site string) diag.Diagnostics {
-	d.Set("site", site)
-	d.Set("name", resp.Name)
-	d.Set("network", utils.CidrZeroBased(resp.StaticRouteNetwork))
-	d.Set("distance", resp.StaticRouteDistance)
+	if err := d.Set("site", site); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("name", resp.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("network", utils.CidrZeroBased(resp.StaticRouteNetwork)); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("distance", resp.StaticRouteDistance); err != nil {
+		return diag.FromErr(err)
+	}
 
 	t := resp.StaticRouteType
-	d.Set("type", t)
+	if err := d.Set("type", t); err != nil {
+		return diag.FromErr(err)
+	}
 
-	d.Set("next_hop", "")
-	d.Set("interface", "")
+	if err := d.Set("next_hop", ""); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("interface", ""); err != nil {
+		return diag.FromErr(err)
+	}
 
 	switch t {
 	case "interface-route":
-		d.Set("interface", resp.StaticRouteInterface)
+		if err := d.Set("interface", resp.StaticRouteInterface); err != nil {
+			return diag.FromErr(err)
+		}
 	case "nexthop-route":
-		d.Set("next_hop", resp.StaticRouteNexthop)
+		if err := d.Set("next_hop", resp.StaticRouteNexthop); err != nil {
+			return diag.FromErr(err)
+		}
 	case "blackhole":
 		// no additional attributes
 	default:
@@ -165,11 +191,14 @@ func resourceStaticRouteSetResourceData(resp *unifi.Routing, d *schema.ResourceD
 }
 
 func resourceStaticRouteRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -187,7 +216,10 @@ func resourceStaticRouteRead(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func resourceStaticRouteUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	req, err := resourceStaticRouteGetResourceData(d)
 	if err != nil {
@@ -196,7 +228,7 @@ func resourceStaticRouteUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 	req.ID = d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -221,11 +253,14 @@ func resourceStaticRouteUpdate(ctx context.Context, d *schema.ResourceData, meta
 }
 
 func resourceStaticRouteDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}

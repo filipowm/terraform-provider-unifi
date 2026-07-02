@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 func TestCIDR(t *testing.T) {
@@ -49,7 +50,6 @@ func TestCIDR(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -107,7 +107,6 @@ func TestCIDROrEmpty(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

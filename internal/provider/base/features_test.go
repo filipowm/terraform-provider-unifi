@@ -3,9 +3,10 @@ package base
 import (
 	"context"
 	"errors"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"sync"
 	"testing"
+
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -15,13 +16,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// MockUnifiClient provides a minimal implementation of unifi.Client for testing
+// MockUnifiClient provides a minimal implementation of unifi.Client for testing.
 type MockUnifiClient struct {
 	unifi.Client // Embed the interface to satisfy all methods (they'll panic if called)
 	featuresFunc func(ctx context.Context, site string) ([]unifi.DescribedFeature, error)
 }
 
-// ListFeatures implements the only unifi.Client method we care about for testing
+// ListFeatures implements the only unifi.Client method we care about for testing.
 func (m *MockUnifiClient) ListFeatures(ctx context.Context, site string) ([]unifi.DescribedFeature, error) {
 	if m.featuresFunc != nil {
 		return m.featuresFunc(ctx, site)
@@ -29,7 +30,7 @@ func (m *MockUnifiClient) ListFeatures(ctx context.Context, site string) ([]unif
 	return nil, errors.New("ListFeatures not implemented")
 }
 
-// TestFeaturesIsEnabled tests the IsEnabled method of Features
+// TestFeaturesIsEnabled tests the IsEnabled method of Features.
 func TestFeaturesIsEnabled(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -71,7 +72,7 @@ func TestFeaturesIsEnabled(t *testing.T) {
 	}
 }
 
-// TestFeaturesIsDisabled tests the IsDisabled method of Features
+// TestFeaturesIsDisabled tests the IsDisabled method of Features.
 func TestFeaturesIsDisabled(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -113,7 +114,7 @@ func TestFeaturesIsDisabled(t *testing.T) {
 	}
 }
 
-// TestFeaturesIsUnavailable tests the IsUnavailable method of Features
+// TestFeaturesIsUnavailable tests the IsUnavailable method of Features.
 func TestFeaturesIsUnavailable(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -156,7 +157,7 @@ func newTestClient(mock *MockUnifiClient) *Client {
 	}
 }
 
-// TestNewFeatureValidator tests the NewFeatureValidator function
+// TestNewFeatureValidator tests the NewFeatureValidator function.
 func TestNewFeatureValidator(t *testing.T) {
 	mockUnifiClient := &MockUnifiClient{
 		featuresFunc: func(ctx context.Context, site string) ([]unifi.DescribedFeature, error) {
@@ -175,7 +176,7 @@ func TestNewFeatureValidator(t *testing.T) {
 	assert.NotNil(t, featureValidator.cache, "Cache should be initialized")
 }
 
-// TestGetFeatures tests the getFeatures method of featureEnabledValidator
+// TestGetFeatures tests the getFeatures method of featureEnabledValidator.
 func TestGetFeatures(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -256,7 +257,7 @@ func TestGetFeatures(t *testing.T) {
 	}
 }
 
-// TestGetFeaturesConcurrent tests the concurrency safety of getFeatures
+// TestGetFeaturesConcurrent tests the concurrency safety of getFeatures.
 func TestGetFeaturesConcurrent(t *testing.T) {
 	callCount := 0
 	mockUnifiClient := &MockUnifiClient{
@@ -279,7 +280,7 @@ func TestGetFeaturesConcurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 	// Launch 10 concurrent goroutines to call getFeatures
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -295,7 +296,7 @@ func TestGetFeaturesConcurrent(t *testing.T) {
 	assert.Equal(t, 1, callCount, "ListFeatures should be called exactly once")
 }
 
-// TestRequireFeatures tests the requireFeatures method of featureEnabledValidator
+// TestRequireFeatures tests the requireFeatures method of featureEnabledValidator.
 func TestRequireFeatures(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -389,7 +390,7 @@ func TestRequireFeatures(t *testing.T) {
 	}
 }
 
-// TestRequireFeaturesEnabledForPath tests the RequireFeaturesEnabledForPath method
+// TestRequireFeaturesEnabledForPath tests the RequireFeaturesEnabledForPath method.
 func TestRequireFeaturesEnabledForPath(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -478,7 +479,7 @@ func TestRequireFeaturesEnabledForPath(t *testing.T) {
 	}
 }
 
-// TestRequireFeaturesEnabled tests the RequireFeaturesEnabled method
+// TestRequireFeaturesEnabled tests the RequireFeaturesEnabled method.
 func TestRequireFeaturesEnabled(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -539,7 +540,7 @@ func TestRequireFeaturesEnabled(t *testing.T) {
 	}
 }
 
-// TestIsDefined is used in RequireFeaturesEnabledForPath to check if a value is defined
+// TestIsDefined is used in RequireFeaturesEnabledForPath to check if a value is defined.
 func TestIsDefined(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -581,7 +582,7 @@ func TestIsDefined(t *testing.T) {
 }
 
 // TestFeatureValidatorCache specifically tests the caching behavior of the FeatureValidator
-// It verifies that multiple calls with the same site only result in one API call
+// It verifies that multiple calls with the same site only result in one API call.
 func TestFeatureValidatorCache(t *testing.T) {
 	// Create a mock client with a counter for API calls
 	callCount := 0
@@ -615,24 +616,24 @@ func TestFeatureValidatorCache(t *testing.T) {
 	assert.False(t, diags3.HasError(), "Feature1 should be enabled")
 
 	// Multiple calls using the same site should still use the cache
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		validator.RequireFeaturesEnabled(context.Background(), "site1", "feature1")
 	}
 	assert.Equal(t, 2, callCount, "Multiple calls with same site should use cached data")
 }
 
 // testFeatureValidator wraps a real FeatureValidator but has a special method for testing
-// that doesn't require a real tfsdk.Config
+// that doesn't require a real tfsdk.Config.
 type testFeatureValidator struct {
 	base      FeatureValidator
 	attrValue attr.Value
 	configErr bool
 }
 
-// TestRequireFeaturesEnabledForPath is a test-specific version that doesn't need a real tfsdk.Config
+// TestRequireFeaturesEnabledForPath is a test-specific version that doesn't need a real tfsdk.Config.
 func (v *testFeatureValidator) TestRequireFeaturesEnabledForPath(ctx context.Context, site string,
-	attrPath path.Path, features ...string) diag.Diagnostics {
-
+	attrPath path.Path, features ...string,
+) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 
 	// This simulates what happens in RequireFeaturesEnabledForPath without needing a real Config

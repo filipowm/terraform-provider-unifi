@@ -5,9 +5,10 @@ import (
 	"strconv"
 	"testing"
 
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 func TestAccDataAccount_default(t *testing.T) {

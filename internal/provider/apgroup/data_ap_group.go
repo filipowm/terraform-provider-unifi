@@ -3,27 +3,29 @@ package apgroup
 import (
 	"context"
 	"fmt"
+
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 )
 
-// APGroupDatasourceModel represents the data model for a UniFi AP Group data source
+// APGroupDatasourceModel represents the data model for a UniFi AP Group data source.
 type APGroupDatasourceModel struct {
 	base.Model
 	Name types.String `tfsdk:"name"`
 }
 
-// AsUnifiModel converts the Terraform model to the UniFi API model
+// AsUnifiModel converts the Terraform model to the UniFi API model.
 func (m *APGroupDatasourceModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
 	return nil, diag.Diagnostics{}
 }
 
-// Merge updates the Terraform model with values from the UniFi API model
+// Merge updates the Terraform model with values from the UniFi API model.
 func (m *APGroupDatasourceModel) Merge(_ context.Context, other interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 

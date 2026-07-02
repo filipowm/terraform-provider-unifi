@@ -2,14 +2,16 @@ package settings
 
 import (
 	"context"
+
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 type magicSiteToSiteVpnModel struct {
@@ -77,7 +79,8 @@ func NewMagicSiteToSiteVpnResource() resource.Resource {
 			return client.GetSettingMagicSiteToSiteVpn(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingMagicSiteToSiteVpn(ctx, site, body.(*unifi.SettingMagicSiteToSiteVpn))
+			b, _ := body.(*unifi.SettingMagicSiteToSiteVpn)
+			return client.UpdateSettingMagicSiteToSiteVpn(ctx, site, b)
 		},
 	)
 	return r

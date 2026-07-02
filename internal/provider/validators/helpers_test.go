@@ -19,7 +19,7 @@ func newStringValidatorRequestResponse(value string) (validator.StringRequest, *
 	return req, &resp
 }
 
-// Helper function to convert types.String to tftypes.Value
+// Helper function to convert types.String to tftypes.Value.
 func stringToTfValue(value types.String) tftypes.Value {
 	if value.IsNull() {
 		return tftypes.NewValue(tftypes.String, nil)
@@ -29,7 +29,7 @@ func stringToTfValue(value types.String) tftypes.Value {
 	return tftypes.NewValue(tftypes.String, value.ValueString())
 }
 
-// Helper function to convert types.Bool to tftypes.Value
+// Helper function to convert types.Bool to tftypes.Value.
 func boolToTfValue(value types.Bool) tftypes.Value {
 	if value.IsNull() {
 		return tftypes.NewValue(tftypes.Bool, nil)

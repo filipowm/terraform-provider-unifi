@@ -1,17 +1,19 @@
 package acctest
 
 import (
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
-	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"regexp"
 	"sync"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 var settingRsyslogdLock = &sync.Mutex{}
 
-// TestAccSettingRsyslogdBasic tests the basic creation and import of the rsyslogd settings
+// TestAccSettingRsyslogdBasic tests the basic creation and import of the rsyslogd settings.
 func TestAccSettingRsyslogdBasic(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 8.5",
@@ -36,7 +38,7 @@ func TestAccSettingRsyslogdBasic(t *testing.T) {
 	})
 }
 
-// TestAccSettingRsyslogdUpdate tests updating the rsyslogd settings with different values
+// TestAccSettingRsyslogdUpdate tests updating the rsyslogd settings with different values.
 func TestAccSettingRsyslogdUpdate(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 8.5",
@@ -65,7 +67,7 @@ func TestAccSettingRsyslogdUpdate(t *testing.T) {
 	})
 }
 
-// TestAccSettingRsyslogdDisable tests disabling the rsyslogd settings
+// TestAccSettingRsyslogdDisable tests disabling the rsyslogd settings.
 func TestAccSettingRsyslogdDisable(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 8.5",
@@ -91,7 +93,7 @@ func TestAccSettingRsyslogdDisable(t *testing.T) {
 	})
 }
 
-// TestAccSettingRsyslogdReEnable tests re-enabling the rsyslogd settings with different values
+// TestAccSettingRsyslogdReEnable tests re-enabling the rsyslogd settings with different values.
 func TestAccSettingRsyslogdReEnable(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 8.5",
@@ -116,7 +118,7 @@ func TestAccSettingRsyslogdReEnable(t *testing.T) {
 	})
 }
 
-// TestAccSettingRsyslogdValidation tests validation errors when trying to set fields with rsyslogd disabled
+// TestAccSettingRsyslogdValidation tests validation errors when trying to set fields with rsyslogd disabled.
 func TestAccSettingRsyslogdValidation(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 8.5",
@@ -130,7 +132,7 @@ func TestAccSettingRsyslogdValidation(t *testing.T) {
 	})
 }
 
-// TestAccSettingRsyslogdPortValidation tests validation errors for invalid port numbers
+// TestAccSettingRsyslogdPortValidation tests validation errors for invalid port numbers.
 func TestAccSettingRsyslogdPortValidation(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 8.5",

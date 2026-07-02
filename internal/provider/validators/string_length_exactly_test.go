@@ -3,9 +3,11 @@ package validators_test
 import (
 	"context"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 func TestStringLengthExactlyValidation(t *testing.T) {

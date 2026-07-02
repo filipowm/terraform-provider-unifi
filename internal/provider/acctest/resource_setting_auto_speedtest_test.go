@@ -2,11 +2,13 @@ package acctest
 
 import (
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
-	"github.com/hashicorp/go-version"
-	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"regexp"
 	"testing"
+
+	"github.com/hashicorp/go-version"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 func TestAccSettingAutoSpeedtest(t *testing.T) {
@@ -49,7 +51,7 @@ func TestAccSettingAutoSpeedtest_unsupported(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccSettingAutoSpeedtestConfig(true, "0 0 * * *"),
-				ExpectError: regexp.MustCompile("Auto Speedtest is not supported on this controller"),
+				ExpectError: regexp.MustCompile("auto speedtest is not supported on this controller"),
 			},
 		},
 	})

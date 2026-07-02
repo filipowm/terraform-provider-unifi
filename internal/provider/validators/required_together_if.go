@@ -167,7 +167,7 @@ func (v RequiredTogetherIfValidator) Validate(ctx context.Context, config tfsdk.
 	return diags
 }
 
-// ValidateString method to implement the validator.String interface
+// ValidateString method to implement the validator.String interface.
 func (v RequiredTogetherIfValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	resp.Diagnostics.Append(v.Validate(ctx, req.Config)...)
 }
@@ -194,7 +194,7 @@ func mapPathToExpression(p string) path.Expression {
 }
 
 func mapPathsToExpressions(paths ...string) []path.Expression {
-	var expressions []path.Expression
+	expressions := make([]path.Expression, 0, len(paths))
 	for _, p := range paths {
 		expressions = append(expressions, mapPathToExpression(p))
 	}

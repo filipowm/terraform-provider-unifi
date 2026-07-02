@@ -6,10 +6,6 @@ import (
 	"fmt"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -21,6 +17,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 // aclL3IsolationModel models a single layer-3 isolation entry: a source network
@@ -47,8 +48,8 @@ func (m *aclL3IsolationModel) AttributeTypes() map[string]attr.Type {
 // modeled and are preserved verbatim by the read-modify-write write path.
 type globalSwitchModel struct {
 	base.Model
-	AclDeviceIsolation types.Set `tfsdk:"acl_device_isolation"`
-	AclL3Isolation     types.Set `tfsdk:"acl_l3_isolation"`
+	ACLDeviceIsolation types.Set `tfsdk:"acl_device_isolation"`
+	ACLL3Isolation     types.Set `tfsdk:"acl_l3_isolation"`
 	SwitchExclusions   types.Set `tfsdk:"switch_exclusions"`
 }
 
@@ -61,9 +62,9 @@ type globalSwitchModel struct {
 func (m *globalSwitchModel) overlay(ctx context.Context, cur *unifi.SettingGlobalSwitch) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 
-	if ut.IsDefined(m.AclDeviceIsolation) {
+	if ut.IsDefined(m.ACLDeviceIsolation) {
 		var v []string
-		diags.Append(m.AclDeviceIsolation.ElementsAs(ctx, &v, false)...)
+		diags.Append(m.ACLDeviceIsolation.ElementsAs(ctx, &v, false)...)
 		if diags.HasError() {
 			return diags
 		}
@@ -86,9 +87,9 @@ func (m *globalSwitchModel) overlay(ctx context.Context, cur *unifi.SettingGloba
 		cur.SwitchExclusions = v
 	}
 
-	if ut.IsDefined(m.AclL3Isolation) {
+	if ut.IsDefined(m.ACLL3Isolation) {
 		var entries []aclL3IsolationModel
-		diags.Append(m.AclL3Isolation.ElementsAs(ctx, &entries, false)...)
+		diags.Append(m.ACLL3Isolation.ElementsAs(ctx, &entries, false)...)
 		if diags.HasError() {
 			return diags
 		}
@@ -149,7 +150,7 @@ func (m *globalSwitchModel) Merge(ctx context.Context, other interface{}) diag.D
 	// the Optional+Computed attributes consistent after apply.
 	deviceIso, d := types.SetValueFrom(ctx, types.StringType, nonNilStrings(model.AclDeviceIsolation))
 	diags.Append(d...)
-	m.AclDeviceIsolation = deviceIso
+	m.ACLDeviceIsolation = deviceIso
 
 	// switch_exclusions uses the MACType element type so the state value carries
 	// MACValue elements; that is what lets the framework apply MAC semantic
@@ -169,7 +170,7 @@ func (m *globalSwitchModel) Merge(ctx context.Context, other interface{}) diag.D
 	}
 	l3Set, d := types.SetValueFrom(ctx, types.ObjectType{AttrTypes: (&aclL3IsolationModel{}).AttributeTypes()}, entries)
 	diags.Append(d...)
-	m.AclL3Isolation = l3Set
+	m.ACLL3Isolation = l3Set
 
 	return diags
 }

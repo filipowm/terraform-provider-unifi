@@ -2,10 +2,11 @@ package settings
 
 import (
 	"context"
+	"testing"
+
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestSettingCountry_ProperCountryCodeMappingFromModel(t *testing.T) {

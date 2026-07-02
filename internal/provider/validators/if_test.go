@@ -20,19 +20,19 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
-// Common test case structure for string conditions
+// Common test case structure for string conditions.
 type stringConditionTestCase struct {
 	condition types.String
 	field1    types.String
 }
 
-// Common test case structure for bool conditions
+// Common test case structure for bool conditions.
 type boolConditionTestCase struct {
 	condition types.Bool
 	field1    types.String
 }
 
-// Function to create a schema object with string condition
+// Function to create a schema object with string condition.
 func createStringConditionSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -49,7 +49,7 @@ func createStringConditionSchema() schema.Schema {
 	}
 }
 
-// Function to create a schema object with bool condition
+// Function to create a schema object with bool condition.
 func createBoolConditionSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -63,7 +63,7 @@ func createBoolConditionSchema() schema.Schema {
 	}
 }
 
-// Function to create a config with string condition
+// Function to create a config with string condition.
 func createStringConditionConfig(schema schema.Schema, testCase stringConditionTestCase) tfsdk.Config {
 	return tfsdk.Config{
 		Schema: schema,
@@ -82,7 +82,7 @@ func createStringConditionConfig(schema schema.Schema, testCase stringConditionT
 	}
 }
 
-// Function to create a config with bool condition
+// Function to create a config with bool condition.
 func createBoolConditionConfig(schema schema.Schema, testCase boolConditionTestCase) tfsdk.Config {
 	return tfsdk.Config{
 		Schema: schema,
@@ -101,7 +101,7 @@ func createBoolConditionConfig(schema schema.Schema, testCase boolConditionTestC
 	}
 }
 
-// Mock validators
+// Mock validators.
 type mockResourceValidator struct {
 	called bool
 }
@@ -150,7 +150,7 @@ func (v *mockDatasourceValidator) ValidateDataSource(ctx context.Context, req da
 	v.called = true
 }
 
-// Test ResourceIf with string condition
+// Test ResourceIf with string condition.
 func TestResourceIf(t *testing.T) {
 	testCases := map[string]struct {
 		createValidator func(mock *mockResourceValidator) validators.IfValidator
@@ -244,7 +244,7 @@ func TestResourceIf(t *testing.T) {
 	}
 }
 
-// Test ResourceIfSet with string condition
+// Test ResourceIfSet with string condition.
 func TestResourceIfSet(t *testing.T) {
 	testCases := map[string]struct {
 		testCase       stringConditionTestCase
@@ -300,7 +300,7 @@ func TestResourceIfSet(t *testing.T) {
 	}
 }
 
-// Test ProviderIfSet with string condition
+// Test ProviderIfSet with string condition.
 func TestProviderIfSet(t *testing.T) {
 	testCases := map[string]struct {
 		testCase       stringConditionTestCase
@@ -356,7 +356,7 @@ func TestProviderIfSet(t *testing.T) {
 	}
 }
 
-// Test DatasourceIfSet with string condition
+// Test DatasourceIfSet with string condition.
 func TestDatasourceIfSet(t *testing.T) {
 	testCases := map[string]struct {
 		testCase       stringConditionTestCase
@@ -412,7 +412,7 @@ func TestDatasourceIfSet(t *testing.T) {
 	}
 }
 
-// Test the Description and MarkdownDescription methods for both variants
+// Test the Description and MarkdownDescription methods for both variants.
 func TestIfValidatorDescription(t *testing.T) {
 	t.Run("ResourceIf description", func(t *testing.T) {
 		mock := &mockResourceValidator{}
@@ -448,7 +448,7 @@ func TestIfValidatorDescription(t *testing.T) {
 	})
 }
 
-// Test with bool condition
+// Test with bool condition.
 func TestResourceIfWithBoolCondition(t *testing.T) {
 	testCases := map[string]struct {
 		testCase       boolConditionTestCase
@@ -512,7 +512,7 @@ func TestResourceIfWithBoolCondition(t *testing.T) {
 	}
 }
 
-// Test with missing path
+// Test with missing path.
 func TestIfValidatorWithMissingPath(t *testing.T) {
 	mock := &mockResourceValidator{}
 	validator := validators.ResourceIf(
@@ -543,7 +543,7 @@ func TestIfValidatorWithMissingPath(t *testing.T) {
 	assert.False(t, mock.called)
 }
 
-// Test with multiple validators
+// Test with multiple validators.
 func TestIfValidatorWithMultipleValidators(t *testing.T) {
 	mock1 := &mockResourceValidator{}
 	mock2 := &mockResourceValidator{}

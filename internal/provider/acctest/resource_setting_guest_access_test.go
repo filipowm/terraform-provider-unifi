@@ -2,6 +2,7 @@ package acctest
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -17,7 +18,7 @@ func TestAccSettingGuestAccess_basic(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_basic(),
+				Config: testAccSettingGuestAccessConfigBasic(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_enabled", "true"),
@@ -34,7 +35,7 @@ func TestAccSettingGuestAccess_basic(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_basicUpdated(),
+				Config: testAccSettingGuestAccessConfigBasicUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_enabled", "false"),
@@ -56,21 +57,21 @@ func TestAccSettingGuestAccess_customAuth(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_customAuth("192.168.1.1"),
+				Config: testAccSettingGuestAccessConfigCustomAuth("192.168.1.1"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "custom"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "custom_ip", "192.168.1.1"),
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_customAuth("192.168.1.2"),
+				Config: testAccSettingGuestAccessConfigCustomAuth("192.168.1.2"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "custom"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "custom_ip", "192.168.1.2"),
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Config: testAccSettingGuestAccessConfigAuth("none"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
 					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "custom_ip"),
@@ -85,7 +86,7 @@ func TestAccSettingGuestAccess_password(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_password("pass1"),
+				Config: testAccSettingGuestAccessConfigPassword("pass1"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "password", "pass1"),
@@ -93,7 +94,7 @@ func TestAccSettingGuestAccess_password(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_password("pass2"),
+				Config: testAccSettingGuestAccessConfigPassword("pass2"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "password", "pass2"),
@@ -101,7 +102,7 @@ func TestAccSettingGuestAccess_password(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_auth("hotspot"),
+				Config: testAccSettingGuestAccessConfigAuth("hotspot"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "password_enabled", "false"),
@@ -116,7 +117,7 @@ func TestAccSettingGuestAccess_voucher(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_voucher(true),
+				Config: testAccSettingGuestAccessConfigVoucher(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "voucher_enabled", "true"),
@@ -124,7 +125,7 @@ func TestAccSettingGuestAccess_voucher(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_voucherCustomized(),
+				Config: testAccSettingGuestAccessConfigVoucherCustomized(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "voucher_enabled", "true"),
@@ -132,7 +133,7 @@ func TestAccSettingGuestAccess_voucher(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_voucher(false),
+				Config: testAccSettingGuestAccessConfigVoucher(false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "voucher_enabled", "false"),
@@ -148,13 +149,13 @@ func TestAccSettingGuestAccess_allowedSubnet(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_allowedSubnet("192.168.1.0/24"),
+				Config: testAccSettingGuestAccessConfigAllowedSubnet("192.168.1.0/24"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "allowed_subnet", "192.168.1.0/24"),
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_allowedSubnet("10.0.0.0/24"),
+				Config: testAccSettingGuestAccessConfigAllowedSubnet("10.0.0.0/24"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "allowed_subnet", "10.0.0.0/24"),
 				),
@@ -168,7 +169,7 @@ func TestAccSettingGuestAccess_paymentPaypal(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_paymentPaypal(true),
+				Config: testAccSettingGuestAccessConfigPaymentPaypal(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -181,7 +182,7 @@ func TestAccSettingGuestAccess_paymentPaypal(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_paymentPaypal(false),
+				Config: testAccSettingGuestAccessConfigPaymentPaypal(false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -193,7 +194,7 @@ func TestAccSettingGuestAccess_paymentPaypal(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_paymentPaypalUpdated(),
+				Config: testAccSettingGuestAccessConfigPaymentPaypalUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -213,7 +214,7 @@ func TestAccSettingGuestAccess_paymentStripe(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_paymentStripe("stripe-api-key"),
+				Config: testAccSettingGuestAccessConfigPaymentStripe("stripe-api-key"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -223,7 +224,7 @@ func TestAccSettingGuestAccess_paymentStripe(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_paymentStripe("updated-stripe-api-key"),
+				Config: testAccSettingGuestAccessConfigPaymentStripe("updated-stripe-api-key"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -240,7 +241,7 @@ func TestAccSettingGuestAccess_paymentAuthorize(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_paymentAuthorize(true),
+				Config: testAccSettingGuestAccessConfigPaymentAuthorize(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -252,7 +253,7 @@ func TestAccSettingGuestAccess_paymentAuthorize(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_paymentAuthorize(false),
+				Config: testAccSettingGuestAccessConfigPaymentAuthorize(false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -271,7 +272,7 @@ func TestAccSettingGuestAccess_paymentQuickpay(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_paymentQuickpay(true),
+				Config: testAccSettingGuestAccessConfigPaymentQuickpay(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -284,7 +285,7 @@ func TestAccSettingGuestAccess_paymentQuickpay(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_paymentQuickpay(false),
+				Config: testAccSettingGuestAccessConfigPaymentQuickpay(false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -304,7 +305,7 @@ func TestAccSettingGuestAccess_paymentMerchantWarrior(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_paymentMerchantWarrior(true),
+				Config: testAccSettingGuestAccessConfigPaymentMerchantWarrior(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -317,7 +318,7 @@ func TestAccSettingGuestAccess_paymentMerchantWarrior(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_paymentMerchantWarrior(false),
+				Config: testAccSettingGuestAccessConfigPaymentMerchantWarrior(false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -337,7 +338,7 @@ func TestAccSettingGuestAccess_paymentIPpay(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_paymentIPpay(true),
+				Config: testAccSettingGuestAccessConfigPaymentIPpay(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -348,7 +349,7 @@ func TestAccSettingGuestAccess_paymentIPpay(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_paymentIPpay(false),
+				Config: testAccSettingGuestAccessConfigPaymentIPpay(false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "true"),
@@ -366,48 +367,48 @@ func TestAccSettingGuestAccess_paymentSwitchGateways(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_paymentPaypal(true),
+				Config: testAccSettingGuestAccessConfigPaymentPaypal(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_gateway", "paypal"),
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_paymentStripe("stripe-api-key"),
+				Config: testAccSettingGuestAccessConfigPaymentStripe("stripe-api-key"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_gateway", "stripe"),
 					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "paypal.username"),
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_paymentAuthorize(true),
+				Config: testAccSettingGuestAccessConfigPaymentAuthorize(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_gateway", "authorize"),
 					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "stripe.api_key"),
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_paymentQuickpay(true),
+				Config: testAccSettingGuestAccessConfigPaymentQuickpay(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_gateway", "quickpay"),
 					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "authorize.login_id"),
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_paymentMerchantWarrior(true),
+				Config: testAccSettingGuestAccessConfigPaymentMerchantWarrior(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_gateway", "merchantwarrior"),
 					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "quickpay.api_key"),
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_paymentIPpay(true),
+				Config: testAccSettingGuestAccessConfigPaymentIPpay(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_gateway", "ippay"),
 					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "merchant_warrior.api_key"),
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_auth("hotspot"),
+				Config: testAccSettingGuestAccessConfigAuth("hotspot"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "payment_enabled", "false"),
@@ -423,7 +424,7 @@ func TestAccSettingGuestAccess_redirect(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_redirect("https://example.com", true, true),
+				Config: testAccSettingGuestAccessConfigRedirect("https://example.com", true, true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect_enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.use_https", "true"),
@@ -433,7 +434,7 @@ func TestAccSettingGuestAccess_redirect(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_redirect("https://updated-example.com", false, false),
+				Config: testAccSettingGuestAccessConfigRedirect("https://updated-example.com", false, false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect_enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect.use_https", "false"),
@@ -442,7 +443,7 @@ func TestAccSettingGuestAccess_redirect(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Config: testAccSettingGuestAccessConfigAuth("none"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "redirect_enabled", "false"),
 					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "redirect"),
@@ -457,7 +458,7 @@ func TestAccSettingGuestAccess_facebook(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_facebook("facebook-app-id", "facebook-app-secret", true),
+				Config: testAccSettingGuestAccessConfigFacebook("facebook-app-id", "facebook-app-secret", true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_enabled", "true"),
@@ -468,7 +469,7 @@ func TestAccSettingGuestAccess_facebook(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_facebook("updated-app-id", "updated-app-secret", false),
+				Config: testAccSettingGuestAccessConfigFacebook("updated-app-id", "updated-app-secret", false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_enabled", "true"),
@@ -478,7 +479,7 @@ func TestAccSettingGuestAccess_facebook(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Config: testAccSettingGuestAccessConfigAuth("none"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_enabled", "false"),
@@ -494,7 +495,7 @@ func TestAccSettingGuestAccess_google(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_google("google-client-id", "google-client-secret", "example.com", true),
+				Config: testAccSettingGuestAccessConfigGoogle("google-client-id", "google-client-secret", "example.com", true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google_enabled", "true"),
@@ -506,7 +507,7 @@ func TestAccSettingGuestAccess_google(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_google("updated-client-id", "updated-client-secret", "", false),
+				Config: testAccSettingGuestAccessConfigGoogle("updated-client-id", "updated-client-secret", "", false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google_enabled", "true"),
@@ -517,7 +518,7 @@ func TestAccSettingGuestAccess_google(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Config: testAccSettingGuestAccessConfigAuth("none"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "google_enabled", "false"),
@@ -533,7 +534,7 @@ func TestAccSettingGuestAccess_radius(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_radius("chap", "radius-profile-id", true, 3799),
+				Config: testAccSettingGuestAccessConfigRadius("chap", "radius-profile-id", true, 3799),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius_enabled", "true"),
@@ -545,7 +546,7 @@ func TestAccSettingGuestAccess_radius(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_radius("mschapv2", "updated-profile-id", false, 1812),
+				Config: testAccSettingGuestAccessConfigRadius("mschapv2", "updated-profile-id", false, 1812),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius_enabled", "true"),
@@ -556,7 +557,7 @@ func TestAccSettingGuestAccess_radius(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Config: testAccSettingGuestAccessConfigAuth("none"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "radius_enabled", "false"),
@@ -572,7 +573,7 @@ func TestAccSettingGuestAccess_wechat(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_wechat("wechat-app-id", "wechat-app-secret", "wechat-secret-key", "wechat-shop-id"),
+				Config: testAccSettingGuestAccessConfigWechat("wechat-app-id", "wechat-app-secret", "wechat-secret-key", "wechat-shop-id"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat_enabled", "true"),
@@ -584,7 +585,7 @@ func TestAccSettingGuestAccess_wechat(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_wechat("updated-app-id", "updated-app-secret", "updated-secret-key", "updated-shop-id"),
+				Config: testAccSettingGuestAccessConfigWechat("updated-app-id", "updated-app-secret", "updated-secret-key", "updated-shop-id"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "hotspot"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat_enabled", "true"),
@@ -595,7 +596,7 @@ func TestAccSettingGuestAccess_wechat(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Config: testAccSettingGuestAccessConfigAuth("none"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "wechat_enabled", "false"),
@@ -611,7 +612,7 @@ func TestAccSettingGuestAccess_facebookWifi(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_facebookWifi("gateway-id", "gateway-name", "gateway-secret", true),
+				Config: testAccSettingGuestAccessConfigFacebookWifi("gateway-id", "gateway-name", "gateway-secret", true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "facebook_wifi"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_wifi.gateway_id", "gateway-id"),
@@ -622,7 +623,7 @@ func TestAccSettingGuestAccess_facebookWifi(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_facebookWifi("updated-gateway-id", "updated-gateway-name", "updated-gateway-secret", false),
+				Config: testAccSettingGuestAccessConfigFacebookWifi("updated-gateway-id", "updated-gateway-name", "updated-gateway-secret", false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "facebook_wifi"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "facebook_wifi.gateway_id", "updated-gateway-id"),
@@ -632,7 +633,7 @@ func TestAccSettingGuestAccess_facebookWifi(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_auth("none"),
+				Config: testAccSettingGuestAccessConfigAuth("none"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "auth", "none"),
 					resource.TestCheckNoResourceAttr("unifi_setting_guest_access.test", "facebook_wifi"),
@@ -647,7 +648,7 @@ func TestAccSettingGuestAccess_restrictedDNS(t *testing.T) {
 		Lock: settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_restrictedDNS([]string{"8.8.8.8", "1.1.1.1"}),
+				Config: testAccSettingGuestAccessConfigRestrictedDNS([]string{"8.8.8.8", "1.1.1.1"}),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.#", "2"),
@@ -657,7 +658,7 @@ func TestAccSettingGuestAccess_restrictedDNS(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
-				Config: testAccSettingGuestAccessConfig_restrictedDNS([]string{"8.8.4.4", "1.0.0.1", "9.9.9.9"}),
+				Config: testAccSettingGuestAccessConfigRestrictedDNS([]string{"8.8.4.4", "1.0.0.1", "9.9.9.9"}),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_enabled", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.#", "3"),
@@ -667,14 +668,14 @@ func TestAccSettingGuestAccess_restrictedDNS(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_restrictedDNS([]string{}),
+				Config: testAccSettingGuestAccessConfigRestrictedDNS([]string{}),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_enabled", "false"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.#", "0"),
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_basic(),
+				Config: testAccSettingGuestAccessConfigBasic(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_enabled", "false"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "restricted_dns_servers.#", "0"),
@@ -690,7 +691,7 @@ func TestAccSettingGuestAccess_portalCustomizationPostVersion74(t *testing.T) {
 		Lock:              settingGuestAccessLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingGuestAccessConfig_portalCustomizationBasicPost74(),
+				Config: testAccSettingGuestAccessConfigPortalCustomizationBasicPost74(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.bg_type", "color"),
@@ -703,7 +704,7 @@ func TestAccSettingGuestAccess_portalCustomizationPostVersion74(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccSettingGuestAccessConfig_portalCustomizationImagesPost74(),
+				Config: testAccSettingGuestAccessConfigPortalCustomizationImagesPost74(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.bg_type", "image"),
@@ -721,7 +722,7 @@ func TestAccSettingGuestAccess_portalCustomization(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				// Initial configuration with color theme and basic settings
-				Config: testAccSettingGuestAccessConfig_portalCustomizationBasic(),
+				Config: testAccSettingGuestAccessConfigPortalCustomizationBasic(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.bg_color", "#f5f5f5"),
@@ -745,7 +746,7 @@ func TestAccSettingGuestAccess_portalCustomization(t *testing.T) {
 			pt.ImportStepWithSite("unifi_setting_guest_access.test"),
 			{
 				// Update with gallery background and text customizations
-				Config: testAccSettingGuestAccessConfig_portalCustomizationGallery(),
+				Config: testAccSettingGuestAccessConfigPortalCustomizationGallery(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "true"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.unsplash_author_name", "John Doe"),
@@ -757,14 +758,14 @@ func TestAccSettingGuestAccess_portalCustomization(t *testing.T) {
 			},
 			{
 				// Disable customization
-				Config: testAccSettingGuestAccessConfig_portalCustomizationDisabled(),
+				Config: testAccSettingGuestAccessConfigPortalCustomizationDisabled(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "false"),
 				),
 			},
 			{
 				// Back to basic configuration
-				Config: testAccSettingGuestAccessConfig_basic(),
+				Config: testAccSettingGuestAccessConfigBasic(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.customized", "false"),
 					resource.TestCheckResourceAttr("unifi_setting_guest_access.test", "portal_customization.%", "29"),
@@ -774,7 +775,7 @@ func TestAccSettingGuestAccess_portalCustomization(t *testing.T) {
 	})
 }
 
-func testAccSettingGuestAccessConfig_basic() string {
+func testAccSettingGuestAccessConfigBasic() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
   auth           = "none"
@@ -790,7 +791,7 @@ resource "unifi_setting_guest_access" "test" {
 `
 }
 
-func testAccSettingGuestAccessConfig_basicUpdated() string {
+func testAccSettingGuestAccessConfigBasicUpdated() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
   auth           = "hotspot"
@@ -804,7 +805,7 @@ resource "unifi_setting_guest_access" "test" {
 `
 }
 
-func testAccSettingGuestAccessConfig_auth(auth string) string {
+func testAccSettingGuestAccessConfigAuth(auth string) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth = "%s"
@@ -812,7 +813,7 @@ resource "unifi_setting_guest_access" "test" {
 `, auth)
 }
 
-func testAccSettingGuestAccessConfig_customAuth(ip string) string {
+func testAccSettingGuestAccessConfigCustomAuth(ip string) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth     = "custom"
@@ -821,7 +822,7 @@ resource "unifi_setting_guest_access" "test" {
 `, ip)
 }
 
-func testAccSettingGuestAccessConfig_password(password string) string {
+func testAccSettingGuestAccessConfigPassword(password string) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth     = "hotspot"
@@ -830,7 +831,7 @@ resource "unifi_setting_guest_access" "test" {
 `, password)
 }
 
-func testAccSettingGuestAccessConfig_voucher(enabled bool) string {
+func testAccSettingGuestAccessConfigVoucher(enabled bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth            = "hotspot"
@@ -839,7 +840,7 @@ resource "unifi_setting_guest_access" "test" {
 `, enabled)
 }
 
-func testAccSettingGuestAccessConfig_voucherCustomized() string {
+func testAccSettingGuestAccessConfigVoucherCustomized() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
   auth               = "hotspot"
@@ -849,7 +850,7 @@ resource "unifi_setting_guest_access" "test" {
 `
 }
 
-func testAccSettingGuestAccessConfig_allowedSubnet(subnet string) string {
+func testAccSettingGuestAccessConfigAllowedSubnet(subnet string) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   allowed_subnet = %q
@@ -857,7 +858,7 @@ resource "unifi_setting_guest_access" "test" {
 `, subnet)
 }
 
-func testAccSettingGuestAccessConfig_paymentPaypal(useSandbox bool) string {
+func testAccSettingGuestAccessConfigPaymentPaypal(useSandbox bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth            = "hotspot"
@@ -872,7 +873,7 @@ resource "unifi_setting_guest_access" "test" {
 `, useSandbox)
 }
 
-func testAccSettingGuestAccessConfig_paymentPaypalUpdated() string {
+func testAccSettingGuestAccessConfigPaymentPaypalUpdated() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
   auth            = "hotspot"
@@ -887,7 +888,7 @@ resource "unifi_setting_guest_access" "test" {
 `
 }
 
-func testAccSettingGuestAccessConfig_paymentStripe(apiKey string) string {
+func testAccSettingGuestAccessConfigPaymentStripe(apiKey string) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth            = "hotspot"
@@ -899,7 +900,7 @@ resource "unifi_setting_guest_access" "test" {
 `, apiKey)
 }
 
-func testAccSettingGuestAccessConfig_paymentAuthorize(useSandbox bool) string {
+func testAccSettingGuestAccessConfigPaymentAuthorize(useSandbox bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth            = "hotspot"
@@ -913,7 +914,7 @@ resource "unifi_setting_guest_access" "test" {
 `, useSandbox)
 }
 
-func testAccSettingGuestAccessConfig_paymentQuickpay(useSandbox bool) string {
+func testAccSettingGuestAccessConfigPaymentQuickpay(useSandbox bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth            = "hotspot"
@@ -928,7 +929,7 @@ resource "unifi_setting_guest_access" "test" {
 `, useSandbox)
 }
 
-func testAccSettingGuestAccessConfig_paymentMerchantWarrior(useSandbox bool) string {
+func testAccSettingGuestAccessConfigPaymentMerchantWarrior(useSandbox bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth            = "hotspot"
@@ -943,7 +944,7 @@ resource "unifi_setting_guest_access" "test" {
 `, useSandbox)
 }
 
-func testAccSettingGuestAccessConfig_paymentIPpay(useSandbox bool) string {
+func testAccSettingGuestAccessConfigPaymentIPpay(useSandbox bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth            = "hotspot"
@@ -956,7 +957,7 @@ resource "unifi_setting_guest_access" "test" {
 `, useSandbox)
 }
 
-func testAccSettingGuestAccessConfig_redirect(url string, useHttps bool, toHttps bool) string {
+func testAccSettingGuestAccessConfigRedirect(url string, useHTTPS bool, toHTTPS bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth = "hotspot"
@@ -966,10 +967,10 @@ resource "unifi_setting_guest_access" "test" {
     to_https  = %t
   }
 }
-`, url, useHttps, toHttps)
+`, url, useHTTPS, toHTTPS)
 }
 
-func testAccSettingGuestAccessConfig_facebook(appId, appSecret string, scopeEmail bool) string {
+func testAccSettingGuestAccessConfigFacebook(appID, appSecret string, scopeEmail bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth = "hotspot"
@@ -979,10 +980,10 @@ resource "unifi_setting_guest_access" "test" {
     scope_email = %t
   }
 }
-`, appId, appSecret, scopeEmail)
+`, appID, appSecret, scopeEmail)
 }
 
-func testAccSettingGuestAccessConfig_google(clientId, clientSecret, domain string, scopeEmail bool) string {
+func testAccSettingGuestAccessConfigGoogle(clientID, clientSecret, domain string, scopeEmail bool) string {
 	domainConfig := ""
 	if domain != "" {
 		domainConfig = fmt.Sprintf("    domain       = %q", domain)
@@ -998,10 +999,10 @@ resource "unifi_setting_guest_access" "test" {
     scope_email    = %t
   }
 }
-`, clientId, clientSecret, domainConfig, scopeEmail)
+`, clientID, clientSecret, domainConfig, scopeEmail)
 }
 
-func testAccSettingGuestAccessConfig_radius(authType, profileId string, disconnectEnabled bool, disconnectPort int) string {
+func testAccSettingGuestAccessConfigRadius(authType, profileID string, disconnectEnabled bool, disconnectPort int) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth = "hotspot"
@@ -1012,13 +1013,13 @@ resource "unifi_setting_guest_access" "test" {
 	disconnect_port    = %d
   }
 }
-`, authType, profileId, disconnectEnabled, disconnectPort)
+`, authType, profileID, disconnectEnabled, disconnectPort)
 }
 
-func testAccSettingGuestAccessConfig_wechat(appId, appSecret, secretKey, shopId string) string {
-	shopIdConfig := ""
-	if shopId != "" {
-		shopIdConfig = fmt.Sprintf("    shop_id      = %q", shopId)
+func testAccSettingGuestAccessConfigWechat(appID, appSecret, secretKey, shopID string) string {
+	shopIDConfig := ""
+	if shopID != "" {
+		shopIDConfig = fmt.Sprintf("    shop_id      = %q", shopID)
 	}
 
 	return fmt.Sprintf(`
@@ -1031,10 +1032,10 @@ resource "unifi_setting_guest_access" "test" {
 %s
   }
 }
-`, appId, appSecret, secretKey, shopIdConfig)
+`, appID, appSecret, secretKey, shopIDConfig)
 }
 
-func testAccSettingGuestAccessConfig_facebookWifi(gatewayId, gatewayName, gatewaySecret string, blockHttps bool) string {
+func testAccSettingGuestAccessConfigFacebookWifi(gatewayID, gatewayName, gatewaySecret string, blockHTTPS bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
   auth = "facebook_wifi"
@@ -1045,17 +1046,19 @@ resource "unifi_setting_guest_access" "test" {
     block_https    = %t
   }
 }
-`, gatewayId, gatewayName, gatewaySecret, blockHttps)
+`, gatewayID, gatewayName, gatewaySecret, blockHTTPS)
 }
 
-func testAccSettingGuestAccessConfig_restrictedDNS(dnsServers []string) string {
+func testAccSettingGuestAccessConfigRestrictedDNS(dnsServers []string) string {
 	serversStr := ""
+	var serversStrSb1053 strings.Builder
 	for i, server := range dnsServers {
 		if i > 0 {
-			serversStr += ", "
+			serversStrSb1053.WriteString(", ")
 		}
-		serversStr += fmt.Sprintf("%q", server)
+		fmt.Fprintf(&serversStrSb1053, "%q", server)
 	}
+	serversStr += serversStrSb1053.String()
 
 	return fmt.Sprintf(`
 resource "unifi_setting_guest_access" "test" {
@@ -1065,7 +1068,7 @@ resource "unifi_setting_guest_access" "test" {
 `, serversStr)
 }
 
-func testAccSettingGuestAccessConfig_portalCustomizationBasic() string {
+func testAccSettingGuestAccessConfigPortalCustomizationBasic() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
   auth = "none"
@@ -1089,7 +1092,7 @@ resource "unifi_setting_guest_access" "test" {
 `
 }
 
-func testAccSettingGuestAccessConfig_portalCustomizationBasicPost74() string {
+func testAccSettingGuestAccessConfigPortalCustomizationBasicPost74() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
   auth = "none"
@@ -1107,7 +1110,7 @@ resource "unifi_setting_guest_access" "test" {
 `
 }
 
-func testAccSettingGuestAccessConfig_portalCustomizationImagesPost74() string {
+func testAccSettingGuestAccessConfigPortalCustomizationImagesPost74() string {
 	return `
 resource "unifi_portal_file" "logo" {
   file_path = "files/testfile.png"
@@ -1129,7 +1132,7 @@ resource "unifi_setting_guest_access" "test" {
 `
 }
 
-func testAccSettingGuestAccessConfig_portalCustomizationGallery() string {
+func testAccSettingGuestAccessConfigPortalCustomizationGallery() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
   auth = "none"
@@ -1148,7 +1151,7 @@ resource "unifi_setting_guest_access" "test" {
 `
 }
 
-func testAccSettingGuestAccessConfig_portalCustomizationDisabled() string {
+func testAccSettingGuestAccessConfigPortalCustomizationDisabled() string {
 	return `
 resource "unifi_setting_guest_access" "test" {
   auth = "none"

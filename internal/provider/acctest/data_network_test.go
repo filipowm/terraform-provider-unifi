@@ -2,12 +2,14 @@ package acctest
 
 import (
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
+	"testing"
+
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"testing"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 func TestAccDataNetwork_byName(t *testing.T) {
@@ -23,7 +25,7 @@ func TestAccDataNetwork_byName(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataNetworkConfig_byName(defaultName),
+				Config: testAccDataNetworkConfigByName(defaultName),
 				Check: resource.ComposeTestCheckFunc(
 					// testCheckNetworkExists(t, "name"),
 					// dhcp_guarding is Computed on the data source; assert it is set to a
@@ -49,7 +51,7 @@ func TestAccDataNetwork_byID(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataNetworkConfig_byID(defaultName),
+				Config: testAccDataNetworkConfigByID(defaultName),
 				Check:  resource.ComposeTestCheckFunc(
 				// testCheckNetworkExists(t, "name"),
 				),
@@ -72,7 +74,7 @@ func TestAccDataNetwork_firewallZoneID(t *testing.T) {
 		Lock:              firewallZoneLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataNetworkConfig_firewallZoneID(name, subnet.String(), vlan, zoneName),
+				Config: testAccDataNetworkConfigFirewallZoneID(name, subnet.String(), vlan, zoneName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrPair("data.unifi_network.test", "firewall_zone_id", "unifi_network.test", "firewall_zone_id"),
 					resource.TestCheckResourceAttrPair("data.unifi_network.test", "firewall_zone_id", "unifi_firewall_zone.test", "id"),
@@ -83,7 +85,7 @@ func TestAccDataNetwork_firewallZoneID(t *testing.T) {
 	})
 }
 
-func testAccDataNetworkConfig_firewallZoneID(name, subnet string, vlan int, zoneName string) string {
+func testAccDataNetworkConfigFirewallZoneID(name, subnet string, vlan int, zoneName string) string {
 	return fmt.Sprintf(`
 resource "unifi_firewall_zone" "test" {
 	name = %[4]q
@@ -117,7 +119,7 @@ func TestAccDataNetwork_defaultGateway(t *testing.T) {
 		CheckDestroy: testAccCheckNetworkDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataNetworkConfig_defaultGateway(name, subnet.String(), vlan, gw),
+				Config: testAccDataNetworkConfigDefaultGateway(name, subnet.String(), vlan, gw),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("data.unifi_network.test", "dhcpd_gateway_enabled", "true"),
 					resource.TestCheckResourceAttr("data.unifi_network.test", "dhcpd_gateway", gw),
@@ -127,7 +129,7 @@ func TestAccDataNetwork_defaultGateway(t *testing.T) {
 	})
 }
 
-func testAccDataNetworkConfig_defaultGateway(name, subnet string, vlan int, gateway string) string {
+func testAccDataNetworkConfigDefaultGateway(name, subnet string, vlan int, gateway string) string {
 	return fmt.Sprintf(`
 resource "unifi_network" "test" {
 	name    = %[1]q
@@ -148,7 +150,7 @@ data "unifi_network" "test" {
 `, name, subnet, vlan, gateway)
 }
 
-func testAccDataNetworkConfig_byName(name string) string {
+func testAccDataNetworkConfigByName(name string) string {
 	return fmt.Sprintf(`
 data "unifi_network" "lan" {
 	name = %q
@@ -156,7 +158,7 @@ data "unifi_network" "lan" {
 `, name)
 }
 
-func testAccDataNetworkConfig_byID(name string) string {
+func testAccDataNetworkConfigByID(name string) string {
 	return fmt.Sprintf(`
 data "unifi_network" "lan" {
 	name = %q

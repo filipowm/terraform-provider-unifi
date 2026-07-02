@@ -2,10 +2,11 @@ package settings
 
 import (
 	"context"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
-// NewSettingResource creates a new base setting resource
+// NewSettingResource creates a new base setting resource.
 func NewSettingResource[T base.ResourceModel](
 	typeName string,
 	modelFactory func() T,

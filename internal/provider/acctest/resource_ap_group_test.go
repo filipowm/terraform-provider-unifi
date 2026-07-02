@@ -3,14 +3,16 @@ package acctest
 import (
 	"context"
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
+	"regexp"
+	"strings"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
-	"regexp"
-	"strings"
-	"testing"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 const testAPGroupResourceName = "unifi_ap_group.test"

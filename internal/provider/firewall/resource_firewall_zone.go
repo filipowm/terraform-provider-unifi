@@ -2,15 +2,19 @@ package firewall
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/filipowm/go-unifi/unifi/features"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 var (
@@ -21,19 +25,19 @@ var (
 	_ base.Resource                    = &firewallZoneResource{}
 )
 
-// firewallZoneModel represents the data model for a UniFi Firewall Zone
+// firewallZoneModel represents the data model for a UniFi Firewall Zone.
 type firewallZoneModel struct {
 	base.Model
 	Name     types.String `tfsdk:"name"`
 	Networks types.List   `tfsdk:"networks"`
 }
 
-// AsUnifiModel converts the Terraform model to the UniFi API model
-func (m *firewallZoneModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
+// AsUnifiModel converts the Terraform model to the UniFi API model.
+func (m *firewallZoneModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 	var networkIDs []string
 
-	diags.Append(ut.ListElementsAs(m.Networks, &networkIDs)...)
+	diags.Append(ut.ListElementsAs(ctx, m.Networks, &networkIDs)...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -45,12 +49,11 @@ func (m *firewallZoneModel) AsUnifiModel(_ context.Context) (interface{}, diag.D
 	}, diags
 }
 
-// Merge updates the Terraform model with values from the UniFi API model
+// Merge updates the Terraform model with values from the UniFi API model.
 func (m *firewallZoneModel) Merge(ctx context.Context, other interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-
 	model, ok := other.(*unifi.FirewallZone)
 	if !ok {
+		diags := diag.Diagnostics{}
 		diags.AddError("Invalid model type", "Expected *unifi.FirewallZone")
 		return diags
 	}
@@ -59,6 +62,7 @@ func (m *firewallZoneModel) Merge(ctx context.Context, other interface{}) diag.D
 	m.Name = types.StringValue(model.Name)
 
 	networkIDs, d := types.ListValueFrom(ctx, types.StringType, model.NetworkIDs)
+	diags := make(diag.Diagnostics, 0, len(d))
 	diags = append(diags, d...)
 	m.Networks = networkIDs
 
@@ -79,7 +83,7 @@ func (r *firewallZoneResource) ModifyPlan(ctx context.Context, req resource.Modi
 	resp.Diagnostics.Append(r.RequireFeaturesEnabled(ctx, site, features.ZoneBasedFirewall, features.ZoneBasedFirewallMigration)...)
 }
 
-// NewFirewallZoneResource creates a new instance of the firewall zone resource
+// NewFirewallZoneResource creates a new instance of the firewall zone resource.
 func NewFirewallZoneResource() resource.Resource {
 	return &firewallZoneResource{
 		GenericResource: base.NewGenericResource(
@@ -90,10 +94,18 @@ func NewFirewallZoneResource() resource.Resource {
 					return client.GetFirewallZone(ctx, site, id)
 				},
 				Create: func(ctx context.Context, client *base.Client, site string, model interface{}) (interface{}, error) {
-					return client.CreateFirewallZone(ctx, site, model.(*unifi.FirewallZone))
+					m, ok := model.(*unifi.FirewallZone)
+					if !ok {
+						return nil, fmt.Errorf("unexpected model type: %T", model)
+					}
+					return client.CreateFirewallZone(ctx, site, m)
 				},
 				Update: func(ctx context.Context, client *base.Client, site string, model interface{}) (interface{}, error) {
-					return client.UpdateFirewallZone(ctx, site, model.(*unifi.FirewallZone))
+					m, ok := model.(*unifi.FirewallZone)
+					if !ok {
+						return nil, fmt.Errorf("unexpected model type: %T", model)
+					}
+					return client.UpdateFirewallZone(ctx, site, m)
 				},
 				Delete: func(ctx context.Context, client *base.Client, site, id string) error {
 					return client.DeleteFirewallZone(ctx, site, id)
@@ -103,7 +115,7 @@ func NewFirewallZoneResource() resource.Resource {
 	}
 }
 
-// Schema defines the schema for the resource
+// Schema defines the schema for the resource.
 func (r *firewallZoneResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_firewall_zone` resource manages firewall zones in the UniFi controller.\n\n" +

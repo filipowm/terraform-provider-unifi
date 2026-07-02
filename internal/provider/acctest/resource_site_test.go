@@ -2,10 +2,12 @@ package acctest
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"strings"
 	"testing"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
@@ -16,7 +18,7 @@ func TestAccSite_basic(t *testing.T) {
 
 	AcceptanceTest(t, AcceptanceTestCase{
 		// FIXME causes flaky tests. See: https://github.com/paultyng/terraform-provider-unifi/issues/480
-		//CheckDestroy:      testAccCheckSiteResourceDestroy,
+		// CheckDestroy:      testAccCheckSiteResourceDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSiteConfig("tfacc-desc1"),
@@ -52,7 +54,7 @@ func TestAccSite_basic(t *testing.T) {
 	})
 }
 
-//nolint:unused
+//nolint:unused // retained for the CheckDestroy wiring disabled above (flaky tests, see issue #480)
 func testAccCheckSiteResourceDestroy(s *terraform.State) error {
 	sites, err := testClient.ListSites(context.Background())
 	if err != nil {
@@ -60,7 +62,7 @@ func testAccCheckSiteResourceDestroy(s *terraform.State) error {
 	}
 	for _, site := range sites {
 		if strings.HasPrefix(site.Description, "tfacc-") {
-			return fmt.Errorf("site not destroyed")
+			return errors.New("site not destroyed")
 		}
 	}
 	return nil

@@ -19,7 +19,7 @@ func TestAccSettingMgmt_basic(t *testing.T) {
 		Lock: &settingMgmtLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingMgmtConfig_basic(),
+				Config: testAccSettingMgmtConfigBasic(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "site", "default"),
@@ -37,7 +37,7 @@ func TestAccSettingMgmt_site(t *testing.T) {
 		Lock: &settingMgmtLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingMgmtConfig_site(),
+				Config: testAccSettingMgmtConfigSite(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttrPair(testSettingMgmtResourceName, "site", "unifi_site.test", "name"),
@@ -55,7 +55,7 @@ func TestAccSettingMgmt_sshKeys(t *testing.T) {
 		Lock: &settingMgmtLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingMgmtConfig_sshKeys(),
+				Config: testAccSettingMgmtConfigSSHKeys(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttrPair(testSettingMgmtResourceName, "site", "unifi_site.test", "name"),
@@ -78,7 +78,7 @@ func TestAccSettingMgmt_fullConfig(t *testing.T) {
 		Lock:              &settingMgmtLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingMgmtConfig_fullConfig(),
+				Config: testAccSettingMgmtConfigFullConfig(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "site", "default"),
@@ -111,7 +111,7 @@ func TestAccSettingMgmt_update(t *testing.T) {
 		Lock:              &settingMgmtLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingMgmtConfig_initialConfig(),
+				Config: testAccSettingMgmtConfigInitialConfig(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "auto_upgrade", "true"),
@@ -122,7 +122,7 @@ func TestAccSettingMgmt_update(t *testing.T) {
 			},
 			pt.ImportStepWithSite(testSettingMgmtResourceName),
 			{
-				Config: testAccSettingMgmtConfig_updatedConfig(),
+				Config: testAccSettingMgmtConfigUpdatedConfig(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "auto_upgrade", "false"),
@@ -140,7 +140,7 @@ func TestAccSettingMgmt_sshCredentials(t *testing.T) {
 		Lock: &settingMgmtLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingMgmtConfig_sshCredentials(),
+				Config: testAccSettingMgmtConfigSSHCredentials(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "ssh_enabled", "true"),
@@ -161,7 +161,7 @@ func TestAccSettingMgmt_cornerCases(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				// Initial configuration with specific values
-				Config: testAccSettingMgmtConfig_cornerCasesInitial(),
+				Config: testAccSettingMgmtConfigCornerCasesInitial(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "site", "default"),
@@ -184,7 +184,7 @@ func TestAccSettingMgmt_cornerCases(t *testing.T) {
 			pt.ImportStepWithSite(testSettingMgmtResourceName),
 			{
 				// Toggle all boolean values and change numeric values
-				Config: testAccSettingMgmtConfig_cornerCasesToggled(),
+				Config: testAccSettingMgmtConfigCornerCasesToggled(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					// Boolean attributes - toggled values
@@ -206,7 +206,7 @@ func TestAccSettingMgmt_cornerCases(t *testing.T) {
 			pt.ImportStepWithSite(testSettingMgmtResourceName),
 			{
 				// Test boundary values for numeric fields and mixed boolean values
-				Config: testAccSettingMgmtConfig_cornerCasesBoundary(),
+				Config: testAccSettingMgmtConfigCornerCasesBoundary(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					// Mixed boolean values
@@ -235,7 +235,7 @@ func TestAccSettingMgmt_sshKeyManagement(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				// Initial configuration with one SSH key
-				Config: testAccSettingMgmtConfig_sshKeyManagementInitial(),
+				Config: testAccSettingMgmtConfigSSHKeyManagementInitial(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "ssh_enabled", "true"),
@@ -249,7 +249,7 @@ func TestAccSettingMgmt_sshKeyManagement(t *testing.T) {
 			pt.ImportStepWithSite(testSettingMgmtResourceName),
 			{
 				// Add a second SSH key and modify the first one
-				Config: testAccSettingMgmtConfig_sshKeyManagementModified(),
+				Config: testAccSettingMgmtConfigSSHKeyManagementModified(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "ssh_enabled", "true"),
@@ -269,7 +269,7 @@ func TestAccSettingMgmt_sshKeyManagement(t *testing.T) {
 			pt.ImportStepWithSite(testSettingMgmtResourceName),
 			{
 				// Remove the first key, keep the second key
-				Config: testAccSettingMgmtConfig_sshKeyManagementRemoved(),
+				Config: testAccSettingMgmtConfigSSHKeyManagementRemoved(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "ssh_enabled", "true"),
@@ -284,7 +284,7 @@ func TestAccSettingMgmt_sshKeyManagement(t *testing.T) {
 			pt.ImportStepWithSite(testSettingMgmtResourceName),
 			{
 				// Remove all SSH keys
-				Config: testAccSettingMgmtConfig_sshKeyManagementNoKeys(),
+				Config: testAccSettingMgmtConfigSSHKeyManagementNoKeys(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "ssh_enabled", "true"),
@@ -302,7 +302,7 @@ func TestAccSettingMgmt_sshAuthModes(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				// Initial configuration with SSH password authentication enabled
-				Config: testAccSettingMgmtConfig_sshAuthModesPasswordOnly(),
+				Config: testAccSettingMgmtConfigSSHAuthModesPasswordOnly(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "ssh_enabled", "true"),
@@ -315,7 +315,7 @@ func TestAccSettingMgmt_sshAuthModes(t *testing.T) {
 			pt.ImportStepWithSite(testSettingMgmtResourceName),
 			{
 				// Switch to SSH key authentication only
-				Config: testAccSettingMgmtConfig_sshAuthModesKeyOnly(),
+				Config: testAccSettingMgmtConfigSSHAuthModesKeyOnly(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "ssh_enabled", "true"),
@@ -328,7 +328,7 @@ func TestAccSettingMgmt_sshAuthModes(t *testing.T) {
 			pt.ImportStepWithSite(testSettingMgmtResourceName),
 			{
 				// Enable both authentication methods
-				Config: testAccSettingMgmtConfig_sshAuthModesBoth(),
+				Config: testAccSettingMgmtConfigSSHAuthModesBoth(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "ssh_enabled", "true"),
@@ -343,7 +343,7 @@ func TestAccSettingMgmt_sshAuthModes(t *testing.T) {
 			pt.ImportStepWithSite(testSettingMgmtResourceName),
 			{
 				// Disable SSH entirely
-				Config: testAccSettingMgmtConfig_sshAuthModesDisabled(),
+				Config: testAccSettingMgmtConfigSSHAuthModesDisabled(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(testSettingMgmtResourceName, "id"),
 					resource.TestCheckResourceAttr(testSettingMgmtResourceName, "ssh_enabled", "false"),
@@ -354,7 +354,7 @@ func TestAccSettingMgmt_sshAuthModes(t *testing.T) {
 	})
 }
 
-func testAccSettingMgmtConfig_basic() string {
+func testAccSettingMgmtConfigBasic() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	auto_upgrade = true
@@ -362,7 +362,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_site() string {
+func testAccSettingMgmtConfigSite() string {
 	return `
 resource "unifi_site" "test" {
 	description = "test"
@@ -375,7 +375,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_sshKeys() string {
+func testAccSettingMgmtConfigSSHKeys() string {
 	return `
 resource "unifi_site" "test" {
 	description = "test"
@@ -394,7 +394,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_fullConfig() string {
+func testAccSettingMgmtConfigFullConfig() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	auto_upgrade = true
@@ -416,7 +416,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_initialConfig() string {
+func testAccSettingMgmtConfigInitialConfig() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	auto_upgrade = true
@@ -427,7 +427,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_updatedConfig() string {
+func testAccSettingMgmtConfigUpdatedConfig() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	auto_upgrade = false
@@ -438,7 +438,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_sshCredentials() string {
+func testAccSettingMgmtConfigSSHCredentials() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	ssh_enabled = true
@@ -449,7 +449,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_cornerCasesInitial() string {
+func testAccSettingMgmtConfigCornerCasesInitial() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	auto_upgrade = true
@@ -468,7 +468,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_cornerCasesToggled() string {
+func testAccSettingMgmtConfigCornerCasesToggled() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	auto_upgrade = false
@@ -487,7 +487,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_cornerCasesBoundary() string {
+func testAccSettingMgmtConfigCornerCasesBoundary() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	auto_upgrade = true
@@ -506,7 +506,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_sshKeyManagementInitial() string {
+func testAccSettingMgmtConfigSSHKeyManagementInitial() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	ssh_enabled = true
@@ -520,7 +520,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_sshKeyManagementModified() string {
+func testAccSettingMgmtConfigSSHKeyManagementModified() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	ssh_enabled = true
@@ -540,7 +540,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_sshKeyManagementRemoved() string {
+func testAccSettingMgmtConfigSSHKeyManagementRemoved() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	ssh_enabled = true
@@ -554,7 +554,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_sshKeyManagementNoKeys() string {
+func testAccSettingMgmtConfigSSHKeyManagementNoKeys() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	ssh_enabled = true
@@ -562,7 +562,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_sshAuthModesPasswordOnly() string {
+func testAccSettingMgmtConfigSSHAuthModesPasswordOnly() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	ssh_enabled = true
@@ -573,7 +573,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_sshAuthModesKeyOnly() string {
+func testAccSettingMgmtConfigSSHAuthModesKeyOnly() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	ssh_enabled = true
@@ -588,7 +588,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_sshAuthModesBoth() string {
+func testAccSettingMgmtConfigSSHAuthModesBoth() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	ssh_enabled = true
@@ -605,7 +605,7 @@ resource "unifi_setting_mgmt" "test" {
 `
 }
 
-func testAccSettingMgmtConfig_sshAuthModesDisabled() string {
+func testAccSettingMgmtConfigSSHAuthModesDisabled() string {
 	return `
 resource "unifi_setting_mgmt" "test" {
 	ssh_enabled = false

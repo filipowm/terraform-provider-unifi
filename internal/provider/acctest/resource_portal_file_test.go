@@ -3,17 +3,18 @@ package acctest
 import (
 	"context"
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
-	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"path/filepath"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
 func TestAccPortalFile_basic(t *testing.T) {
-
 	AcceptanceTest(t, AcceptanceTestCase{
 		CheckDestroy: testAccCheckPortalFileDestroy,
 		Steps: []resource.TestStep{

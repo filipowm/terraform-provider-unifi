@@ -22,9 +22,7 @@ func CIDROrEmpty() validator.String {
 	}
 }
 
-var (
-	_ validator.String = cidrValidator{}
-)
+var _ validator.String = cidrValidator{}
 
 type cidrValidator struct {
 	allowEmpty bool

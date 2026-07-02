@@ -3,8 +3,10 @@ package validators
 import (
 	"context"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
+
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 )
 
 // IPv6 returns a validator which ensures that a string value is a valid IPv6 address.

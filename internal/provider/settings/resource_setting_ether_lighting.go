@@ -8,7 +8,6 @@ import (
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -18,6 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 var colorHexRegexp = regexp.MustCompile(`^[0-9A-Fa-f]{6}$`)
@@ -234,7 +235,8 @@ func NewEtherLightingResource() resource.Resource {
 			return client.GetSettingEtherLighting(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingEtherLighting(ctx, site, body.(*unifi.SettingEtherLighting))
+			b, _ := body.(*unifi.SettingEtherLighting)
+			return client.UpdateSettingEtherLighting(ctx, site, b)
 		},
 	)
 	return r

@@ -13,10 +13,11 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/filipowm/go-unifi/unifi"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 var (
@@ -25,6 +26,7 @@ var (
 )
 
 func allocateDevice(t *testing.T) (*unifi.Device, func()) {
+	t.Helper()
 	pt.MarkAccTest(t)
 	ctx := context.Background()
 
@@ -37,7 +39,7 @@ func allocateDevice(t *testing.T) (*unifi.Device, func()) {
 			}
 
 			if len(devices) == 0 {
-				return retry.RetryableError(fmt.Errorf("No devices found"))
+				return retry.RetryableError(errors.New("No devices found"))
 			}
 
 			for _, device := range devices {
@@ -56,19 +58,18 @@ func allocateDevice(t *testing.T) (*unifi.Device, func()) {
 				}
 
 				// Only switches with these chipsets support both port mirroring ang aggregation.
-				if !(isBroadcomSwitch(device) || isMicrosemiSwitch(device) || isNephosSwitch(device)) {
+				if !isBroadcomSwitch(device) && !isMicrosemiSwitch(device) && !isNephosSwitch(device) {
 					continue
 				}
 
 				d := device
 				if ok := devicePool.Add(&d); !ok {
-					return retry.NonRetryableError(fmt.Errorf("Failed to add device to pool"))
+					return retry.NonRetryableError(errors.New("Failed to add device to pool"))
 				}
 			}
 
 			return nil
 		})
-
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -81,12 +82,11 @@ func allocateDevice(t *testing.T) (*unifi.Device, func()) {
 		device, ok = devicePool.Pop()
 
 		if device == nil || !ok {
-			return retry.RetryableError(fmt.Errorf("Unable to allocate test device"))
+			return retry.RetryableError(errors.New("Unable to allocate test device"))
 		}
 
 		return nil
 	})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,6 +171,7 @@ func isNephosSwitch(device unifi.Device) bool {
 }
 
 func preCheckDeviceExists(t *testing.T, site, mac string) {
+	t.Helper()
 	_, err := testClient.GetDeviceByMAC(context.Background(), site, mac)
 
 	if errors.Is(err, unifi.ErrNotFound) {
@@ -191,7 +192,7 @@ func TestAccDevice_empty(t *testing.T) {
 }
 
 func TestAccDevice_switch_basic(t *testing.T) {
-	//t.Skip("FIXME")
+	// t.Skip("FIXME")
 	resourceName := "unifi_device.test"
 	site := "default"
 
@@ -234,7 +235,7 @@ func TestAccDevice_switch_basic(t *testing.T) {
 			},
 
 			{
-				Config: testAccDeviceConfig_withName(device.MAC, "Test Switch"),
+				Config: testAccDeviceConfigWithName(device.MAC, "Test Switch"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDeviceExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "name", "Test Switch"),
@@ -266,7 +267,7 @@ func TestAccDevice_switch_portOverrides(t *testing.T) {
 		CheckDestroy: testAccCheckDeviceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDeviceConfig_withPortOverridesBasic(device.MAC),
+				Config: testAccDeviceConfigWithPortOverridesBasic(device.MAC),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDeviceExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "port_override.#", "3"),
@@ -294,7 +295,7 @@ func TestAccDevice_switch_portOverrides(t *testing.T) {
 			// Merge gate: the same config must produce no further plan, proving
 			// these overrides persisted on the controller with no perpetual diff.
 			{
-				Config:   testAccDeviceConfig_withPortOverridesBasic(device.MAC),
+				Config:   testAccDeviceConfigWithPortOverridesBasic(device.MAC),
 				PlanOnly: true,
 			},
 			{
@@ -349,7 +350,7 @@ func TestAccDevice_switch_portOverrides_inlineVLAN(t *testing.T) {
 		CheckDestroy: testAccCheckDeviceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDeviceConfig_withPortOverrides(device.MAC),
+				Config: testAccDeviceConfigWithPortOverrides(device.MAC),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDeviceExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "port_override.#", "3"),
@@ -385,7 +386,7 @@ func TestAccDevice_switch_portOverrides_inlineVLAN(t *testing.T) {
 			// the inline VLAN overrides actually persisted on the controller (and
 			// that setting_preference=manual is sufficient for persistence).
 			{
-				Config:   testAccDeviceConfig_withPortOverrides(device.MAC),
+				Config:   testAccDeviceConfigWithPortOverrides(device.MAC),
 				PlanOnly: true,
 			},
 			{
@@ -419,7 +420,7 @@ resource "unifi_device" "test" {
 `, mac)
 }
 
-func testAccDeviceConfig_withName(mac, name string) string {
+func testAccDeviceConfigWithName(mac, name string) string {
 	return fmt.Sprintf(`
 resource "unifi_device" "test" {
 	mac  = %q
@@ -428,10 +429,10 @@ resource "unifi_device" "test" {
 `, mac, name)
 }
 
-// testAccDeviceConfig_withPortOverridesBasic renders the port_override fields the
+// testAccDeviceConfigWithPortOverridesBasic renders the port_override fields the
 // Dockerized demo switches reliably persist (name, op_mode, poe_mode). Used by the
 // always-on TestAccDevice_switch_portOverrides.
-func testAccDeviceConfig_withPortOverridesBasic(mac string) string {
+func testAccDeviceConfigWithPortOverridesBasic(mac string) string {
 	return fmt.Sprintf(`
 resource "unifi_device" "test" {
 	mac = %q
@@ -455,13 +456,13 @@ resource "unifi_device" "test" {
 `, mac)
 }
 
-// testAccDeviceConfig_withPortOverrides renders the LAG aggregation and inline
+// testAccDeviceConfigWithPortOverrides renders the LAG aggregation and inline
 // per-port VLAN cluster. Used only by the TF_ACC_LOCAL-gated
 // TestAccDevice_switch_portOverrides_inlineVLAN, because the Dockerized demo
 // switches do not persist these fields. Port 4 is intentionally NOT declared: it
 // is an aggregate member of port 3 (a port cannot be both a LAG member and
 // individually overridden — that is what triggers api.err.InvalidAggregateRange).
-func testAccDeviceConfig_withPortOverrides(mac string) string {
+func testAccDeviceConfigWithPortOverrides(mac string) string {
 	return fmt.Sprintf(`
 resource "unifi_network" "test_native" {
 	name    = "tfacc-device-native"
@@ -577,7 +578,7 @@ func testAccCheckDeviceExists(n string) resource.TestCheckFunc {
 		}
 
 		if rs.Primary.ID == "" {
-			return fmt.Errorf("No ID is set")
+			return errors.New("No ID is set")
 		}
 
 		id := rs.Primary.ID

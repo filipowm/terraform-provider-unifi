@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 // fakePortProfileClient is a minimal unifi.Client used to drive resourcePortProfileUpdate
@@ -50,8 +52,8 @@ func TestResourcePortProfileUpdate_ReReadOnNotFound(t *testing.T) {
 
 		d := ResourcePortProfile().TestResourceData()
 		d.SetId("pp1")
-		d.Set("site", "default")
-		d.Set("name", "office")
+		require.NoError(t, d.Set("site", "default"))
+		require.NoError(t, d.Set("name", "office"))
 
 		diags := resourcePortProfileUpdate(context.Background(), d, client)
 
@@ -74,8 +76,8 @@ func TestResourcePortProfileUpdate_ReReadOnNotFound(t *testing.T) {
 
 		d := ResourcePortProfile().TestResourceData()
 		d.SetId("pp1")
-		d.Set("site", "default")
-		d.Set("name", "office")
+		require.NoError(t, d.Set("site", "default"))
+		require.NoError(t, d.Set("name", "office"))
 
 		diags := resourcePortProfileUpdate(context.Background(), d, client)
 

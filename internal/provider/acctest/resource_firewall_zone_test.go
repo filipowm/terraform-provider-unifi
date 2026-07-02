@@ -3,14 +3,16 @@ package acctest
 import (
 	"context"
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
+	"strings"
+	"sync"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
-	"strings"
-	"sync"
-	"testing"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 const testFirewallZoneResourceName = "unifi_firewall_zone.test"
@@ -89,7 +91,8 @@ func TestAccFirewallZone_missingName(t *testing.T) {
 }
 
 func testAccFirewallZoneConfig(t *testing.T, name string, network string) string {
-	subnet, vlanId := pt.GetTestVLAN(t)
+	t.Helper()
+	subnet, vlanID := pt.GetTestVLAN(t)
 	return fmt.Sprintf(`
 
 resource "unifi_network" "test" {
@@ -103,7 +106,7 @@ resource "unifi_firewall_zone" "test" {
 	name     = %[1]q
 	networks = [unifi_network.test.id]
 }
-`, name, network, subnet.String(), vlanId)
+`, name, network, subnet.String(), vlanID)
 }
 
 func testAccFirewallZoneConfigMissingName() string {

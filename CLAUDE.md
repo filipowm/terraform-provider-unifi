@@ -3,8 +3,8 @@
 Terraform provider for Ubiquiti UniFi network controllers (versions 6.x–9.x), built on the
 [`filipowm/go-unifi`](https://github.com/filipowm/go-unifi) SDK. Fork of `paultyng/terraform-provider-unifi`.
 
-Stack: Go 1.23.5 · terraform-plugin-framework v1.14.1 · terraform-plugin-sdk/v2 v2.36.1 ·
-terraform-plugin-mux v0.18.0 · terraform-plugin-testing v1.12.0 · go-unifi v1.8.0.
+Stack: Go 1.25.8 · terraform-plugin-framework v1.19.0 · terraform-plugin-sdk/v2 v2.40.1 ·
+terraform-plugin-mux v0.23.1 · terraform-plugin-testing v1.16.0 · go-unifi v1.9.3.
 
 ## Critical rules
 
@@ -48,12 +48,12 @@ Coding conventions: `.claude/rules/resource-conventions.md`. Validation & versio
 ## Commands
 
 ```bash
-make build                 # go install
-golangci-lint run --fix    # lint (matches CI; no make target exists)
-make testacc               # TF_ACC=1 go test ./... — spins up a Dockerized controller, ~20m
+make build       # go install
+make lint-fix    # lint (matches CI; no make target exists)
+make docs        # regenerate docs/ from schema + examples/ + templates/
+make testacc     # TF_ACC=1 go test ./... — spins up a Dockerized controller, ~20m
 # Run a single acceptance test:
 make testacc TEST=./internal/provider/acctest TESTARGS='-run TestAccDNSRecord_basic'
-go generate ./tools/tools.go     # regenerate docs/ from schema + examples/ + templates/
 ```
 
 Acceptance tests require Docker (a UniFi controller is started automatically). Without `TF_ACC=1`

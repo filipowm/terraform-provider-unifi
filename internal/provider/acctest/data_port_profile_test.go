@@ -12,14 +12,14 @@ func TestAccDataPortProfile_default(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataPortProfileConfig_default,
+				Config: testAccDataPortProfileConfigDefault,
 				Check:  resource.ComposeTestCheckFunc(),
 			},
 		},
 	})
 }
 
-const testAccDataPortProfileConfig_default = `
+const testAccDataPortProfileConfigDefault = `
 data "unifi_port_profile" "default" {
 }
 `

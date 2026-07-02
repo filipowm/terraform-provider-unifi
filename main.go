@@ -3,7 +3,8 @@ package main // import "github.com/filipowm/terraform-provider-unifi"
 import (
 	"context"
 	"flag"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider"
+	"log"
+
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -11,17 +12,16 @@ import (
 	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
 	"github.com/hashicorp/terraform-plugin-mux/tf6muxserver"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"log"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider"
 )
 
-var (
-	// these will be set by the goreleaser configuration
-	// to appropriate values for the compiled binary
-	version string = "dev"
+// these will be set by the goreleaser configuration
+// to appropriate values for the compiled binary.
+var version = "dev"
 
-	// goreleaser can also pass the specific commit if you want
-	// commit  string = ""
-)
+// goreleaser can also pass the specific commit if you want
+// commit  string = "".
 
 func main() {
 	ctx := context.Background()

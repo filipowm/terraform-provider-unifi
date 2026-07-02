@@ -2,8 +2,9 @@ package validators_test
 
 import (
 	"context"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"testing"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -53,7 +54,6 @@ func TestURLValidator(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			request := validator.StringRequest{
@@ -108,7 +108,6 @@ func TestHTTPSURLValidator(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			request := validator.StringRequest{

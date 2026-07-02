@@ -2,9 +2,10 @@ package user
 
 import (
 	"context"
+	"strings"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -93,13 +94,16 @@ func DataUser() *schema.Resource {
 }
 
 func dataUserRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
-	mac := d.Get("mac").(string)
+	mac, _ := d.Get("mac").(string)
 
 	macResp, err := c.GetUserByMAC(ctx, site, strings.ToLower(mac))
 	if err != nil {
@@ -118,23 +122,47 @@ func dataUserRead(ctx context.Context, d *schema.ResourceData, meta interface{})
 	if resp.UseFixedIP {
 		fixedIP = resp.FixedIP
 	}
-	localDnsRecord := ""
+	localDNSRecord := ""
 	if resp.LocalDNSRecordEnabled {
-		localDnsRecord = resp.LocalDNSRecord
+		localDNSRecord = resp.LocalDNSRecord
 	}
 	d.SetId(resp.ID)
-	d.Set("blocked", resp.Blocked)
-	d.Set("dev_id_override", resp.DevIdOverride)
-	d.Set("fixed_ip", fixedIP)
-	d.Set("hostname", resp.Hostname)
-	d.Set("ip", resp.IP)
-	d.Set("local_dns_record", localDnsRecord)
-	d.Set("mac", resp.MAC)
-	d.Set("name", resp.Name)
-	d.Set("network_id", resp.NetworkID)
-	d.Set("note", resp.Note)
-	d.Set("site", site)
-	d.Set("user_group_id", resp.UserGroupID)
+	if err := d.Set("blocked", resp.Blocked); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("dev_id_override", resp.DevIdOverride); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("fixed_ip", fixedIP); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("hostname", resp.Hostname); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("ip", resp.IP); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("local_dns_record", localDNSRecord); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("mac", resp.MAC); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("name", resp.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("network_id", resp.NetworkID); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("note", resp.Note); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("site", site); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("user_group_id", resp.UserGroupID); err != nil {
+		return diag.FromErr(err)
+	}
 
 	return nil
 }

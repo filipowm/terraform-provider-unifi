@@ -3,14 +3,16 @@ package acctest
 import (
 	"context"
 	"fmt"
-	"github.com/apparentlymart/go-cidr/cidr"
-	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"net"
 	"testing"
 
+	"github.com/apparentlymart/go-cidr/cidr"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+
 	"github.com/filipowm/go-unifi/unifi"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 func TestAccDataUser_default(t *testing.T) {
@@ -31,7 +33,7 @@ func TestAccDataUser_default(t *testing.T) {
 		},
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataUserConfig_default(mac),
+				Config: testAccDataUserConfigDefault(mac),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.unifi_user.test", "id"),
 					resource.TestCheckResourceAttr("data.unifi_user.test", "mac", mac),
@@ -81,7 +83,7 @@ func TestAccDataUser_localDnsRecord(t *testing.T) {
 		},
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataUserConfig_default(mac),
+				Config: testAccDataUserConfigDefault(mac),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.unifi_user.test", "id"),
 					resource.TestCheckResourceAttr("data.unifi_user.test", "mac", mac),
@@ -94,7 +96,7 @@ func TestAccDataUser_localDnsRecord(t *testing.T) {
 	})
 }
 
-func testAccDataUserConfig_default(mac string) string {
+func testAccDataUserConfigDefault(mac string) string {
 	return fmt.Sprintf(`
 data "unifi_user" "test" {
 mac = "%s"

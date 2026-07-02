@@ -178,13 +178,9 @@ func setToAuthServers(set []interface{}) ([]unifi.RADIUSProfileAuthServers, erro
 	for _, item := range set {
 		data, ok := item.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("unexpected data in block")
+			return nil, errors.New("unexpected data in block")
 		}
-		authServer, err := toAuthServer(data)
-		if err != nil {
-			return nil, fmt.Errorf("unable to create port override: %w", err)
-		}
-		authServers = append(authServers, authServer)
+		authServers = append(authServers, toAuthServer(data))
 	}
 	return authServers, nil
 }
@@ -194,81 +190,78 @@ func setToAcctServers(set []interface{}) ([]unifi.RADIUSProfileAcctServers, erro
 	for _, item := range set {
 		data, ok := item.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("unexpected data in block")
+			return nil, errors.New("unexpected data in block")
 		}
-		accServer, err := toAcctServer(data)
-		if err != nil {
-			return nil, fmt.Errorf("unable to create port override: %w", err)
-		}
-		acctServers = append(acctServers, accServer)
+		acctServers = append(acctServers, toAcctServer(data))
 	}
 	return acctServers, nil
 }
 
-func toAuthServer(data map[string]interface{}) (unifi.RADIUSProfileAuthServers, error) {
+func toAuthServer(data map[string]interface{}) unifi.RADIUSProfileAuthServers {
+	ip, _ := data["ip"].(string)
+	port, _ := data["port"].(int)
+	xsecret, _ := data["xsecret"].(string)
 	return unifi.RADIUSProfileAuthServers{
-		IP:      data["ip"].(string),
-		Port:    data["port"].(int),
-		XSecret: data["xsecret"].(string),
-	}, nil
+		IP:      ip,
+		Port:    port,
+		XSecret: xsecret,
+	}
 }
 
-func toAcctServer(data map[string]interface{}) (unifi.RADIUSProfileAcctServers, error) {
+func toAcctServer(data map[string]interface{}) unifi.RADIUSProfileAcctServers {
+	ip, _ := data["ip"].(string)
+	port, _ := data["port"].(int)
+	xsecret, _ := data["xsecret"].(string)
 	return unifi.RADIUSProfileAcctServers{
-		IP:      data["ip"].(string),
-		Port:    data["port"].(int),
-		XSecret: data["xsecret"].(string),
-	}, nil
+		IP:      ip,
+		Port:    port,
+		XSecret: xsecret,
+	}
 }
 
-func setFromAuthServers(authServers []unifi.RADIUSProfileAuthServers) ([]map[string]interface{}, error) {
+func setFromAuthServers(authServers []unifi.RADIUSProfileAuthServers) []map[string]interface{} {
 	list := make([]map[string]interface{}, 0, len(authServers))
 	for _, authServer := range authServers {
-		v, err := fromAuthServer(authServer)
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse ssh key: %w", err)
-		}
-		list = append(list, v)
+		list = append(list, fromAuthServer(authServer))
 	}
-	return list, nil
+	return list
 }
 
-func setFromAcctServers(acctServers []unifi.RADIUSProfileAcctServers) ([]map[string]interface{}, error) {
+func setFromAcctServers(acctServers []unifi.RADIUSProfileAcctServers) []map[string]interface{} {
 	list := make([]map[string]interface{}, 0, len(acctServers))
 	for _, acctServer := range acctServers {
-		v, err := fromAcctServer(acctServer)
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse ssh key: %w", err)
-		}
-		list = append(list, v)
+		list = append(list, fromAcctServer(acctServer))
 	}
-	return list, nil
+	return list
 }
 
-func fromAuthServer(sshKey unifi.RADIUSProfileAuthServers) (map[string]interface{}, error) {
+func fromAuthServer(sshKey unifi.RADIUSProfileAuthServers) map[string]interface{} {
 	return map[string]interface{}{
 		"ip":      sshKey.IP,
 		"port":    sshKey.Port,
 		"xsecret": sshKey.XSecret,
-	}, nil
+	}
 }
 
-func fromAcctServer(sshKey unifi.RADIUSProfileAcctServers) (map[string]interface{}, error) {
+func fromAcctServer(sshKey unifi.RADIUSProfileAcctServers) map[string]interface{} {
 	return map[string]interface{}{
 		"ip":      sshKey.IP,
 		"port":    sshKey.Port,
 		"xsecret": sshKey.XSecret,
-	}, nil
+	}
 }
 
 func resourceRadiusProfileCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 	req, err := resourceRadiusProfileGetResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -282,59 +275,88 @@ func resourceRadiusProfileCreate(ctx context.Context, d *schema.ResourceData, me
 }
 
 func resourceRadiusProfileGetResourceData(d *schema.ResourceData) (*unifi.RADIUSProfile, error) {
-	authServers, err := setToAuthServers(d.Get("auth_server").([]interface{}))
+	authServerData, _ := d.Get("auth_server").([]interface{})
+	authServers, err := setToAuthServers(authServerData)
 	if err != nil {
 		return nil, fmt.Errorf("unable to auth_server ssh_key block: %w", err)
 	}
-	acctServers, err := setToAcctServers(d.Get("acct_server").([]interface{}))
+	acctServerData, _ := d.Get("acct_server").([]interface{})
+	acctServers, err := setToAcctServers(acctServerData)
 	if err != nil {
 		return nil, fmt.Errorf("unable to acct_server ssh_key block: %w", err)
 	}
+	name, _ := d.Get("name").(string)
+	interimUpdateEnabled, _ := d.Get("interim_update_enabled").(bool)
+	interimUpdateInterval, _ := d.Get("interim_update_interval").(int)
+	accountingEnabled, _ := d.Get("accounting_enabled").(bool)
+	useUsgAcctServer, _ := d.Get("use_usg_acct_server").(bool)
+	useUsgAuthServer, _ := d.Get("use_usg_auth_server").(bool)
+	vlanEnabled, _ := d.Get("vlan_enabled").(bool)
+	vlanWLANMode, _ := d.Get("vlan_wlan_mode").(string)
 	return &unifi.RADIUSProfile{
-		Name:                  d.Get("name").(string),
-		InterimUpdateEnabled:  d.Get("interim_update_enabled").(bool),
-		InterimUpdateInterval: d.Get("interim_update_interval").(int),
-		AccountingEnabled:     d.Get("accounting_enabled").(bool),
-		UseUsgAcctServer:      d.Get("use_usg_acct_server").(bool),
-		UseUsgAuthServer:      d.Get("use_usg_auth_server").(bool),
-		VLANEnabled:           d.Get("vlan_enabled").(bool),
-		VLANWLANMode:          d.Get("vlan_wlan_mode").(string),
+		Name:                  name,
+		InterimUpdateEnabled:  interimUpdateEnabled,
+		InterimUpdateInterval: interimUpdateInterval,
+		AccountingEnabled:     accountingEnabled,
+		UseUsgAcctServer:      useUsgAcctServer,
+		UseUsgAuthServer:      useUsgAuthServer,
+		VLANEnabled:           vlanEnabled,
+		VLANWLANMode:          vlanWLANMode,
 		AuthServers:           authServers,
 		AcctServers:           acctServers,
 	}, nil
 }
 
 func resourceRadiusProfileSetResourceData(resp *unifi.RADIUSProfile, d *schema.ResourceData, site string) diag.Diagnostics {
-	authServers, err := setFromAuthServers(resp.AuthServers)
-	if err != nil {
+	authServers := setFromAuthServers(resp.AuthServers)
+	acctServers := setFromAcctServers(resp.AcctServers)
+
+	if err := d.Set("site", site); err != nil {
 		return diag.FromErr(err)
 	}
-	acctServers, err := setFromAcctServers(resp.AcctServers)
-	if err != nil {
+	if err := d.Set("name", resp.Name); err != nil {
 		return diag.FromErr(err)
 	}
 
-	d.Set("site", site)
-	d.Set("name", resp.Name)
-
-	d.Set("interim_update_enabled", resp.InterimUpdateEnabled)
-	d.Set("interim_update_interval", resp.InterimUpdateInterval)
-	d.Set("accounting_enabled", resp.AccountingEnabled)
-	d.Set("use_usg_acct_server", resp.UseUsgAcctServer)
-	d.Set("use_usg_auth_server", resp.UseUsgAuthServer)
-	d.Set("vlan_enabled", resp.VLANEnabled)
-	d.Set("vlan_wlan_mode", resp.VLANWLANMode)
-	d.Set("auth_server", authServers)
-	d.Set("acct_server", acctServers)
+	if err := d.Set("interim_update_enabled", resp.InterimUpdateEnabled); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("interim_update_interval", resp.InterimUpdateInterval); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("accounting_enabled", resp.AccountingEnabled); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("use_usg_acct_server", resp.UseUsgAcctServer); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("use_usg_auth_server", resp.UseUsgAuthServer); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("vlan_enabled", resp.VLANEnabled); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("vlan_wlan_mode", resp.VLANWLANMode); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("auth_server", authServers); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("acct_server", acctServers); err != nil {
+		return diag.FromErr(err)
+	}
 	return nil
 }
 
 func resourceRadiusProfileRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -351,7 +373,10 @@ func resourceRadiusProfileRead(ctx context.Context, d *schema.ResourceData, meta
 }
 
 func resourceRadiusProfileUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	req, err := resourceRadiusProfileGetResourceData(d)
 	if err != nil {
@@ -360,7 +385,7 @@ func resourceRadiusProfileUpdate(ctx context.Context, d *schema.ResourceData, me
 
 	req.ID = d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -385,11 +410,14 @@ func resourceRadiusProfileUpdate(ctx context.Context, d *schema.ResourceData, me
 }
 
 func resourceRadiusProfileDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -399,9 +427,12 @@ func resourceRadiusProfileDelete(ctx context.Context, d *schema.ResourceData, me
 }
 
 func importRadiusProfile(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return nil, fmt.Errorf("unexpected meta type: %T", meta)
+	}
 	id := d.Id()
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -424,7 +455,9 @@ func importRadiusProfile(ctx context.Context, d *schema.ResourceData, meta inter
 		d.SetId(id)
 	}
 	if site != "" {
-		d.Set("site", site)
+		if err := d.Set("site", site); err != nil {
+			return nil, err
+		}
 	}
 
 	return []*schema.ResourceData{d}, nil
@@ -444,12 +477,12 @@ func getRadiusProfileIDByName(ctx context.Context, client unifi.Client, profileN
 			continue
 		}
 		if idMatchingName != "" {
-			return "", fmt.Errorf("Found multiple RADIUS profiles with name '%s'", profileName)
+			return "", fmt.Errorf("found multiple RADIUS profiles with name '%s'", profileName)
 		}
 		idMatchingName = profile.ID
 	}
 	if idMatchingName == "" {
-		return "", fmt.Errorf("Found no RADIUS profile with name '%s', found: %s", profileName, strings.Join(allNames, ", "))
+		return "", fmt.Errorf("found no RADIUS profile with name '%s', found: %s", profileName, strings.Join(allNames, ", "))
 	}
 	return idMatchingName, nil
 }

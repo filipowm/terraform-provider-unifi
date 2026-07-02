@@ -1,17 +1,18 @@
 package acctest
 
 import (
-	"fmt"
-	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
-	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-const testDnsRecordsDataSourceName = "data.unifi_dns_records.test"
+const testDNSRecordsDataSourceName = "data.unifi_dns_records.test"
 
 func TestDNSRecordsDataSource_basic(t *testing.T) {
 	records := []*dnsRecordTestCase{
@@ -38,27 +39,27 @@ func TestDNSRecordsDataSource_basic(t *testing.T) {
 	for _, record := range records {
 		record.recordName = pt.RandHostname()
 		resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
-		configs = append(configs, testAccDnsRecordConfigWithResourceName(resourceName, *record))
-		dependencies = append(dependencies, fmt.Sprintf("unifi_dns_record.%s", resourceName))
+		configs = append(configs, testAccDNSRecordConfigWithResourceName(resourceName, *record))
+		dependencies = append(dependencies, "unifi_dns_record."+resourceName)
 	}
-	configs = append(configs, testAccDnsRecordsDataSourceConfig(dependencies))
+	configs = append(configs, testAccDNSRecordsDataSourceConfig(dependencies))
 	AcceptanceTest(t, AcceptanceTestCase{
-		MinVersion: base.ControllerVersionDnsRecords,
+		MinVersion: base.ControllerVersionDNSRecords,
 		Lock:       dnsLock,
 		Steps: Steps{
 			{
 				Config: pt.ComposeConfig(configs...),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(testDnsRecordsDataSourceName, "result.#", "3"),
-					resource.TestCheckResourceAttrSet(testDnsRecordsDataSourceName, "result.0.name"),
-					resource.TestCheckResourceAttrSet(testDnsRecordsDataSourceName, "result.0.record"),
-					resource.TestCheckResourceAttrSet(testDnsRecordsDataSourceName, "result.0.type"),
-					resource.TestCheckResourceAttrSet(testDnsRecordsDataSourceName, "result.1.name"),
-					resource.TestCheckResourceAttrSet(testDnsRecordsDataSourceName, "result.1.record"),
-					resource.TestCheckResourceAttrSet(testDnsRecordsDataSourceName, "result.1.type"),
-					resource.TestCheckResourceAttrSet(testDnsRecordsDataSourceName, "result.2.name"),
-					resource.TestCheckResourceAttrSet(testDnsRecordsDataSourceName, "result.2.record"),
-					resource.TestCheckResourceAttrSet(testDnsRecordsDataSourceName, "result.2.type"),
+					resource.TestCheckResourceAttr(testDNSRecordsDataSourceName, "result.#", "3"),
+					resource.TestCheckResourceAttrSet(testDNSRecordsDataSourceName, "result.0.name"),
+					resource.TestCheckResourceAttrSet(testDNSRecordsDataSourceName, "result.0.record"),
+					resource.TestCheckResourceAttrSet(testDNSRecordsDataSourceName, "result.0.type"),
+					resource.TestCheckResourceAttrSet(testDNSRecordsDataSourceName, "result.1.name"),
+					resource.TestCheckResourceAttrSet(testDNSRecordsDataSourceName, "result.1.record"),
+					resource.TestCheckResourceAttrSet(testDNSRecordsDataSourceName, "result.1.type"),
+					resource.TestCheckResourceAttrSet(testDNSRecordsDataSourceName, "result.2.name"),
+					resource.TestCheckResourceAttrSet(testDNSRecordsDataSourceName, "result.2.record"),
+					resource.TestCheckResourceAttrSet(testDNSRecordsDataSourceName, "result.2.type"),
 				),
 			},
 		},
@@ -67,20 +68,20 @@ func TestDNSRecordsDataSource_basic(t *testing.T) {
 
 func TestDNSRecordsDataSource_noRecords(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		MinVersion: base.ControllerVersionDnsRecords,
+		MinVersion: base.ControllerVersionDNSRecords,
 		Lock:       dnsLock,
 		Steps: Steps{
 			{
-				Config: testAccDnsRecordsDataSourceConfig(nil),
+				Config: testAccDNSRecordsDataSourceConfig(nil),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(testDnsRecordsDataSourceName, "result.#", "0"),
+					resource.TestCheckResourceAttr(testDNSRecordsDataSourceName, "result.#", "0"),
 				),
 			},
 		},
 	})
 }
 
-func testAccDnsRecordsDataSourceConfig(deps []string) string {
+func testAccDNSRecordsDataSourceConfig(deps []string) string {
 	return `
 data "unifi_dns_records" "test" {
 	depends_on = [

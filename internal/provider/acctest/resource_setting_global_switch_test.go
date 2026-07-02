@@ -11,11 +11,12 @@ import (
 	"time"
 
 	"github.com/filipowm/go-unifi/unifi"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 // global_switch is a site-global singleton; serialize all tests that mutate it.
@@ -398,6 +399,7 @@ resource "unifi_setting_global_switch" "test" {
 }
 
 func checkGlobalSwitchJumboframe(t *testing.T, want bool) resource.TestCheckFunc {
+	t.Helper()
 	return func(_ *terraform.State) error {
 		cur, err := testClient.GetSettingGlobalSwitch(context.Background(), "default")
 		if err != nil {

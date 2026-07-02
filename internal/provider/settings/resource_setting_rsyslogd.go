@@ -2,13 +2,14 @@ package settings
 
 import (
 	"context"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
+
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -16,6 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 type rsyslogdModel struct {
@@ -33,7 +36,7 @@ type rsyslogdModel struct {
 	ThisControllerEncryptedOnly types.Bool   `tfsdk:"this_controller_encrypted_only"`
 }
 
-func (d *rsyslogdModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
+func (d *rsyslogdModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 
 	model := &unifi.SettingRsyslogd{
@@ -82,7 +85,7 @@ func (d *rsyslogdModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagn
 
 		if !d.Contents.IsNull() {
 			var contents []string
-			diags.Append(ut.ListElementsAs(d.Contents, &contents)...)
+			diags.Append(ut.ListElementsAs(ctx, d.Contents, &contents)...)
 			if diags.HasError() {
 				return nil, diags
 			}
@@ -267,7 +270,8 @@ func NewRsyslogdResource() resource.Resource {
 			return client.GetSettingRsyslogd(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingRsyslogd(ctx, site, body.(*unifi.SettingRsyslogd))
+			b, _ := body.(*unifi.SettingRsyslogd)
+			return client.UpdateSettingRsyslogd(ctx, site, b)
 		},
 	)
 	return r

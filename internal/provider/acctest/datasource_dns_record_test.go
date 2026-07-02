@@ -5,16 +5,15 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
-	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-const testDnsRecordDataSourceName = "data.unifi_dns_record.test"
+const testDNSRecordDataSourceName = "data.unifi_dns_record.test"
 
 func TestDNSRecordDataSource_basic(t *testing.T) {
-	t.Parallel()
-
 	testCases := []struct {
 		name         string
 		record       string
@@ -35,7 +34,6 @@ func TestDNSRecordDataSource_basic(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			recordName := pt.RandHostname()
 			r := dnsRecordTestCase{
@@ -45,16 +43,16 @@ func TestDNSRecordDataSource_basic(t *testing.T) {
 			}
 
 			AcceptanceTest(t, AcceptanceTestCase{
-				MinVersion: base.ControllerVersionDnsRecords,
+				MinVersion: base.ControllerVersionDNSRecords,
 				Lock:       dnsLock,
 
 				Steps: Steps{
 					{
-						Config: pt.ComposeConfig(testAccDnsRecordConfig(r), testAccDnsRecordDataSourceConfig(r, tc.filterByName)),
+						Config: pt.ComposeConfig(testAccDNSRecordConfig(r), testAccDNSRecordDataSourceConfig(r, tc.filterByName)),
 						Check: resource.ComposeTestCheckFunc(
-							resource.TestCheckResourceAttr(testDnsRecordDataSourceName, "name", recordName),
-							resource.TestCheckResourceAttr(testDnsRecordDataSourceName, "record", tc.record),
-							resource.TestCheckResourceAttr(testDnsRecordDataSourceName, "type", tc.recordType),
+							resource.TestCheckResourceAttr(testDNSRecordDataSourceName, "name", recordName),
+							resource.TestCheckResourceAttr(testDNSRecordDataSourceName, "record", tc.record),
+							resource.TestCheckResourceAttr(testDNSRecordDataSourceName, "type", tc.recordType),
 						),
 					},
 				},
@@ -63,24 +61,22 @@ func TestDNSRecordDataSource_basic(t *testing.T) {
 	}
 }
 
-var (
-	dnsDataSourceFilterErrorRegex = regexp.MustCompile(`[name,record]`)
-)
+var dnsDataSourceFilterErrorRegex = regexp.MustCompile(`[name,record]`)
 
 func TestDNSRecordDataSource_errorWithoutFilter(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
-		MinVersion: base.ControllerVersionDnsRecords,
+		MinVersion: base.ControllerVersionDNSRecords,
 
 		Steps: Steps{
 			{
-				Config:      testAccDnsRecordDataSourceWithoutFilter(),
+				Config:      testAccDNSRecordDataSourceWithoutFilter(),
 				ExpectError: dnsDataSourceFilterErrorRegex,
 			},
 		},
 	})
 }
 
-func testAccDnsRecordDataSourceConfig(tc dnsRecordTestCase, filterByName bool) string {
+func testAccDNSRecordDataSourceConfig(tc dnsRecordTestCase, filterByName bool) string {
 	filter := ""
 	if filterByName {
 		filter = "name = \"" + tc.recordName + "\""
@@ -95,7 +91,7 @@ data "unifi_dns_record" "test" {
 }`, filter)
 }
 
-func testAccDnsRecordDataSourceWithoutFilter() string {
+func testAccDNSRecordDataSourceWithoutFilter() string {
 	return `
 data "unifi_dns_record" "test" {
 }`

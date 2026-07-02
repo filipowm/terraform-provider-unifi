@@ -2,10 +2,9 @@ package dns
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -14,6 +13,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 var (
@@ -46,7 +49,7 @@ func (d *dnsRecordResource) ModifyPlan(_ context.Context, _ resource.ModifyPlanR
 	resp.Diagnostics.Append(d.RequireMinVersion("8.2")...)
 }
 
-func NewDnsRecordResource() resource.Resource {
+func NewDNSRecordResource() resource.Resource {
 	return &dnsRecordResource{
 		GenericResource: base.NewGenericResource(
 			"unifi_dns_record",
@@ -56,10 +59,18 @@ func NewDnsRecordResource() resource.Resource {
 					return client.GetDNSRecord(ctx, site, id)
 				},
 				Create: func(ctx context.Context, client *base.Client, site string, model interface{}) (interface{}, error) {
-					return client.CreateDNSRecord(ctx, site, model.(*unifi.DNSRecord))
+					record, ok := model.(*unifi.DNSRecord)
+					if !ok {
+						return nil, fmt.Errorf("unexpected model type %T, expected *unifi.DNSRecord", model)
+					}
+					return client.CreateDNSRecord(ctx, site, record)
 				},
 				Update: func(ctx context.Context, client *base.Client, site string, model interface{}) (interface{}, error) {
-					return client.UpdateDNSRecord(ctx, site, model.(*unifi.DNSRecord))
+					record, ok := model.(*unifi.DNSRecord)
+					if !ok {
+						return nil, fmt.Errorf("unexpected model type %T, expected *unifi.DNSRecord", model)
+					}
+					return client.UpdateDNSRecord(ctx, site, record)
 				},
 				Delete: func(ctx context.Context, client *base.Client, site, id string) error {
 					return client.DeleteDNSRecord(ctx, site, id)

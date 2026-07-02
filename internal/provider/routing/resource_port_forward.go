@@ -3,14 +3,16 @@ package routing
 import (
 	"context"
 	"errors"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 func ResourcePortForward() *schema.Resource {
@@ -118,14 +120,14 @@ func ResourcePortForward() *schema.Resource {
 }
 
 func resourcePortForwardCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
-
-	req, err := resourcePortForwardGetResourceData(d)
-	if err != nil {
-		return diag.FromErr(err)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
 	}
 
-	site := d.Get("site").(string)
+	req := resourcePortForwardGetResourceData(d)
+
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -139,41 +141,74 @@ func resourcePortForwardCreate(ctx context.Context, d *schema.ResourceData, meta
 	return resourcePortForwardSetResourceData(resp, d, site)
 }
 
-func resourcePortForwardGetResourceData(d *schema.ResourceData) (*unifi.PortForward, error) {
+func resourcePortForwardGetResourceData(d *schema.ResourceData) *unifi.PortForward {
+	dstPort, _ := d.Get("dst_port").(string)
+	enabled, _ := d.Get("enabled").(bool)
+	fwd, _ := d.Get("fwd_ip").(string)
+	fwdPort, _ := d.Get("fwd_port").(string)
+	log, _ := d.Get("log").(bool)
+	name, _ := d.Get("name").(string)
+	pfwdInterface, _ := d.Get("port_forward_interface").(string)
+	proto, _ := d.Get("protocol").(string)
+	src, _ := d.Get("src_ip").(string)
+
 	return &unifi.PortForward{
-		DstPort:       d.Get("dst_port").(string),
-		Enabled:       d.Get("enabled").(bool),
-		Fwd:           d.Get("fwd_ip").(string),
-		FwdPort:       d.Get("fwd_port").(string),
-		Log:           d.Get("log").(bool),
-		Name:          d.Get("name").(string),
-		PfwdInterface: d.Get("port_forward_interface").(string),
-		Proto:         d.Get("protocol").(string),
-		Src:           d.Get("src_ip").(string),
-	}, nil
+		DstPort:       dstPort,
+		Enabled:       enabled,
+		Fwd:           fwd,
+		FwdPort:       fwdPort,
+		Log:           log,
+		Name:          name,
+		PfwdInterface: pfwdInterface,
+		Proto:         proto,
+		Src:           src,
+	}
 }
 
 func resourcePortForwardSetResourceData(resp *unifi.PortForward, d *schema.ResourceData, site string) diag.Diagnostics {
-	d.Set("site", site)
-	d.Set("dst_port", resp.DstPort)
-	d.Set("enabled", resp.Enabled)
-	d.Set("fwd_ip", resp.Fwd)
-	d.Set("fwd_port", resp.FwdPort)
-	d.Set("log", resp.Log)
-	d.Set("name", resp.Name)
-	d.Set("port_forward_interface", resp.PfwdInterface)
-	d.Set("protocol", resp.Proto)
-	d.Set("src_ip", resp.Src)
+	if err := d.Set("site", site); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("dst_port", resp.DstPort); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("enabled", resp.Enabled); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("fwd_ip", resp.Fwd); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("fwd_port", resp.FwdPort); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("log", resp.Log); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("name", resp.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("port_forward_interface", resp.PfwdInterface); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("protocol", resp.Proto); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("src_ip", resp.Src); err != nil {
+		return diag.FromErr(err)
+	}
 
 	return nil
 }
 
 func resourcePortForwardRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -190,16 +225,16 @@ func resourcePortForwardRead(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func resourcePortForwardUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
-
-	req, err := resourcePortForwardGetResourceData(d)
-	if err != nil {
-		return diag.FromErr(err)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
 	}
+
+	req := resourcePortForwardGetResourceData(d)
 
 	req.ID = d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -224,11 +259,14 @@ func resourcePortForwardUpdate(ctx context.Context, d *schema.ResourceData, meta
 }
 
 func resourcePortForwardDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}

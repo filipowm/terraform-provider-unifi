@@ -2,16 +2,18 @@ package settings
 
 import (
 	"context"
+
 	"github.com/biter777/countries"
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 var (
@@ -58,7 +60,8 @@ func NewCountryResource() resource.Resource {
 			return client.GetSettingCountry(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingCountry(ctx, site, body.(*unifi.SettingCountry))
+			b, _ := body.(*unifi.SettingCountry)
+			return client.UpdateSettingCountry(ctx, site, b)
 		},
 	)
 	return r

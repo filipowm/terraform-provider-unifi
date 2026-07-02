@@ -2,10 +2,12 @@ package validators
 
 import (
 	"context"
+
 	"github.com/biter777/countries"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/helpers/validatordiag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 )
 
 func CountryCodeAlpha2() validator.String {

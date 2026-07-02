@@ -2,9 +2,10 @@ package utils
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"net"
 	"strings"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func CidrValidate(raw interface{}, key string) ([]string, []error) {
@@ -55,13 +56,13 @@ func CidrOneBased(cidr string) string {
 	return cidrNet.String()
 }
 
-func CidrDiffSuppress(k, old, new string, d *schema.ResourceData) bool {
+func CidrDiffSuppress(k, old, newValue string, d *schema.ResourceData) bool {
 	_, oldNet, err := net.ParseCIDR(old)
 	if err != nil {
 		return false
 	}
 
-	_, newNet, err := net.ParseCIDR(new)
+	_, newNet, err := net.ParseCIDR(newValue)
 	if err != nil {
 		return false
 	}
@@ -79,7 +80,6 @@ func IsIPv4(address string) bool {
 // IsIPv6 checks if the provided address is a valid IPv6 address.
 // It returns true if the address is a valid IPv6 address, false otherwise.
 func IsIPv6(address string) bool {
-
 	// Handle zone index if present
 	if idx := strings.Index(address, "%"); idx != -1 {
 		address = address[:idx]

@@ -7,8 +7,8 @@ paths:
 
 # Documentation generation (tfplugindocs)
 
-`docs/` is GENERATED — never hand-edit it. Regenerate with `go generate ./tools/`
-(directive in `tools/tools.go`: tfplugindocs reads the provider schema + examples + templates).
+`docs/` is GENERATED — never hand-edit it. Regenerate with `go generate ./tools/docs.go`
+(directive in `tools/docs.go`: tfplugindocs reads the provider schema + examples + templates).
 
 ## Pipeline
 - Schema `MarkdownDescription`s (in `internal/provider/**`) + `examples/**` + `templates/*.tmpl` → `docs/**`.

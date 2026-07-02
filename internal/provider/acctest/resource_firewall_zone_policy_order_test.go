@@ -2,13 +2,13 @@ package acctest
 
 import (
 	"fmt"
-
 	"testing"
 
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 const testFirewallZonePolicyOrderResourceName = "unifi_firewall_zone_policy_order.order"
@@ -19,7 +19,7 @@ const testFirewallZonePolicyOrderResourceName = "unifi_firewall_zone_policy_orde
 func TestAccFirewallZonePolicyOrder_basic(t *testing.T) {
 	pt.SkipIfEnvLocalMissing(t, "Skipping, because test environment does not support firewall zones yet")
 	name := acctest.RandomWithPrefix("tfacc-zone-policy")
-	subnet, vlanId := pt.GetTestVLAN(t)
+	subnet, vlanID := pt.GetTestVLAN(t)
 
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 9.0.0",
@@ -27,7 +27,7 @@ func TestAccFirewallZonePolicyOrder_basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: pt.ComposeConfig(
-					testAccFirewallZonePolicyPreConfig(name, subnet.String(), vlanId),
+					testAccFirewallZonePolicyPreConfig(name, subnet.String(), vlanID),
 					testAccFirewallZonePolicyMultiConfig(name, false),
 					testAccFirewallZonePolicyOrderConfig(orderedAfterIDs123),
 				),
@@ -50,7 +50,7 @@ func TestAccFirewallZonePolicyOrder_basic(t *testing.T) {
 func TestAccFirewallZonePolicyOrder_update(t *testing.T) {
 	pt.SkipIfEnvLocalMissing(t, "Skipping, because test environment does not support firewall zones yet")
 	name := acctest.RandomWithPrefix("tfacc-zone-policy")
-	subnet, vlanId := pt.GetTestVLAN(t)
+	subnet, vlanID := pt.GetTestVLAN(t)
 
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 9.0.0",
@@ -58,7 +58,7 @@ func TestAccFirewallZonePolicyOrder_update(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: pt.ComposeConfig(
-					testAccFirewallZonePolicyPreConfig(name, subnet.String(), vlanId),
+					testAccFirewallZonePolicyPreConfig(name, subnet.String(), vlanID),
 					testAccFirewallZonePolicyMultiConfig(name, false),
 					testAccFirewallZonePolicyOrderConfig(orderedAfterIDs123),
 				),
@@ -68,7 +68,7 @@ func TestAccFirewallZonePolicyOrder_update(t *testing.T) {
 			},
 			{
 				Config: pt.ComposeConfig(
-					testAccFirewallZonePolicyPreConfig(name, subnet.String(), vlanId),
+					testAccFirewallZonePolicyPreConfig(name, subnet.String(), vlanID),
 					testAccFirewallZonePolicyMultiConfig(name, false),
 					testAccFirewallZonePolicyOrderConfig(orderedAfterIDs312),
 				),
@@ -92,7 +92,7 @@ func TestAccFirewallZonePolicyOrder_update(t *testing.T) {
 func TestAccFirewallZonePolicyOrder_beforeAndAfter(t *testing.T) {
 	pt.SkipIfEnvLocalMissing(t, "Skipping, because test environment does not support firewall zones yet")
 	name := acctest.RandomWithPrefix("tfacc-zone-policy")
-	subnet, vlanId := pt.GetTestVLAN(t)
+	subnet, vlanID := pt.GetTestVLAN(t)
 
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 9.0.0",
@@ -100,7 +100,7 @@ func TestAccFirewallZonePolicyOrder_beforeAndAfter(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: pt.ComposeConfig(
-					testAccFirewallZonePolicyPreConfig(name, subnet.String(), vlanId),
+					testAccFirewallZonePolicyPreConfig(name, subnet.String(), vlanID),
 					testAccFirewallZonePolicyMultiConfig(name, false),
 					testAccFirewallZonePolicyOrderBeforeAfterConfig(orderedBeforeIDs1, orderedAfterIDs23),
 				),

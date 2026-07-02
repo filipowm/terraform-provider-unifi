@@ -2,9 +2,11 @@ package radius
 
 import (
 	"context"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 func DataRADIUSProfile() *schema.Resource {
@@ -36,10 +38,13 @@ func DataRADIUSProfile() *schema.Resource {
 }
 
 func dataRADIUSProfileRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	name := d.Get("name").(string)
-	site := d.Get("site").(string)
+	name, _ := d.Get("name").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -51,7 +56,9 @@ func dataRADIUSProfileRead(ctx context.Context, d *schema.ResourceData, meta int
 	for _, g := range profiles {
 		if g.Name == name {
 			d.SetId(g.ID)
-			d.Set("site", site)
+			if err := d.Set("site", site); err != nil {
+				return diag.FromErr(err)
+			}
 			return nil
 		}
 	}

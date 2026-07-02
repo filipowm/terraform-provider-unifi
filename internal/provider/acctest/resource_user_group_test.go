@@ -2,9 +2,11 @@ package acctest
 
 import (
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
-	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
@@ -21,7 +23,7 @@ func TestAccUserGroup_basic(t *testing.T) {
 				// ),
 			},
 			{
-				Config: testAccUserGroupConfig_qos(name),
+				Config: testAccUserGroupConfigQos(name),
 			},
 			pt.ImportStep("unifi_user_group.test"),
 			{
@@ -40,7 +42,7 @@ resource "unifi_user_group" "test" {
 `, name)
 }
 
-func testAccUserGroupConfig_qos(name string) string {
+func testAccUserGroupConfigQos(name string) string {
 	return fmt.Sprintf(`
 resource "unifi_user_group" "test" {
 	name = "%s"

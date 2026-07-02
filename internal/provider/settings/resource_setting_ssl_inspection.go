@@ -2,16 +2,18 @@ package settings
 
 import (
 	"context"
+
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 type sslInspectionModel struct {
@@ -82,7 +84,8 @@ func NewSslInspectionResource() resource.Resource {
 			return client.GetSettingSslInspection(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingSslInspection(ctx, site, body.(*unifi.SettingSslInspection))
+			b, _ := body.(*unifi.SettingSslInspection)
+			return client.UpdateSettingSslInspection(ctx, site, b)
 		},
 	)
 	return r

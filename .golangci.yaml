@@ -1,18 +1,125 @@
----
-linters:
-  disable-all: true
-  enable:
-    - "gofmt"
-    - "gosimple"
-    - "govet"
-    - "ineffassign"
-    - "makezero"
-    - "misspell"
-    - "nakedret"
-    - "nilerr"
-    - "staticcheck"
-    - "unconvert"
-    - "unused"
+# yaml-language-server: $schema=https://golangci-lint.run/jsonschema/golangci.jsonschema.json
+version: "2"
 
 run:
-  timeout: '5m'
+  timeout: 10m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    # Correctness (non-negotiable)
+    - errcheck
+    - govet
+    - staticcheck
+    - ineffassign
+    - unused
+    - copyloopvar
+    - durationcheck
+    - errorlint        # proper error wrapping/comparison — matters a lot in CRUD diagnostics
+    - forcetypeassert  # unchecked type assertions bite hard in state upgraders
+    - makezero
+    - nilerr
+    - nilnesserr
+    - bodyclose        # API clients leak response bodies constantly
+    - noctx            # every API call must carry ctx — framework hands it to you
+    - contextcheck
+    - gosec
+
+    # Provider-relevant hygiene
+    - exhaustive       # switch over enums (schema types, API enums)
+    - importas         # enforce canonical framework import aliases
+    - misspell
+    - predeclared
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - usetesting
+    - perfsprint
+    - mirror
+    - intrange
+    - prealloc
+    - revive
+    - godot
+    - nolintlint       # keep nolint directives honest
+    - whitespace
+
+    # Tests
+    - tparallel
+    - thelper
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+    exhaustive:
+      default-signifies-exhaustive: true
+    gosec:
+      excludes:
+        - G115 # int conversion noise; re-enable if you handle untrusted sizes
+    importas:
+      no-unaliased: false
+      alias:
+        - pkg: github.com/hashicorp/terraform-plugin-framework/types
+          alias: types
+        - pkg: github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema
+          alias: schema
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: early-return
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: range
+        - name: receiver-naming
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unreachable-code
+        - name: var-declaration
+    staticcheck:
+      checks: ["all", "-ST1000"] # package comments — enable if you care
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - std-error-handling
+    rules:
+      # Acceptance/unit tests: long funcs, hardcoded configs, weak rand are fine
+      - path: _test\.go
+        linters:
+          - gosec
+          - unparam
+          - prealloc
+      # Framework forces exact method signatures; unused params are the contract
+      - path: internal/provider/
+        linters:
+          - unparam
+        text: "always receives"
+      # Generated code (if any)
+      - path: internal/service/.*_gen\.go
+        linters:
+          - all
+
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/filipowm/terraform-provider-unifi
+  exclusions:
+    generated: lax

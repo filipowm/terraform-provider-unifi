@@ -16,10 +16,7 @@ func TestResourceAccountGetResourceData_mapsVLAN(t *testing.T) {
 		"vlan":     90,
 	})
 
-	req, err := resourceAccountGetResourceData(d)
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
+	req := resourceAccountGetResourceData(d)
 	if req.VLAN != 90 {
 		t.Fatalf("expected Account.VLAN == 90, got %d", req.VLAN)
 	}
@@ -33,7 +30,8 @@ func TestResourceAccountSetResourceData_readsVLAN(t *testing.T) {
 	if diags := resourceAccountSetResourceData(&unifi.Account{Name: "x", VLAN: 90}, d, "default"); diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %+v", diags)
 	}
-	if got := d.Get("vlan").(int); got != 90 {
+	got, _ := d.Get("vlan").(int)
+	if got != 90 {
 		t.Fatalf("expected vlan == 90 in state, got %d", got)
 	}
 }

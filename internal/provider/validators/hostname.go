@@ -3,16 +3,17 @@ package validators
 import (
 	"context"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"regexp"
 	"strings"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/helpers/validatordiag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 )
 
 // A regex pattern for validating hostnames without protocol schemes
-// This matches hostnames according to RFC 1035 with some limitations
+// This matches hostnames according to RFC 1035 with some limitations.
 var hostnameRegex = regexp.MustCompile(`^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$`)
 
 // Hostname returns a validator which ensures that the string value is a valid hostname without protocol schemes.

@@ -19,14 +19,14 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
-// Common test case structure for string conditions
+// Common test case structure for string conditions.
 type requiredValueIfTestCase struct {
 	conditionValue types.String
 	targetValue    types.String
 	expectError    bool
 }
 
-// Function to create a schema object for RequiredValueIf tests
+// Function to create a schema object for RequiredValueIf tests.
 func createRequiredValueIfSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -46,7 +46,7 @@ func createRequiredValueIfSchema() schema.Schema {
 	}
 }
 
-// Function to create a config for RequiredValueIf tests
+// Function to create a config for RequiredValueIf tests.
 func createRequiredValueIfConfig(schema schema.Schema, testCase requiredValueIfTestCase) tfsdk.Config {
 	var conditionValue, targetValue tftypes.Value
 

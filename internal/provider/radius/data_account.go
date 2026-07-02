@@ -3,9 +3,10 @@ package radius
 import (
 	"context"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 func DataAccount() *schema.Resource {
@@ -65,10 +66,13 @@ func DataAccount() *schema.Resource {
 }
 
 func dataAccountRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	name := d.Get("name").(string)
-	site := d.Get("site").(string)
+	name, _ := d.Get("name").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -80,13 +84,27 @@ func dataAccountRead(ctx context.Context, d *schema.ResourceData, meta interface
 	for _, account := range accounts {
 		if account.Name == name {
 			d.SetId(account.ID)
-			d.Set("name", account.Name)
-			d.Set("password", account.XPassword)
-			d.Set("tunnel_type", account.TunnelType)
-			d.Set("tunnel_medium_type", account.TunnelMediumType)
-			d.Set("network_id", account.NetworkID)
-			d.Set("vlan", account.VLAN)
-			d.Set("site", site)
+			if err := d.Set("name", account.Name); err != nil {
+				return diag.FromErr(err)
+			}
+			if err := d.Set("password", account.XPassword); err != nil {
+				return diag.FromErr(err)
+			}
+			if err := d.Set("tunnel_type", account.TunnelType); err != nil {
+				return diag.FromErr(err)
+			}
+			if err := d.Set("tunnel_medium_type", account.TunnelMediumType); err != nil {
+				return diag.FromErr(err)
+			}
+			if err := d.Set("network_id", account.NetworkID); err != nil {
+				return diag.FromErr(err)
+			}
+			if err := d.Set("vlan", account.VLAN); err != nil {
+				return diag.FromErr(err)
+			}
+			if err := d.Set("site", site); err != nil {
+				return diag.FromErr(err)
+			}
 			return nil
 		}
 	}

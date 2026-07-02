@@ -3,13 +3,14 @@ package settings
 import (
 	"context"
 	"fmt"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+
 	"github.com/hashicorp/terraform-plugin-framework/path"
+
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -20,17 +21,19 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
-// SshKeyModel represents an SSH key configuration
-type SshKeyModel struct {
+// SSHKeyModel represents an SSH key configuration.
+type SSHKeyModel struct {
 	Name    types.String `tfsdk:"name"`
 	Type    types.String `tfsdk:"type"`
 	Key     types.String `tfsdk:"key"`
 	Comment types.String `tfsdk:"comment"`
 }
 
-func (m *SshKeyModel) AttributeTypes() map[string]attr.Type {
+func (m *SSHKeyModel) AttributeTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 		"name":    types.StringType,
 		"type":    types.StringType,
@@ -53,18 +56,18 @@ type mgmtModel struct {
 	OutdoorModeEnabled     types.Bool   `tfsdk:"outdoor_mode_enabled"`
 	UnifiIdpEnabled        types.Bool   `tfsdk:"unifi_idp_enabled"`
 	WifimanEnabled         types.Bool   `tfsdk:"wifiman_enabled"`
-	SshAuthPasswordEnabled types.Bool   `tfsdk:"ssh_auth_password_enabled"`
-	SshBindWildcard        types.Bool   `tfsdk:"ssh_bind_wildcard"`
-	SshKeys                types.List   `tfsdk:"ssh_key"`
-	SshPassword            types.String `tfsdk:"ssh_password"`
-	SshEnabled             types.Bool   `tfsdk:"ssh_enabled"`
-	SshUsername            types.String `tfsdk:"ssh_username"`
+	SSHAuthPasswordEnabled types.Bool   `tfsdk:"ssh_auth_password_enabled"`
+	SSHBindWildcard        types.Bool   `tfsdk:"ssh_bind_wildcard"`
+	SSHKeys                types.List   `tfsdk:"ssh_key"`
+	SSHPassword            types.String `tfsdk:"ssh_password"`
+	SSHEnabled             types.Bool   `tfsdk:"ssh_enabled"`
+	SSHUsername            types.String `tfsdk:"ssh_username"`
 }
 
 func (m *mgmtModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
-	sshKeys, d := m.getSshKeys(ctx)
+	sshKeys, d := m.getSSHKeys(ctx)
 	diags.Append(d...)
 	if diags.HasError() {
 		return nil, diags
@@ -84,25 +87,25 @@ func (m *mgmtModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnos
 		OutdoorModeEnabled:      m.OutdoorModeEnabled.ValueBool(),
 		UnifiIDpEnabled:         m.UnifiIdpEnabled.ValueBool(),
 		WifimanEnabled:          m.WifimanEnabled.ValueBool(),
-		XSshEnabled:             m.SshEnabled.ValueBool(),
-		XSshAuthPasswordEnabled: m.SshAuthPasswordEnabled.ValueBool(),
-		XSshBindWildcard:        m.SshBindWildcard.ValueBool(),
-		XSshUsername:            m.SshUsername.ValueString(),
-		XSshPassword:            m.SshPassword.ValueString(),
+		XSshEnabled:             m.SSHEnabled.ValueBool(),
+		XSshAuthPasswordEnabled: m.SSHAuthPasswordEnabled.ValueBool(),
+		XSshBindWildcard:        m.SSHBindWildcard.ValueBool(),
+		XSshUsername:            m.SSHUsername.ValueString(),
+		XSshPassword:            m.SSHPassword.ValueString(),
 		XSshKeys:                sshKeys,
 	}, diags
 }
 
-func (m *mgmtModel) getSshKeys(ctx context.Context) ([]unifi.SettingMgmtXSshKeys, diag.Diagnostics) {
+func (m *mgmtModel) getSSHKeys(ctx context.Context) ([]unifi.SettingMgmtXSshKeys, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 	var sshKeys []unifi.SettingMgmtXSshKeys
 
-	if m.SshKeys.IsNull() || m.SshKeys.IsUnknown() {
+	if m.SSHKeys.IsNull() || m.SSHKeys.IsUnknown() {
 		return sshKeys, diags
 	}
 
-	var sshKeyElements []SshKeyModel
-	diags.Append(m.SshKeys.ElementsAs(ctx, &sshKeyElements, false)...)
+	var sshKeyElements []SSHKeyModel
+	diags.Append(m.SSHKeys.ElementsAs(ctx, &sshKeyElements, false)...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -139,30 +142,30 @@ func (m *mgmtModel) Merge(ctx context.Context, other interface{}) diag.Diagnosti
 	m.OutdoorModeEnabled = types.BoolValue(resp.OutdoorModeEnabled)
 	m.UnifiIdpEnabled = types.BoolValue(resp.UnifiIDpEnabled)
 	m.WifimanEnabled = types.BoolValue(resp.WifimanEnabled)
-	m.SshEnabled = types.BoolValue(resp.XSshEnabled)
-	m.SshAuthPasswordEnabled = types.BoolValue(resp.XSshAuthPasswordEnabled)
-	m.SshBindWildcard = types.BoolValue(resp.XSshBindWildcard)
-	m.SshUsername = types.StringValue(resp.XSshUsername)
-	m.SshPassword = types.StringValue(resp.XSshPassword)
+	m.SSHEnabled = types.BoolValue(resp.XSshEnabled)
+	m.SSHAuthPasswordEnabled = types.BoolValue(resp.XSshAuthPasswordEnabled)
+	m.SSHBindWildcard = types.BoolValue(resp.XSshBindWildcard)
+	m.SSHUsername = types.StringValue(resp.XSshUsername)
+	m.SSHPassword = types.StringValue(resp.XSshPassword)
 
 	// Convert SSH keys
 	if len(resp.XSshKeys) > 0 {
-		sshKeyElements := make([]SshKeyModel, 0, len(resp.XSshKeys))
+		sshKeyElements := make([]SSHKeyModel, 0, len(resp.XSshKeys))
 		for _, sshKey := range resp.XSshKeys {
-			sshKeyElements = append(sshKeyElements, SshKeyModel{
+			sshKeyElements = append(sshKeyElements, SSHKeyModel{
 				Name:    types.StringValue(sshKey.Name),
 				Type:    types.StringValue(sshKey.KeyType),
 				Key:     types.StringValue(sshKey.Key),
 				Comment: types.StringValue(sshKey.Comment),
 			})
 		}
-		sshKeys, d := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: (&SshKeyModel{}).AttributeTypes()}, sshKeyElements)
+		sshKeys, d := types.ListValueFrom(ctx, types.ObjectType{AttrTypes: (&SSHKeyModel{}).AttributeTypes()}, sshKeyElements)
 		diags.Append(d...)
 		if !diags.HasError() {
-			m.SshKeys = sshKeys
+			m.SSHKeys = sshKeys
 		}
 	} else {
-		m.SshKeys = types.ListNull(types.ObjectType{AttrTypes: (&SshKeyModel{}).AttributeTypes()})
+		m.SSHKeys = types.ListNull(types.ObjectType{AttrTypes: (&SSHKeyModel{}).AttributeTypes()})
 	}
 
 	return diags
@@ -178,7 +181,8 @@ func NewMgmtResource() resource.Resource {
 				return client.GetSettingMgmt(ctx, site)
 			},
 			func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-				return client.UpdateSettingMgmt(ctx, site, body.(*unifi.SettingMgmt))
+				b, _ := body.(*unifi.SettingMgmt)
+				return client.UpdateSettingMgmt(ctx, site, b)
 			},
 		),
 	}

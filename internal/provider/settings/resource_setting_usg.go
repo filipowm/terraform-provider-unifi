@@ -2,16 +2,16 @@ package settings
 
 import (
 	"context"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -26,9 +26,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
-// GeoIPFilteringModel represents the GeoIP filtering configuration
+// GeoIPFilteringModel represents the GeoIP filtering configuration.
 type GeoIPFilteringModel struct {
 	Mode             types.String `tfsdk:"mode"`
 	Countries        types.List   `tfsdk:"countries"`
@@ -45,7 +48,7 @@ func (m *GeoIPFilteringModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// UpnpModel represents the UPNP configuration
+// UpnpModel represents the UPNP configuration.
 type UpnpModel struct {
 	NatPmpEnabled types.Bool   `tfsdk:"nat_pmp_enabled"`
 	SecureMode    types.Bool   `tfsdk:"secure_mode"`
@@ -60,7 +63,7 @@ func (m *UpnpModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// TCPTimeoutModel represents the TCP timeout configuration
+// TCPTimeoutModel represents the TCP timeout configuration.
 type TCPTimeoutModel struct {
 	CloseTimeout       types.Int64 `tfsdk:"close_timeout"`
 	CloseWaitTimeout   types.Int64 `tfsdk:"close_wait_timeout"`
@@ -85,7 +88,7 @@ func (m *TCPTimeoutModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// DNSVerificationModel represents the DNS Verification configuration
+// DNSVerificationModel represents the DNS Verification configuration.
 type DNSVerificationModel struct {
 	Domain             types.String `tfsdk:"domain"`
 	PrimaryDNSServer   types.String `tfsdk:"primary_dns_server"`
@@ -102,7 +105,7 @@ func (m *DNSVerificationModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// DNSVerificationModel represents the DNS Verification configuration
+// DNSVerificationModel represents the DNS Verification configuration.
 type DHCPRelayModel struct {
 	AgentsPackets types.String `tfsdk:"agents_packets"`
 	HopCount      types.Int64  `tfsdk:"hop_count"`
@@ -123,7 +126,7 @@ func (m *DHCPRelayModel) AttributeTypes() map[string]attr.Type {
 // It defines how USG features like mDNS and DHCP relay are configured for a UniFi site.
 type usgModel struct {
 	base.Model
-	MulticastDnsEnabled types.Bool `tfsdk:"multicast_dns_enabled"`
+	MulticastDNSEnabled types.Bool `tfsdk:"multicast_dns_enabled"`
 
 	// Geo IP filtering
 	GeoIPFilteringEnabled types.Bool   `tfsdk:"geo_ip_filtering_enabled"`
@@ -146,7 +149,7 @@ type usgModel struct {
 	DhcpRelay           types.Object `tfsdk:"dhcp_relay"`
 
 	// DNS Verification
-	DnsVerification types.Object `tfsdk:"dns_verification"`
+	DNSVerification types.Object `tfsdk:"dns_verification"`
 
 	// Network Tools
 	EchoServer types.String `tfsdk:"echo_server"`
@@ -156,7 +159,7 @@ type usgModel struct {
 	GreModule  types.Bool `tfsdk:"gre_module"`
 	H323Module types.Bool `tfsdk:"h323_module"`
 	PptpModule types.Bool `tfsdk:"pptp_module"`
-	SipModule  types.Bool `tfsdk:"sip_module"`
+	SIPModule  types.Bool `tfsdk:"sip_module"`
 	TftpModule types.Bool `tfsdk:"tftp_module"`
 
 	// ICMP Settings
@@ -179,7 +182,7 @@ type usgModel struct {
 	TimeoutSettingPreference types.String `tfsdk:"timeout_setting_preference"`
 
 	// TCP Settings (nested)
-	TcpTimeouts types.Object `tfsdk:"tcp_timeouts"`
+	TCPTimeouts types.Object `tfsdk:"tcp_timeouts"`
 
 	// Redirects
 	ReceiveRedirects types.Bool `tfsdk:"receive_redirects"`
@@ -189,8 +192,8 @@ type usgModel struct {
 	SynCookies types.Bool `tfsdk:"syn_cookies"`
 
 	// UDP Settings
-	UdpOtherTimeout  types.Int64 `tfsdk:"udp_other_timeout"`
-	UdpStreamTimeout types.Int64 `tfsdk:"udp_stream_timeout"`
+	UDPOtherTimeout  types.Int64 `tfsdk:"udp_other_timeout"`
+	UDPStreamTimeout types.Int64 `tfsdk:"udp_stream_timeout"`
 
 	// WAN Settings
 	UnbindWanMonitors types.Bool `tfsdk:"unbind_wan_monitors"`
@@ -201,12 +204,12 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 
 	model := &unifi.SettingUsg{
 		ID:          d.ID.ValueString(),
-		MdnsEnabled: d.MulticastDnsEnabled.ValueBool(),
+		MdnsEnabled: d.MulticastDNSEnabled.ValueBool(),
 	}
 
 	// Extract DHCP relay servers from the list
 	var dhcpRelayServers []string
-	diags.Append(ut.ListElementsAs(d.DhcpRelayServers, &dhcpRelayServers)...)
+	diags.Append(ut.ListElementsAs(ctx, d.DhcpRelayServers, &dhcpRelayServers)...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -268,9 +271,9 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 		model.UpnpEnabled = false
 	}
 
-	if ut.IsDefined(d.TcpTimeouts) {
+	if ut.IsDefined(d.TCPTimeouts) {
 		var tcpTimeouts *TCPTimeoutModel
-		diags.Append(d.TcpTimeouts.As(ctx, &tcpTimeouts, basetypes.ObjectAsOptions{})...)
+		diags.Append(d.TCPTimeouts.As(ctx, &tcpTimeouts, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -286,9 +289,9 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	}
 
 	// Assign DNS Verification attributes
-	if ut.IsDefined(d.DnsVerification) {
+	if ut.IsDefined(d.DNSVerification) {
 		var dnsVerification *DNSVerificationModel
-		diags.Append(d.DnsVerification.As(ctx, &dnsVerification, basetypes.ObjectAsOptions{})...)
+		diags.Append(d.DNSVerification.As(ctx, &dnsVerification, basetypes.ObjectAsOptions{})...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -325,7 +328,7 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	model.GreModule = d.GreModule.ValueBool()
 	model.H323Module = d.H323Module.ValueBool()
 	model.PptpModule = d.PptpModule.ValueBool()
-	model.SipModule = d.SipModule.ValueBool()
+	model.SipModule = d.SIPModule.ValueBool()
 	model.TFTPModule = d.TftpModule.ValueBool()
 	model.ICMPTimeout = int(d.IcmpTimeout.ValueInt64())
 	model.LldpEnableAll = d.LldpEnableAll.ValueBool()
@@ -339,8 +342,8 @@ func (d *usgModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	model.ReceiveRedirects = d.ReceiveRedirects.ValueBool()
 	model.SendRedirects = d.SendRedirects.ValueBool()
 	model.SynCookies = d.SynCookies.ValueBool()
-	model.UDPOtherTimeout = int(d.UdpOtherTimeout.ValueInt64())
-	model.UDPStreamTimeout = int(d.UdpStreamTimeout.ValueInt64())
+	model.UDPOtherTimeout = int(d.UDPOtherTimeout.ValueInt64())
+	model.UDPStreamTimeout = int(d.UDPStreamTimeout.ValueInt64())
 	model.UnbindWANMonitors = d.UnbindWanMonitors.ValueBool()
 	return model, diags
 }
@@ -355,7 +358,7 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	}
 
 	d.ID = types.StringValue(model.ID)
-	d.MulticastDnsEnabled = types.BoolValue(model.MdnsEnabled)
+	d.MulticastDNSEnabled = types.BoolValue(model.MdnsEnabled)
 
 	// Set Geo IP filtering attributes
 	d.GeoIPFilteringEnabled = types.BoolValue(model.GeoIPFilteringEnabled)
@@ -408,7 +411,7 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	dnsVerificationObj, dnsVerificationObjDiags := types.ObjectValueFrom(ctx, dnsVerificationModel.AttributeTypes(), &dnsVerificationModel)
 	diags.Append(dnsVerificationObjDiags...)
 
-	d.DnsVerification = dnsVerificationObj
+	d.DNSVerification = dnsVerificationObj
 	// Convert TCP Timeout settings
 	tcpTimeoutModel := TCPTimeoutModel{
 		CloseTimeout:       types.Int64Value(int64(model.TCPCloseTimeout)),
@@ -423,7 +426,7 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 
 	tcpTimeoutObj, tcpTimeoutObjDiags := types.ObjectValueFrom(ctx, tcpTimeoutModel.AttributeTypes(), &tcpTimeoutModel)
 	diags.Append(tcpTimeoutObjDiags...)
-	d.TcpTimeouts = tcpTimeoutObj
+	d.TCPTimeouts = tcpTimeoutObj
 
 	// Convert DHCP Relay settings
 	dhcpRelayModel := DHCPRelayModel{
@@ -473,7 +476,7 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	d.GreModule = types.BoolValue(model.GreModule)
 	d.H323Module = types.BoolValue(model.H323Module)
 	d.PptpModule = types.BoolValue(model.PptpModule)
-	d.SipModule = types.BoolValue(model.SipModule)
+	d.SIPModule = types.BoolValue(model.SipModule)
 	d.TftpModule = types.BoolValue(model.TFTPModule)
 	d.IcmpTimeout = types.Int64Value(int64(model.ICMPTimeout))
 	d.LldpEnableAll = types.BoolValue(model.LldpEnableAll)
@@ -487,8 +490,8 @@ func (d *usgModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	d.ReceiveRedirects = types.BoolValue(model.ReceiveRedirects)
 	d.SendRedirects = types.BoolValue(model.SendRedirects)
 	d.SynCookies = types.BoolValue(model.SynCookies)
-	d.UdpOtherTimeout = types.Int64Value(int64(model.UDPOtherTimeout))
-	d.UdpStreamTimeout = types.Int64Value(int64(model.UDPStreamTimeout))
+	d.UDPOtherTimeout = types.Int64Value(int64(model.UDPOtherTimeout))
+	d.UDPStreamTimeout = types.Int64Value(int64(model.UDPStreamTimeout))
 	d.UnbindWanMonitors = types.BoolValue(model.UnbindWANMonitors)
 	return diags
 }
@@ -1213,7 +1216,8 @@ func NewUsgResource() resource.Resource {
 			return client.GetSettingUsg(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingUsg(ctx, site, body.(*unifi.SettingUsg))
+			b, _ := body.(*unifi.SettingUsg)
+			return client.UpdateSettingUsg(ctx, site, b)
 		},
 	)
 	return r

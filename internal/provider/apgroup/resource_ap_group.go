@@ -3,29 +3,31 @@ package apgroup
 import (
 	"context"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
+
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 )
 
-// APGroupModel represents the data model for a UniFi AP Group
+// APGroupModel represents the data model for a UniFi AP Group.
 type APGroupModel struct {
 	base.Model
 	Name       types.String `tfsdk:"name"`
 	DeviceMACs types.Set    `tfsdk:"device_macs"`
 }
 
-// AsUnifiModel converts the Terraform model to the UniFi API model
+// AsUnifiModel converts the Terraform model to the UniFi API model.
 func (m *APGroupModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 	var deviceMACs []string
@@ -49,12 +51,11 @@ func (m *APGroupModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diag
 	}, diags
 }
 
-// Merge updates the Terraform model with values from the UniFi API model
+// Merge updates the Terraform model with values from the UniFi API model.
 func (m *APGroupModel) Merge(ctx context.Context, other interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-
 	model, ok := other.(*unifi.APGroup)
 	if !ok {
+		var diags diag.Diagnostics
 		diags.AddError("Invalid model type", "Expected *unifi.APGroup")
 		return diags
 	}
@@ -66,6 +67,7 @@ func (m *APGroupModel) Merge(ctx context.Context, other interface{}) diag.Diagno
 	// elements, enabling MAC semantic equality (case/separator-insensitive) and
 	// avoiding perpetual diffs.
 	deviceMACs, d := types.SetValueFrom(ctx, ut.MACType{}, model.DeviceMACs)
+	diags := make(diag.Diagnostics, 0, len(d))
 	diags = append(diags, d...)
 	m.DeviceMACs = deviceMACs
 
@@ -83,7 +85,7 @@ type apGroupResource struct {
 	*base.GenericResource[*APGroupModel]
 }
 
-// NewAPGroupResource creates a new instance of the AP group resource
+// NewAPGroupResource creates a new instance of the AP group resource.
 func NewAPGroupResource() resource.Resource {
 	return &apGroupResource{
 		GenericResource: base.NewGenericResource(
@@ -94,10 +96,12 @@ func NewAPGroupResource() resource.Resource {
 					return client.GetAPGroup(ctx, site, id)
 				},
 				Create: func(ctx context.Context, client *base.Client, site string, model interface{}) (interface{}, error) {
-					return client.CreateAPGroup(ctx, site, model.(*unifi.APGroup))
+					apGroup, _ := model.(*unifi.APGroup)
+					return client.CreateAPGroup(ctx, site, apGroup)
 				},
 				Update: func(ctx context.Context, client *base.Client, site string, model interface{}) (interface{}, error) {
-					return client.UpdateAPGroup(ctx, site, model.(*unifi.APGroup))
+					apGroup, _ := model.(*unifi.APGroup)
+					return client.UpdateAPGroup(ctx, site, apGroup)
 				},
 				Delete: func(ctx context.Context, client *base.Client, site, id string) error {
 					return client.DeleteAPGroup(ctx, site, id)
@@ -107,7 +111,7 @@ func NewAPGroupResource() resource.Resource {
 	}
 }
 
-// Schema defines the schema for the resource
+// Schema defines the schema for the resource.
 func (r *apGroupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_ap_group` resource manages Access Point groups in the UniFi controller.\n\n" +

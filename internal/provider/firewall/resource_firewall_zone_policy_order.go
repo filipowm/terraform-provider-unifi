@@ -2,14 +2,13 @@ package firewall
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/go-unifi/unifi/features"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -18,6 +17,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 )
 
 var (
@@ -45,13 +47,13 @@ type FirewallZonePolicyOrderModel struct {
 // no `omitempty`, so a nil slice marshals as JSON `null`. We therefore always
 // send non-nil slices (`[]string{}` when a list is unset) so the controller
 // receives `[]` rather than `null`.
-func (m *FirewallZonePolicyOrderModel) AsUnifiModel(_ context.Context) (interface{}, diag.Diagnostics) {
+func (m *FirewallZonePolicyOrderModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 
 	before := []string{}
 	after := []string{}
-	diags.Append(ut.ListElementsAs(m.BeforePredefinedIDs, &before)...)
-	diags.Append(ut.ListElementsAs(m.AfterPredefinedIDs, &after)...)
+	diags.Append(ut.ListElementsAs(ctx, m.BeforePredefinedIDs, &before)...)
+	diags.Append(ut.ListElementsAs(ctx, m.AfterPredefinedIDs, &after)...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -198,13 +200,13 @@ func filterManaged(ids []string, managed map[string]struct{}) []string {
 // manages: the union of the IDs in the prior-state before/after lists. Read uses
 // it to scope ownership to the listed policies only (a non-nil, possibly empty
 // set means subset ownership).
-func managedIDSet(m *FirewallZonePolicyOrderModel) map[string]struct{} {
+func managedIDSet(ctx context.Context, m *FirewallZonePolicyOrderModel) map[string]struct{} {
 	set := make(map[string]struct{})
 	var before, after []string
 	// Prior-state lists are already-validated string lists; null/unknown lists
 	// contribute nothing, so the returned diagnostics are not actionable here.
-	ut.ListElementsAs(m.BeforePredefinedIDs, &before)
-	ut.ListElementsAs(m.AfterPredefinedIDs, &after)
+	ut.ListElementsAs(ctx, m.BeforePredefinedIDs, &before)
+	ut.ListElementsAs(ctx, m.AfterPredefinedIDs, &after)
 	for _, id := range before {
 		set[id] = struct{}{}
 	}
@@ -382,7 +384,7 @@ func (r *firewallZonePolicyOrderResource) applyReorder(ctx context.Context, mode
 // that includes every ID we asked it to reorder.
 func validateReorderResponse(requestedIDs []string, result []unifi.FirewallZonePolicy) error {
 	if len(result) == 0 {
-		return fmt.Errorf("the controller returned no policies from the reorder operation")
+		return errors.New("the controller returned no policies from the reorder operation")
 	}
 	present := make(map[string]struct{}, len(result))
 	for _, p := range result {
@@ -462,7 +464,7 @@ func (r *firewallZonePolicyOrderResource) Read(ctx context.Context, req resource
 	// already lists. Capture that set from prior state BEFORE reconstructing, so
 	// unlisted custom policies in the same zone pair are ignored rather than
 	// pulled into state (which would cause a perpetual diff).
-	managed := managedIDSet(&model)
+	managed := managedIDSet(ctx, &model)
 
 	policies, err := r.GetClient().ListFirewallZonePolicy(ctx, site)
 	if err != nil {

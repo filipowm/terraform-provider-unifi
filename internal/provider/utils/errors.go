@@ -2,10 +2,11 @@ package utils
 
 import (
 	"errors"
-	"github.com/filipowm/go-unifi/unifi"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"reflect"
 	"strings"
+
+	"github.com/filipowm/go-unifi/unifi"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
 func ErrorInvalidModelMergeTarget(expectedType, actualType interface{}) diag.Diagnostic {

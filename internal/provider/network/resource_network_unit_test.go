@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 // fakeNetworkClient is a minimal unifi.Client used to drive resourceNetworkUpdate through the
@@ -50,9 +52,9 @@ func TestResourceNetworkUpdate_ReReadOnNotFound(t *testing.T) {
 
 		d := ResourceNetwork().TestResourceData()
 		d.SetId("net1")
-		d.Set("site", "default")
-		d.Set("name", "lan")
-		d.Set("purpose", "corporate")
+		require.NoError(t, d.Set("site", "default"))
+		require.NoError(t, d.Set("name", "lan"))
+		require.NoError(t, d.Set("purpose", "corporate"))
 
 		diags := resourceNetworkUpdate(context.Background(), d, client)
 
@@ -74,9 +76,9 @@ func TestResourceNetworkUpdate_ReReadOnNotFound(t *testing.T) {
 
 		d := ResourceNetwork().TestResourceData()
 		d.SetId("net1")
-		d.Set("site", "default")
-		d.Set("name", "lan")
-		d.Set("purpose", "corporate")
+		require.NoError(t, d.Set("site", "default"))
+		require.NoError(t, d.Set("name", "lan"))
+		require.NoError(t, d.Set("purpose", "corporate"))
 
 		diags := resourceNetworkUpdate(context.Background(), d, client)
 
@@ -133,11 +135,11 @@ func TestResourceNetwork_ipv6FieldsOptionalComputed(t *testing.T) {
 // because of anchoring; if the validator is ever loosened to an unanchored alternation, drop it.
 func TestValidateIpV6InterfaceType(t *testing.T) {
 	for _, v := range []string{"none", "static", "pd", "single_network"} { // single_network = #99 guard
-		_, errs := validateIpV6InterfaceType(v, "ipv6_interface_type")
+		_, errs := validateIPV6InterfaceType(v, "ipv6_interface_type")
 		assert.Emptyf(t, errs, "%q must be accepted", v)
 	}
 	for _, v := range []string{"", "bogus", "xstaticy", "PD", "single"} { // anchored form
-		_, errs := validateIpV6InterfaceType(v, "ipv6_interface_type")
+		_, errs := validateIPV6InterfaceType(v, "ipv6_interface_type")
 		assert.NotEmptyf(t, errs, "%q must be rejected", v)
 	}
 }
