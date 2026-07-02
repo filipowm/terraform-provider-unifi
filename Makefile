@@ -14,6 +14,18 @@ default: build
 build:
 	go install
 
+.PHONY: lint
+lint:
+	golangci-lint run ./...
+
+.PHONY: lint-fix
+lint-fix:
+	golangci-lint run --fix ./...
+
+.PHONY: docs
+docs:
+	go generate ./tools/docs.go
+
 .PHONY: testacc
 testacc:
 	go build ./...

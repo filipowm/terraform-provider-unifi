@@ -63,6 +63,8 @@ resource "unifi_user_group" "wifi" {
 
 Import is supported using the following syntax:
 
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
 ```shell
 # import using the ID
 terraform import unifi_user_group.wifi 5fe6261995fe130013456a36
