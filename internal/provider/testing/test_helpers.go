@@ -9,16 +9,17 @@ import (
 	"testing"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 )
 
 const TfAccLocal = "TF_ACC_LOCAL"
 
 // MarkAccTest marks the test as acceptance test. Useful when executing code before resource.ParallelTest or resource.Test
-// to bring acceptance test check earlier when test environment is required
+// to bring acceptance test check earlier when test environment is required.
 func MarkAccTest(t *testing.T) {
 	t.Helper()
 	if os.Getenv(resource.EnvTfAcc) == "" {
@@ -71,6 +72,7 @@ func SiteAndIDImportStateIDFunc(resourceName string) func(*terraform.State) (str
 
 // PreCheck checks if provided environment variables are set. If not, it will fail the test.
 func PreCheck(t *testing.T) {
+	t.Helper()
 	variables := []string{
 		"UNIFI_USERNAME",
 		"UNIFI_PASSWORD",
@@ -92,7 +94,7 @@ func CheckPlanPreApply(checks ...plancheck.PlanCheck) resource.ConfigPlanChecks 
 }
 
 func CheckResourceActions(resourceAddress string, actions ...plancheck.ResourceActionType) resource.ConfigPlanChecks {
-	var checks []plancheck.PlanCheck
+	checks := make([]plancheck.PlanCheck, 0, len(actions))
 	for _, a := range actions {
 		checks = append(checks, plancheck.ExpectResourceAction(resourceAddress, a))
 	}

@@ -4,11 +4,12 @@ import (
 	"context"
 	"testing"
 
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 )
 
 func TestMACValueStringSemanticEquals(t *testing.T) {
@@ -57,7 +58,6 @@ func TestMACValueStringSemanticEquals(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			got, diags := test.a.StringSemanticEquals(context.Background(), test.b)

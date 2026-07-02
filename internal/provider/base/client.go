@@ -14,23 +14,24 @@ import (
 	"time"
 
 	"github.com/filipowm/go-unifi/unifi"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 )
 
 type ClientConfig struct {
 	Username       string
 	Password       string
-	ApiKey         string
-	Url            string
+	APIKey         string
+	URL            string
 	Site           string
 	Insecure       bool
-	HttpConfigurer func() http.RoundTripper
+	HTTPConfigurer func() http.RoundTripper
 	// MaxRetries controls how many additional attempts the HTTP layer makes for
 	// transient controller responses (network errors, HTTP 5xx/429 and
 	// HTML-instead-of-JSON bodies). 0 (the default) disables retries entirely,
@@ -40,11 +41,11 @@ type ClientConfig struct {
 
 func NewClient(cfg *ClientConfig) (*Client, error) {
 	config := &unifi.ClientConfig{
-		URL:                      cfg.Url,
+		URL:                      cfg.URL,
 		User:                     cfg.Username,
 		Password:                 cfg.Password,
-		APIKey:                   cfg.ApiKey,
-		HttpRoundTripperProvider: cfg.HttpConfigurer,
+		APIKey:                   cfg.APIKey,
+		HttpRoundTripperProvider: cfg.HTTPConfigurer,
 		ValidationMode:           unifi.DisableValidation,
 		Logger:                   unifi.NewDefaultLogger(unifi.WarnLevel),
 	}
@@ -52,7 +53,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	// MaxRetries == 0 the provider is left untouched so behavior is identical to
 	// before this feature existed (the default).
 	if cfg.MaxRetries > 0 {
-		baseConfigurer := cfg.HttpConfigurer
+		baseConfigurer := cfg.HTTPConfigurer
 		insecure := cfg.Insecure
 		maxRetries := cfg.MaxRetries
 		config.HttpRoundTripperProvider = func() http.RoundTripper {
@@ -60,7 +61,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 			if baseConfigurer != nil {
 				next = baseConfigurer()
 			} else {
-				next = CreateHttpTransport(insecure)
+				next = CreateHTTPTransport(insecure)
 			}
 			return newRetryRoundTripper(next, maxRetries)
 		}
@@ -70,10 +71,9 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		config.Password = cfg.Password
 		config.RememberMe = true
 	} else {
-		config.APIKey = cfg.ApiKey
+		config.APIKey = cfg.APIKey
 	}
 	unifiClient, err := unifi.NewClient(config)
-
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +87,8 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		Site:    cfg.Site,
 		Version: version.Must(version.NewVersion(unifiClient.Version())),
 	}
-	if cfg.ApiKey != "" && !c.SupportsApiKeyAuthentication() {
-		return nil, fmt.Errorf("API key authentication is not supported on this controller version: %s, you must be on %s or higher", c.Version, ControllerVersionApiKeyAuth)
+	if cfg.APIKey != "" && !c.SupportsAPIKeyAuthentication() {
+		return nil, fmt.Errorf("API key authentication is not supported on this controller version: %s, you must be on %s or higher", c.Version, ControllerVersionAPIKeyAuth)
 	}
 	return c, nil
 }
@@ -111,9 +111,8 @@ func (c *RetryableUnifiClient) relogin(err error) error {
 	loginErr := c.Login()
 	if loginErr != nil {
 		return fmt.Errorf("tried relogging in after %w, but failed: %w", err, loginErr)
-	} else {
-		return nil
 	}
+	return nil
 }
 
 func (c *RetryableUnifiClient) Do(ctx context.Context, method string, apiPath string, reqBody interface{}, respBody interface{}) error {
@@ -153,7 +152,7 @@ func (c *Client) ResolveSiteFromConfig(ctx context.Context, config tfsdk.Config)
 	return site.ValueString(), diags
 }
 
-func CreateHttpTransport(insecure bool) http.RoundTripper {
+func CreateHTTPTransport(insecure bool) http.RoundTripper {
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -166,7 +165,7 @@ func CreateHttpTransport(insecure bool) http.RoundTripper {
 		ExpectContinueTimeout: 1 * time.Second,
 
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: insecure,
+			InsecureSkipVerify: insecure, //nolint:gosec // insecure TLS is an opt-in provider feature for self-signed UniFi controller certificates
 		},
 	}
 }

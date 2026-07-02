@@ -6,8 +6,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 func TestAsVersion(t *testing.T) {
@@ -36,7 +37,6 @@ func TestAsVersion(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			result := base.AsVersion(tt.versionString)
@@ -76,7 +76,6 @@ func TestCheckMinimumControllerVersion(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := base.CheckMinimumControllerVersion(tt.versionString)
@@ -162,7 +161,6 @@ func TestControllerVersionValidator(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			client := &base.Client{

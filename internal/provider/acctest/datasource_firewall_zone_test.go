@@ -5,9 +5,10 @@ import (
 	"regexp"
 	"testing"
 
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 const testFirewallZoneDataSourceName = "data.unifi_firewall_zone.test"
@@ -37,7 +38,7 @@ func TestFirewallZoneDataSource_nonExistent(t *testing.T) {
 		VersionConstraint: ">= 9.0.0",
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccFirewallZoneDataSourceConfig_nonExistent(),
+				Config:      testAccFirewallZoneDataSourceConfigNonExistent(),
 				ExpectError: regexp.MustCompile(`No firewall zone with name`),
 			},
 		},
@@ -69,7 +70,7 @@ data "unifi_firewall_zone" "test" {
 }`, name)
 }
 
-func testAccFirewallZoneDataSourceConfig_nonExistent() string {
+func testAccFirewallZoneDataSourceConfigNonExistent() string {
 	return `
 
 data "unifi_firewall_zone" "test" {

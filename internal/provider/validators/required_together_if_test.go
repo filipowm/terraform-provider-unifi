@@ -23,7 +23,7 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
-// Helper function to convert types.Int32 to tftypes.Value
+// Helper function to convert types.Int32 to tftypes.Value.
 func numberToTfValue(value types.Int32) tftypes.Value {
 	if value.IsNull() {
 		return tftypes.NewValue(tftypes.Number, nil)
@@ -34,7 +34,7 @@ func numberToTfValue(value types.Int32) tftypes.Value {
 	return tftypes.NewValue(tftypes.Number, float64(value.ValueInt32()))
 }
 
-// Common test case structure for string conditions
+// Common test case structure for string conditions.
 type requiredTogetherIfStringConditionTestCase struct {
 	condition       types.String
 	field1          types.String
@@ -43,7 +43,7 @@ type requiredTogetherIfStringConditionTestCase struct {
 	expectErrorText string
 }
 
-// Common test case structure for bool conditions
+// Common test case structure for bool conditions.
 type requiredTogetherIfBoolConditionTestCase struct {
 	condition       types.Bool
 	field1          types.String
@@ -52,7 +52,7 @@ type requiredTogetherIfBoolConditionTestCase struct {
 	expectErrorText string
 }
 
-// Common test case structure for int32 conditions
+// Common test case structure for int32 conditions.
 type int32ConditionTestCase struct {
 	condition       types.Int32
 	field1          types.String
@@ -61,7 +61,7 @@ type int32ConditionTestCase struct {
 	expectErrorText string
 }
 
-// Function to create a schema object with string condition
+// Function to create a schema object with string condition.
 func createRequiredIfStringConditionSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -84,7 +84,7 @@ func createRequiredIfStringConditionSchema() schema.Schema {
 	}
 }
 
-// Function to create a schema object with bool condition
+// Function to create a schema object with bool condition.
 func createRequiredIfBoolConditionSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -101,7 +101,7 @@ func createRequiredIfBoolConditionSchema() schema.Schema {
 	}
 }
 
-// Function to create a schema object with int32 condition
+// Function to create a schema object with int32 condition.
 func createInt32ConditionSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -118,7 +118,7 @@ func createInt32ConditionSchema() schema.Schema {
 	}
 }
 
-// Function to create a config with string condition
+// Function to create a config with string condition.
 func createRequiredIfStringConditionConfig(schema schema.Schema, testCase requiredTogetherIfStringConditionTestCase) tfsdk.Config {
 	return tfsdk.Config{
 		Schema: schema,
@@ -139,7 +139,7 @@ func createRequiredIfStringConditionConfig(schema schema.Schema, testCase requir
 	}
 }
 
-// Function to create a config with bool condition
+// Function to create a config with bool condition.
 func createRequiredIfBoolConditionConfig(schema schema.Schema, testCase requiredTogetherIfBoolConditionTestCase) tfsdk.Config {
 	return tfsdk.Config{
 		Schema: schema,
@@ -160,7 +160,7 @@ func createRequiredIfBoolConditionConfig(schema schema.Schema, testCase required
 	}
 }
 
-// Function to create a config with int32 condition
+// Function to create a config with int32 condition.
 func createInt32ConditionConfig(schema schema.Schema, testCase int32ConditionTestCase) tfsdk.Config {
 	return tfsdk.Config{
 		Schema: schema,
@@ -181,7 +181,7 @@ func createInt32ConditionConfig(schema schema.Schema, testCase int32ConditionTes
 	}
 }
 
-// Function to verify validation results
+// Function to verify validation results.
 func verifyValidationResults(t *testing.T, response interface{}, testCase interface{}) {
 	t.Helper()
 
@@ -319,7 +319,6 @@ func TestRequiredTogetherIf(t *testing.T) {
 	}
 
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -373,7 +372,6 @@ func TestRequiredTogetherIfWithBoolCondition(t *testing.T) {
 	}
 
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -426,7 +424,6 @@ func TestRequiredTogetherIfWithNumberCondition(t *testing.T) {
 	}
 
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -472,7 +469,6 @@ func TestResourceRequiredTogetherIf(t *testing.T) {
 	}
 
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -520,7 +516,6 @@ func TestDataSourceRequiredTogetherIf(t *testing.T) {
 	}
 
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -568,7 +563,6 @@ func TestProviderRequiredTogetherIf(t *testing.T) {
 	}
 
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -640,7 +634,6 @@ func TestRequiredTogetherIfWithNonBooleanCondition(t *testing.T) {
 	}
 
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -736,7 +729,6 @@ func TestRequiredTogetherIfWithUnknownTargetPaths(t *testing.T) {
 	}
 
 	for name, testCase := range testCases {
-		name, testCase := name, testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

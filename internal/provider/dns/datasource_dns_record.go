@@ -7,11 +7,12 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 var (
@@ -31,7 +32,7 @@ func (d *dnsRecordDatasource) SetFeatureValidator(validator base.FeatureValidato
 	d.FeatureValidator = validator
 }
 
-func NewDnsRecordDatasource() datasource.DataSource {
+func NewDNSRecordDatasource() datasource.DataSource {
 	return &dnsRecordDatasource{}
 }
 
@@ -70,8 +71,8 @@ func (d *dnsRecordDatasource) Schema(_ context.Context, _ datasource.SchemaReque
 }
 
 func (d *dnsRecordDatasource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	if !d.client.SupportsDnsRecords() {
-		resp.Diagnostics.AddError("DNS Records are not supported", fmt.Sprintf("The Unifi controller in version %q does not support DNS records. Required controller version: %q", d.client.Version, base.ControllerVersionDnsRecords))
+	if !d.client.SupportsDNSRecords() {
+		resp.Diagnostics.AddError("DNS Records are not supported", fmt.Sprintf("The Unifi controller in version %q does not support DNS records. Required controller version: %q", d.client.Version, base.ControllerVersionDNSRecords))
 	}
 	var state dnsRecordModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &state)...)
@@ -81,7 +82,6 @@ func (d *dnsRecordDatasource) Read(ctx context.Context, req datasource.ReadReque
 	site := d.client.ResolveSite(&state)
 
 	list, err := d.client.ListDNSRecord(ctx, site)
-
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to list DNS records", err.Error())
 		return

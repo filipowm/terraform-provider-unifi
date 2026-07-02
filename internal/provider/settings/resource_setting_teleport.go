@@ -6,13 +6,14 @@ import (
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 type teleportModel struct {
@@ -96,7 +97,8 @@ func NewTeleportResource() resource.Resource {
 			return client.GetSettingTeleport(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingTeleport(ctx, site, body.(*unifi.SettingTeleport))
+			b, _ := body.(*unifi.SettingTeleport)
+			return client.UpdateSettingTeleport(ctx, site, b)
 		},
 	)
 	return r

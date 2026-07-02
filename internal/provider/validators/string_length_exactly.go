@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/helpers/validatordiag"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 )
 
-func StringLengthExactly(len int) validator.String {
-	return stringLengthExactlyValidator{len: len}
+func StringLengthExactly(length int) validator.String {
+	return stringLengthExactlyValidator{len: length}
 }
 
 type stringLengthExactlyValidator struct {

@@ -5,11 +5,12 @@ import (
 	"errors"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 )
 
 func ResourceAccount() *schema.Resource {
@@ -110,14 +111,14 @@ func ResourceAccount() *schema.Resource {
 }
 
 func resourceAccountCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
-
-	req, err := resourceAccountGetResourceData(d)
-	if err != nil {
-		return diag.FromErr(err)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
 	}
 
-	site := d.Get("site").(string)
+	req := resourceAccountGetResourceData(d)
+
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -133,17 +134,17 @@ func resourceAccountCreate(ctx context.Context, d *schema.ResourceData, meta int
 }
 
 func resourceAccountUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
 
-	req, err := resourceAccountGetResourceData(d)
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	req := resourceAccountGetResourceData(d)
 
 	req.ID = d.Id()
 	req.SiteID = site
@@ -167,10 +168,13 @@ func resourceAccountUpdate(ctx context.Context, d *schema.ResourceData, meta int
 }
 
 func resourceAccountDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	//name := d.Get("name").(string)
-	site := d.Get("site").(string)
+	// name := d.Get("name").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -184,11 +188,14 @@ func resourceAccountDelete(ctx context.Context, d *schema.ResourceData, meta int
 }
 
 func resourceAccountRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -206,23 +213,43 @@ func resourceAccountRead(ctx context.Context, d *schema.ResourceData, meta inter
 }
 
 func resourceAccountSetResourceData(resp *unifi.Account, d *schema.ResourceData, site string) diag.Diagnostics {
-	d.Set("site", site)
-	d.Set("name", resp.Name)
-	d.Set("password", resp.XPassword)
-	d.Set("tunnel_type", resp.TunnelType)
-	d.Set("tunnel_medium_type", resp.TunnelMediumType)
-	d.Set("network_id", resp.NetworkID)
-	d.Set("vlan", resp.VLAN)
+	if err := d.Set("site", site); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("name", resp.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("password", resp.XPassword); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("tunnel_type", resp.TunnelType); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("tunnel_medium_type", resp.TunnelMediumType); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("network_id", resp.NetworkID); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("vlan", resp.VLAN); err != nil {
+		return diag.FromErr(err)
+	}
 	return nil
 }
 
-func resourceAccountGetResourceData(d *schema.ResourceData) (*unifi.Account, error) {
+func resourceAccountGetResourceData(d *schema.ResourceData) *unifi.Account {
+	name, _ := d.Get("name").(string)
+	password, _ := d.Get("password").(string)
+	tunnelType, _ := d.Get("tunnel_type").(int)
+	tunnelMediumType, _ := d.Get("tunnel_medium_type").(int)
+	networkID, _ := d.Get("network_id").(string)
+	vlan, _ := d.Get("vlan").(int)
 	return &unifi.Account{
-		Name:             d.Get("name").(string),
-		XPassword:        d.Get("password").(string),
-		TunnelType:       d.Get("tunnel_type").(int),
-		TunnelMediumType: d.Get("tunnel_medium_type").(int),
-		NetworkID:        d.Get("network_id").(string),
-		VLAN:             d.Get("vlan").(int),
-	}, nil
+		Name:             name,
+		XPassword:        password,
+		TunnelType:       tunnelType,
+		TunnelMediumType: tunnelMediumType,
+		NetworkID:        networkID,
+		VLAN:             vlan,
+	}
 }

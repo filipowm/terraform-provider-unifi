@@ -8,15 +8,17 @@ import (
 	"sync"
 	"testing"
 
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
+
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
-const testDnsRecordResourceName = "unifi_dns_record.test"
+const testDNSRecordResourceName = "unifi_dns_record.test"
 
 // dnsLock serializes all DNS record + DNS data-source acceptance tests. The
 // unifi_dns_records data source returns ALL records on the site, so tests that
@@ -37,7 +39,6 @@ type dnsRecordTestCase struct {
 }
 
 func TestDNSRecord_basic(t *testing.T) {
-	t.Parallel()
 	testCases := []dnsRecordTestCase{
 		{
 			name:       "A record",
@@ -90,14 +91,14 @@ func TestDNSRecord_basic(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			steps := []resource.TestStep{
 				{
-					Config: testAccDnsRecordConfig(tc),
-					Check:  testAccDnsRecordCheckAttrs(tc),
+					Config: testAccDNSRecordConfig(tc),
+					Check:  testAccDNSRecordCheckAttrs(tc),
 				},
-				pt.ImportStepWithSite(testDnsRecordResourceName),
+				pt.ImportStepWithSite(testDNSRecordResourceName),
 			}
 
 			AcceptanceTest(t, AcceptanceTestCase{
-				MinVersion:   base.ControllerVersionDnsRecords,
+				MinVersion:   base.ControllerVersionDNSRecords,
 				Lock:         dnsLock,
 				Steps:        steps,
 				CheckDestroy: testAccCheckDNSRecordDestroy,
@@ -107,7 +108,6 @@ func TestDNSRecord_basic(t *testing.T) {
 }
 
 func TestDNSRecord_SRV(t *testing.T) {
-	t.Parallel()
 	testCases := []dnsRecordTestCase{
 		{
 			name:       "SRV record with all fields",
@@ -130,13 +130,13 @@ func TestDNSRecord_SRV(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			AcceptanceTest(t, AcceptanceTestCase{
-				MinVersion:   base.ControllerVersionDnsRecords,
+				MinVersion:   base.ControllerVersionDNSRecords,
 				Lock:         dnsLock,
 				CheckDestroy: testAccCheckDNSRecordDestroy,
 				Steps: Steps{
 					{
-						Config: testAccDnsRecordConfig(tc),
-						Check:  testAccDnsRecordCheckAttrs(tc),
+						Config: testAccDNSRecordConfig(tc),
+						Check:  testAccDNSRecordCheckAttrs(tc),
 					},
 				},
 			})
@@ -162,34 +162,33 @@ func TestDNSRecord_Update(t *testing.T) {
 	}
 
 	AcceptanceTest(t, AcceptanceTestCase{
-		MinVersion:   base.ControllerVersionDnsRecords,
+		MinVersion:   base.ControllerVersionDNSRecords,
 		Lock:         dnsLock,
 		CheckDestroy: testAccCheckDNSRecordDestroy,
 		Steps: Steps{
 			{
-				Config: testAccDnsRecordConfig(initial),
-				Check:  testAccDnsRecordCheckAttrs(initial),
+				Config: testAccDNSRecordConfig(initial),
+				Check:  testAccDNSRecordCheckAttrs(initial),
 			},
 			{
-				Config:           testAccDnsRecordConfig(updated),
-				Check:            testAccDnsRecordCheckAttrs(updated),
-				ConfigPlanChecks: pt.CheckResourceActions(testDnsRecordResourceName, plancheck.ResourceActionUpdate),
+				Config:           testAccDNSRecordConfig(updated),
+				Check:            testAccDNSRecordCheckAttrs(updated),
+				ConfigPlanChecks: pt.CheckResourceActions(testDNSRecordResourceName, plancheck.ResourceActionUpdate),
 			},
 		},
 	})
 }
 
 func TestDNSRecord_MissingAttributes(t *testing.T) {
-	t.Parallel()
 	testCases := map[string]func() string{
-		"name":   testAccDnsRecordConfigMissingName,
-		"record": testAccDnsRecordConfigMissingRecord,
-		"type":   testAccDnsRecordConfigMissingType,
+		"name":   testAccDNSRecordConfigMissingName,
+		"record": testAccDNSRecordConfigMissingRecord,
+		"type":   testAccDNSRecordConfigMissingType,
 	}
 	for k, v := range testCases {
-		t.Run(fmt.Sprintf("missing %s", k), func(t *testing.T) {
+		t.Run("missing "+k, func(t *testing.T) {
 			AcceptanceTest(t, AcceptanceTestCase{
-				MinVersion: base.ControllerVersionDnsRecords,
+				MinVersion: base.ControllerVersionDNSRecords,
 				Steps: Steps{
 					{
 						Config:      v(),
@@ -222,11 +221,11 @@ func testAccCheckDNSRecordDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testAccDnsRecordConfig(tc dnsRecordTestCase) string {
-	return testAccDnsRecordConfigWithResourceName("test", tc)
+func testAccDNSRecordConfig(tc dnsRecordTestCase) string {
+	return testAccDNSRecordConfigWithResourceName("test", tc)
 }
 
-func testAccDnsRecordConfigMissingName() string {
+func testAccDNSRecordConfigMissingName() string {
 	return `
 resource "unifi_dns_record" "test" {
 	record = "127.0.0.1"
@@ -235,7 +234,7 @@ resource "unifi_dns_record" "test" {
 `
 }
 
-func testAccDnsRecordConfigMissingRecord() string {
+func testAccDNSRecordConfigMissingRecord() string {
 	return `
 resource "unifi_dns_record" "test" {
 	name = "test.com"
@@ -244,7 +243,7 @@ resource "unifi_dns_record" "test" {
 `
 }
 
-func testAccDnsRecordConfigMissingType() string {
+func testAccDNSRecordConfigMissingType() string {
 	return `
 resource "unifi_dns_record" "test" {
 	name = "test.com"
@@ -253,7 +252,7 @@ resource "unifi_dns_record" "test" {
 `
 }
 
-func testAccDnsRecordConfigWithResourceName(resourceName string, tc dnsRecordTestCase) string {
+func testAccDNSRecordConfigWithResourceName(resourceName string, tc dnsRecordTestCase) string {
 	var attrs string
 
 	if tc.ttl != nil {
@@ -281,7 +280,7 @@ resource "unifi_dns_record" "%s" {
 `, resourceName, tc.recordName, tc.record, tc.recordType, attrs)
 }
 
-func testAccDnsRecordCheckAttrs(tc dnsRecordTestCase) resource.TestCheckFunc {
+func testAccDNSRecordCheckAttrs(tc dnsRecordTestCase) resource.TestCheckFunc {
 	// expected default values
 	var (
 		ttl      = 0
@@ -308,14 +307,14 @@ func testAccDnsRecordCheckAttrs(tc dnsRecordTestCase) resource.TestCheckFunc {
 	}
 
 	checks := []resource.TestCheckFunc{
-		resource.TestCheckResourceAttr(testDnsRecordResourceName, "name", tc.recordName),
-		resource.TestCheckResourceAttr(testDnsRecordResourceName, "record", tc.record),
-		resource.TestCheckResourceAttr(testDnsRecordResourceName, "type", tc.recordType),
-		resource.TestCheckResourceAttr(testDnsRecordResourceName, "ttl", strconv.Itoa(ttl)),
-		resource.TestCheckResourceAttr(testDnsRecordResourceName, "enabled", strconv.FormatBool(enabled)),
-		resource.TestCheckResourceAttr(testDnsRecordResourceName, "priority", strconv.Itoa(priority)),
-		resource.TestCheckResourceAttr(testDnsRecordResourceName, "port", strconv.Itoa(port)),
-		resource.TestCheckResourceAttr(testDnsRecordResourceName, "weight", strconv.Itoa(weight)),
+		resource.TestCheckResourceAttr(testDNSRecordResourceName, "name", tc.recordName),
+		resource.TestCheckResourceAttr(testDNSRecordResourceName, "record", tc.record),
+		resource.TestCheckResourceAttr(testDNSRecordResourceName, "type", tc.recordType),
+		resource.TestCheckResourceAttr(testDNSRecordResourceName, "ttl", strconv.Itoa(ttl)),
+		resource.TestCheckResourceAttr(testDNSRecordResourceName, "enabled", strconv.FormatBool(enabled)),
+		resource.TestCheckResourceAttr(testDNSRecordResourceName, "priority", strconv.Itoa(priority)),
+		resource.TestCheckResourceAttr(testDNSRecordResourceName, "port", strconv.Itoa(port)),
+		resource.TestCheckResourceAttr(testDNSRecordResourceName, "weight", strconv.Itoa(weight)),
 	}
 	return resource.ComposeTestCheckFunc(checks...)
 }

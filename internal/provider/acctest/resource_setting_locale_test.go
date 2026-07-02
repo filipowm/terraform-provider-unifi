@@ -6,9 +6,10 @@ import (
 	"sync"
 	"testing"
 
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 var settingLocaleLock = &sync.Mutex{}
@@ -49,6 +50,7 @@ func TestAccSettingLocale(t *testing.T) {
 		},
 	})
 }
+
 func TestAccSettingLocaleInvalid(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		VersionConstraint: ">= 7.3",

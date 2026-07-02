@@ -6,11 +6,12 @@ import (
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 type connectivityModel struct {
@@ -82,7 +83,8 @@ func NewConnectivityResource() resource.Resource {
 			return client.GetSettingConnectivity(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingConnectivity(ctx, site, body.(*unifi.SettingConnectivity))
+			b, _ := body.(*unifi.SettingConnectivity)
+			return client.UpdateSettingConnectivity(ctx, site, b)
 		},
 	)
 	return r

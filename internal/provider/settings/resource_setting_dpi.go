@@ -6,11 +6,12 @@ import (
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 type dpiModel struct {
@@ -85,7 +86,8 @@ func NewDpiResource() resource.Resource {
 			return client.GetSettingDpi(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingDpi(ctx, site, body.(*unifi.SettingDpi))
+			b, _ := body.(*unifi.SettingDpi)
+			return client.UpdateSettingDpi(ctx, site, b)
 		},
 	)
 	return r

@@ -13,7 +13,7 @@ import (
 )
 
 // A regex pattern for validating hostnames without protocol schemes
-// This matches hostnames according to RFC 1035 with some limitations
+// This matches hostnames according to RFC 1035 with some limitations.
 var hostnameRegex = regexp.MustCompile(`^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$`)
 
 // Hostname returns a validator which ensures that the string value is a valid hostname without protocol schemes.

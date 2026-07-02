@@ -10,11 +10,12 @@ import (
 	"testing"
 
 	"github.com/apparentlymart/go-cidr/cidr"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 func TestAccNetwork_basic(t *testing.T) {
@@ -456,7 +457,7 @@ func TestAccNetwork_importByName(t *testing.T) {
 				ResourceName:      "unifi_network.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateId:     fmt.Sprintf("name=%s", name),
+				ImportStateId:     "name=" + name,
 			},
 			// Apply and test errors.
 			{

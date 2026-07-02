@@ -59,7 +59,6 @@ func TestDecideBaseGlobalSwitch(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			base, abort := decideBaseGlobalSwitch(test.cur, test.err)
@@ -93,8 +92,8 @@ func TestOverlayPreservesUnmanagedFields(t *testing.T) {
 
 	// Only acl_device_isolation configured; the other two are null.
 	m := &globalSwitchModel{
-		AclDeviceIsolation: types.SetValueMust(types.StringType, []attr.Value{types.StringValue("dev-1")}),
-		AclL3Isolation:     types.SetNull(types.ObjectType{AttrTypes: (&aclL3IsolationModel{}).AttributeTypes()}),
+		ACLDeviceIsolation: types.SetValueMust(types.StringType, []attr.Value{types.StringValue("dev-1")}),
+		ACLL3Isolation:     types.SetNull(types.ObjectType{AttrTypes: (&aclL3IsolationModel{}).AttributeTypes()}),
 		SwitchExclusions:   types.SetNull(types.StringType),
 	}
 
@@ -132,11 +131,11 @@ func TestOverlayNormalizesAndDedups(t *testing.T) {
 	}
 
 	m := &globalSwitchModel{
-		AclDeviceIsolation: types.SetNull(types.StringType),
+		ACLDeviceIsolation: types.SetNull(types.StringType),
 		SwitchExclusions: types.SetValueMust(types.StringType, []attr.Value{
 			types.StringValue("AA-BB-CC-DD-EE-FF"),
 		}),
-		AclL3Isolation: types.SetValueMust(l3Type, []attr.Value{
+		ACLL3Isolation: types.SetValueMust(l3Type, []attr.Value{
 			entry("net-a", "net-b"),
 			entry("net-a", "net-c"), // duplicate source, must be dropped
 		}),
@@ -171,15 +170,15 @@ func TestMergeRoundTrip(t *testing.T) {
 
 	assert.Equal(t, "gs-id", m.ID.ValueString())
 
-	assert.False(t, m.AclDeviceIsolation.IsNull())
-	assert.Len(t, m.AclDeviceIsolation.Elements(), 2)
+	assert.False(t, m.ACLDeviceIsolation.IsNull())
+	assert.Len(t, m.ACLDeviceIsolation.Elements(), 2)
 
 	// nil slice -> empty (known) set, not null
 	assert.False(t, m.SwitchExclusions.IsNull())
 	assert.Len(t, m.SwitchExclusions.Elements(), 0)
 
-	assert.False(t, m.AclL3Isolation.IsNull())
-	require.Len(t, m.AclL3Isolation.Elements(), 1)
+	assert.False(t, m.ACLL3Isolation.IsNull())
+	require.Len(t, m.ACLL3Isolation.Elements(), 1)
 
 	// Round-trip back via overlay to confirm the nested structure is intact.
 	cur := &unifi.SettingGlobalSwitch{}
@@ -223,7 +222,6 @@ func TestUniqueSourceNetworkValidator(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			req := validator.SetRequest{

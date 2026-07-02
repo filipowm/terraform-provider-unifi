@@ -7,6 +7,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/device"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/dns"
@@ -17,15 +21,12 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/settings"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/site"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/user"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 const (
 	ProviderUsernameDescription = "Local user name for the Unifi controller API. Can be specified with the `UNIFI_USERNAME` environment variable."
 	ProviderPasswordDescription = "Password for the user accessing the API. Can be specified with the `UNIFI_PASSWORD` environment variable."
-	ProviderAPIKeyDescription   = "API Key for the user accessing the API. Can be specified with the `UNIFI_API_KEY` environment variable. Controller version 9.0.108 or later is required."
+	ProviderAPIKeyDescription   = "API Key for the user accessing the API. Can be specified with the `UNIFI_API_KEY` environment variable. Controller version 9.0.108 or later is required." //nolint:gosec // G101 false positive: human-readable field description, not a credential
 	ProviderAPIURLDescription   = "URL of the controller API. Can be specified with the `UNIFI_API` environment variable. " +
 		"You should **NOT** supply the path (`/api`), the SDK will discover the appropriate paths. This is to support UDM Pro style API paths as well as more standard controller paths."
 	ProviderSiteDescription          = "The site in the Unifi controller this provider will manage. Can be specified with the `UNIFI_SITE` environment variable. Default: `default`"
@@ -136,35 +137,56 @@ func New(version string) func() *schema.Provider {
 }
 
 func createHTTPTransport(insecure bool, subsystem string) http.RoundTripper {
-	transport := base.CreateHttpTransport(insecure)
+	transport := base.CreateHTTPTransport(insecure)
 	t := logging.NewSubsystemLoggingHTTPTransport(subsystem, transport)
 	return t
 }
 
 func configure(v string, p *schema.Provider) schema.ConfigureContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-		user := d.Get("username").(string)
-		pass := d.Get("password").(string)
-		apiKey := d.Get("api_key").(string)
+		user, ok := d.Get("username").(string)
+		if !ok {
+			return nil, diag.FromErr(errors.New("`username` must be a string"))
+		}
+		pass, ok := d.Get("password").(string)
+		if !ok {
+			return nil, diag.FromErr(errors.New("`password` must be a string"))
+		}
+		apiKey, ok := d.Get("api_key").(string)
+		if !ok {
+			return nil, diag.FromErr(errors.New("`api_key` must be a string"))
+		}
 		if apiKey != "" && (user != "" || pass != "") {
 			return nil, diag.FromErr(errors.New("only one of `username`/`password` or `api_key` can be set"))
 		} else if apiKey == "" && (user == "" || pass == "") {
 			return nil, diag.FromErr(errors.New("either `username` and `password` or `api_key` must be set"))
 		}
-		baseURL := d.Get("api_url").(string)
-		site := d.Get("site").(string)
-		insecure := d.Get("allow_insecure").(bool)
-		maxRetries := d.Get("http_max_retries").(int)
+		baseURL, ok := d.Get("api_url").(string)
+		if !ok {
+			return nil, diag.FromErr(errors.New("`api_url` must be a string"))
+		}
+		site, ok := d.Get("site").(string)
+		if !ok {
+			return nil, diag.FromErr(errors.New("`site` must be a string"))
+		}
+		insecure, ok := d.Get("allow_insecure").(bool)
+		if !ok {
+			return nil, diag.FromErr(errors.New("`allow_insecure` must be a boolean"))
+		}
+		maxRetries, ok := d.Get("http_max_retries").(int)
+		if !ok {
+			return nil, diag.FromErr(errors.New("`http_max_retries` must be an integer"))
+		}
 
 		c, err := base.NewClient(&base.ClientConfig{
 			Username:   user,
 			Password:   pass,
-			ApiKey:     apiKey,
-			Url:        baseURL,
+			APIKey:     apiKey,
+			URL:        baseURL,
 			Site:       site,
 			Insecure:   insecure,
 			MaxRetries: maxRetries,
-			HttpConfigurer: func() http.RoundTripper {
+			HTTPConfigurer: func() http.RoundTripper {
 				return createHTTPTransport(insecure, "unifi")
 			},
 		})

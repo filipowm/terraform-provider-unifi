@@ -5,10 +5,11 @@ import (
 	"errors"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 func ResourceSettingRadius() *schema.Resource {
@@ -101,28 +102,35 @@ func ResourceSettingRadius() *schema.Resource {
 	}
 }
 
-func resourceSettingRadiusGetResourceData(d *schema.ResourceData, meta interface{}) (*unifi.SettingRadius, error) {
+func resourceSettingRadiusGetResourceData(d *schema.ResourceData) *unifi.SettingRadius {
+	accountingEnabled, _ := d.Get("accounting_enabled").(bool)
+	enabled, _ := d.Get("enabled").(bool)
+	acctPort, _ := d.Get("accounting_port").(int)
+	authPort, _ := d.Get("auth_port").(int)
+	tunneledReply, _ := d.Get("tunneled_reply").(bool)
+	secret, _ := d.Get("secret").(string)
+	interimUpdateInterval, _ := d.Get("interim_update_interval").(int)
 	return &unifi.SettingRadius{
-		AccountingEnabled:     d.Get("accounting_enabled").(bool),
-		Enabled:               d.Get("enabled").(bool),
-		AcctPort:              d.Get("accounting_port").(int),
-		AuthPort:              d.Get("auth_port").(int),
+		AccountingEnabled:     accountingEnabled,
+		Enabled:               enabled,
+		AcctPort:              acctPort,
+		AuthPort:              authPort,
 		ConfigureWholeNetwork: true,
-		TunneledReply:         d.Get("tunneled_reply").(bool),
-		XSecret:               d.Get("secret").(string),
-		InterimUpdateInterval: d.Get("interim_update_interval").(int),
-	}, nil
+		TunneledReply:         tunneledReply,
+		XSecret:               secret,
+		InterimUpdateInterval: interimUpdateInterval,
+	}
 }
 
 func resourceSettingRadiusCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
-
-	req, err := resourceSettingRadiusGetResourceData(d, meta)
-	if err != nil {
-		return diag.FromErr(err)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
 	}
 
-	site := d.Get("site").(string)
+	req := resourceSettingRadiusGetResourceData(d)
+
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -134,25 +142,44 @@ func resourceSettingRadiusCreate(ctx context.Context, d *schema.ResourceData, me
 
 	d.SetId(resp.ID)
 
-	return resourceSettingRadiusSetResourceData(resp, d, meta, site)
+	return resourceSettingRadiusSetResourceData(resp, d, site)
 }
 
-func resourceSettingRadiusSetResourceData(resp *unifi.SettingRadius, d *schema.ResourceData, meta interface{}, site string) diag.Diagnostics {
-	d.Set("site", site)
-	d.Set("enabled", resp.Enabled)
-	d.Set("accounting_enabled", resp.AccountingEnabled)
-	d.Set("accounting_port", resp.AcctPort)
-	d.Set("auth_port", resp.AuthPort)
-	d.Set("tunneled_reply", resp.TunneledReply)
-	d.Set("secret", resp.XSecret)
-	d.Set("interim_update_interval", resp.InterimUpdateInterval)
+func resourceSettingRadiusSetResourceData(resp *unifi.SettingRadius, d *schema.ResourceData, site string) diag.Diagnostics {
+	if err := d.Set("site", site); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("enabled", resp.Enabled); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("accounting_enabled", resp.AccountingEnabled); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("accounting_port", resp.AcctPort); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("auth_port", resp.AuthPort); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("tunneled_reply", resp.TunneledReply); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("secret", resp.XSecret); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("interim_update_interval", resp.InterimUpdateInterval); err != nil {
+		return diag.FromErr(err)
+	}
 	return nil
 }
 
 func resourceSettingRadiusRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -166,19 +193,19 @@ func resourceSettingRadiusRead(ctx context.Context, d *schema.ResourceData, meta
 		return diag.FromErr(err)
 	}
 
-	return resourceSettingRadiusSetResourceData(resp, d, meta, site)
+	return resourceSettingRadiusSetResourceData(resp, d, site)
 }
 
 func resourceSettingRadiusUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
-
-	req, err := resourceSettingRadiusGetResourceData(d, meta)
-	if err != nil {
-		return diag.FromErr(err)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
 	}
 
+	req := resourceSettingRadiusGetResourceData(d)
+
 	req.ID = d.Id()
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -188,5 +215,5 @@ func resourceSettingRadiusUpdate(ctx context.Context, d *schema.ResourceData, me
 		return diag.FromErr(err)
 	}
 
-	return resourceSettingRadiusSetResourceData(resp, d, meta, site)
+	return resourceSettingRadiusSetResourceData(resp, d, site)
 }

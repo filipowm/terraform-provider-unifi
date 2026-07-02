@@ -44,7 +44,6 @@ func (v urlValidator) ValidateString(ctx context.Context, req validator.StringRe
 
 	val := value.ValueString()
 	parsedURL, err := url.Parse(val)
-
 	if err != nil {
 		resp.Diagnostics.Append(
 			validatordiag.InvalidAttributeValueDiagnostic(

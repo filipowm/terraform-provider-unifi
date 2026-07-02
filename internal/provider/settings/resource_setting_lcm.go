@@ -8,7 +8,6 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -16,6 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 type lcmModel struct {
@@ -145,7 +146,8 @@ func NewLcmResource() resource.Resource {
 			return client.GetSettingLcm(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingLcm(ctx, site, body.(*unifi.SettingLcm))
+			b, _ := body.(*unifi.SettingLcm)
+			return client.UpdateSettingLcm(ctx, site, b)
 		},
 	)
 	return r

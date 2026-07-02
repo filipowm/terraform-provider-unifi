@@ -8,8 +8,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 func TestAccFirewallGroup_port_group(t *testing.T) {
@@ -61,7 +62,7 @@ func TestAccFirewallGroup_same_name(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccFirewallGroupConfig_same_name,
+				Config:      testAccFirewallGroupConfigSameName,
 				ExpectError: regexp.MustCompile("FirewallGroupExisted"),
 			},
 		},
@@ -84,7 +85,7 @@ resource "unifi_firewall_group" "test" {
 `, name, ty, joined)
 }
 
-const testAccFirewallGroupConfig_same_name = `
+const testAccFirewallGroupConfigSameName = `
 resource "unifi_firewall_group" "test_a" {
 	name = "tf-acc fg"
 	type = "address-group"

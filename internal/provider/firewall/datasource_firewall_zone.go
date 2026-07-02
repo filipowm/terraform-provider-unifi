@@ -5,13 +5,14 @@ import (
 	"fmt"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 )
 
 var (
@@ -85,7 +86,6 @@ func (d *firewallZoneDatasource) Read(ctx context.Context, req datasource.ReadRe
 	site := d.client.ResolveSite(&state)
 
 	list, err := d.client.ListFirewallZone(ctx, site)
-
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to list Firewall zones", err.Error())
 		return

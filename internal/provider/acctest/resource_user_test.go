@@ -9,8 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 
 	"github.com/apparentlymart/go-cidr/cidr"
 	"github.com/filipowm/go-unifi/unifi"
@@ -78,7 +79,7 @@ func TestAccUser_fixed_ip(t *testing.T) {
 			},
 			userImportStep("unifi_user.test"),
 			{
-				Config: testAccUserConfig_fixedIP(name, subnet, vlan, mac, &ip),
+				Config: testAccUserConfigFixedIP(name, subnet, vlan, mac, &ip),
 				Check: resource.ComposeTestCheckFunc(
 					// testCheckNetworkExists(t, "name"),
 					resource.TestCheckResourceAttr("unifi_user.test", "fixed_ip", ip.String()),
@@ -89,7 +90,7 @@ func TestAccUser_fixed_ip(t *testing.T) {
 				// this passes the network again even though its not used
 				// to avoid a destroy order of operations issue, can
 				// maybe work it out some other way
-				Config: testAccUserConfig_network(name, subnet, vlan) + testAccUserConfig(mac, name, "tfacc fixed ip"),
+				Config: testAccUserConfigNetwork(name, subnet, vlan) + testAccUserConfig(mac, name, "tfacc fixed ip"),
 				Check: resource.ComposeTestCheckFunc(
 					// testCheckNetworkExists(t, "name"),
 					resource.TestCheckResourceAttr("unifi_user.test", "fixed_ip", ""),
@@ -109,7 +110,7 @@ func TestAccUser_blocking(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccUserConfig_block(mac, name, false),
+				Config: testAccUserConfigBlock(mac, name, false),
 				Check: resource.ComposeTestCheckFunc(
 					// testCheckNetworkExists(t, "name"),
 					resource.TestCheckResourceAttr("unifi_user.test", "blocked", "false"),
@@ -117,7 +118,7 @@ func TestAccUser_blocking(t *testing.T) {
 			},
 			userImportStep("unifi_user.test"),
 			{
-				Config: testAccUserConfig_block(mac, name, true),
+				Config: testAccUserConfigBlock(mac, name, true),
 				Check: resource.ComposeTestCheckFunc(
 					// testCheckNetworkExists(t, "name"),
 					resource.TestCheckResourceAttr("unifi_user.test", "blocked", "true"),
@@ -125,7 +126,7 @@ func TestAccUser_blocking(t *testing.T) {
 			},
 			userImportStep("unifi_user.test"),
 			{
-				Config: testAccUserConfig_block(mac, name, false),
+				Config: testAccUserConfigBlock(mac, name, false),
 				Check: resource.ComposeTestCheckFunc(
 					// testCheckNetworkExists(t, "name"),
 					resource.TestCheckResourceAttr("unifi_user.test", "blocked", "false"),
@@ -157,7 +158,7 @@ func TestAccUser_existing_mac_allow(t *testing.T) {
 		},
 		Steps: []resource.TestStep{
 			{
-				Config: testAccUserConfig_existing(mac, name, "tfacc note", true, true),
+				Config: testAccUserConfigExisting(mac, name, "tfacc note", true, true),
 				Check: resource.ComposeTestCheckFunc(
 					// testCheckNetworkExists(t, "name"),
 					resource.TestCheckResourceAttr("unifi_user.test", "note", "tfacc note"),
@@ -193,7 +194,7 @@ func TestAccUser_existing_mac_deny(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccUserConfig_existing(mac, name, "tfacc note", false, false),
+				Config:      testAccUserConfigExisting(mac, name, "tfacc note", false, false),
 				ExpectError: regexp.MustCompile(`api\.err\.MacUsed`),
 			},
 		},
@@ -209,14 +210,14 @@ func TestAccUser_fingerprint(t *testing.T) {
 		CheckDestroy: testCheckUserDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccUserConfig_fingerprint(mac, name, 123),
+				Config: testAccUserConfigFingerprint(mac, name, 123),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_user.test", "dev_id_override", "123"),
 				),
 			},
 			userImportStep("unifi_user.test"),
 			{
-				Config: testAccUserConfig_fingerprint(mac, name, 456),
+				Config: testAccUserConfigFingerprint(mac, name, 456),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_user.test", "dev_id_override", "456"),
 				),
@@ -257,14 +258,14 @@ func TestAccUser_localdns(t *testing.T) {
 			},
 			userImportStep("unifi_user.test"),
 			{
-				Config: testAccUserConfig_localdns(subnet, vlan, mac, name, "resource.example.com", &ip),
+				Config: testAccUserConfigLocaldns(subnet, vlan, mac, name, "resource.example.com", &ip),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_user.test", "local_dns_record", "resource.example.com"),
 				),
 			},
 			userImportStep("unifi_user.test"),
 			{
-				Config: testAccUserConfig_localdns(subnet, vlan, mac, name, "", &ip),
+				Config: testAccUserConfigLocaldns(subnet, vlan, mac, name, "", &ip),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_user.test", "local_dns_record", ""),
 				),
@@ -305,7 +306,7 @@ resource "unifi_user" "test" {
 `, mac, name, note)
 }
 
-func testAccUserConfig_network(name string, subnet *net.IPNet, vlan int) string {
+func testAccUserConfigNetwork(name string, subnet *net.IPNet, vlan int) string {
 	return fmt.Sprintf(`
 resource "unifi_network" "test" {
 	name    = "%[1]s"
@@ -320,8 +321,8 @@ resource "unifi_network" "test" {
 `, name, subnet, vlan)
 }
 
-func testAccUserConfig_fixedIP(name string, subnet *net.IPNet, vlan int, mac string, ip *net.IP) string {
-	return fmt.Sprintf(testAccUserConfig_network(name, subnet, vlan)+`
+func testAccUserConfigFixedIP(name string, subnet *net.IPNet, vlan int, mac string, ip *net.IP) string {
+	return fmt.Sprintf(testAccUserConfigNetwork(name, subnet, vlan)+`
 resource "unifi_user" "test" {
 	mac  = "%[1]s"
 	name = "%[2]s"
@@ -333,7 +334,7 @@ resource "unifi_user" "test" {
 `, mac, name, ip)
 }
 
-func testAccUserConfig_block(mac, name string, blocked bool) string {
+func testAccUserConfigBlock(mac, name string, blocked bool) string {
 	return fmt.Sprintf(`
 resource "unifi_user" "test" {
 	mac  = "%[1]s"
@@ -345,7 +346,7 @@ resource "unifi_user" "test" {
 `, mac, name, blocked)
 }
 
-func testAccUserConfig_existing(mac, name, note string, allow, skip bool) string {
+func testAccUserConfigExisting(mac, name, note string, allow, skip bool) string {
 	return fmt.Sprintf(`
 resource "unifi_user" "test" {
 	mac  = "%s"
@@ -358,18 +359,18 @@ resource "unifi_user" "test" {
 `, mac, name, note, allow, skip)
 }
 
-func testAccUserConfig_fingerprint(mac, name string, devIdOverride int) string {
+func testAccUserConfigFingerprint(mac, name string, devIDOverride int) string {
 	return fmt.Sprintf(`
 resource "unifi_user" "test" {
 	mac             = "%s"
 	name            = "%s"
 	dev_id_override = %d
 }
-`, mac, name, devIdOverride)
+`, mac, name, devIDOverride)
 }
 
-func testAccUserConfig_localdns(subnet *net.IPNet, vlan int, mac, name string, localDnsRecord string, ip *net.IP) string {
-	return fmt.Sprintf(testAccUserConfig_network(name, subnet, vlan)+`
+func testAccUserConfigLocaldns(subnet *net.IPNet, vlan int, mac, name string, localDNSRecord string, ip *net.IP) string {
+	return fmt.Sprintf(testAccUserConfigNetwork(name, subnet, vlan)+`
 resource "unifi_user" "test" {
 	mac             = "%[1]s"
 	name            = "%[2]s"
@@ -378,5 +379,5 @@ resource "unifi_user" "test" {
 	network_id = unifi_network.test.id
 	local_dns_record = "%[3]s"
 }
-`, mac, name, localDnsRecord, ip)
+`, mac, name, localDNSRecord, ip)
 }

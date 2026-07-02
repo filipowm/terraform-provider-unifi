@@ -6,9 +6,10 @@ import (
 	"sync"
 	"testing"
 
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
 var settingLcmLock = &sync.Mutex{}
@@ -78,7 +79,7 @@ func TestAccSettingLcm(t *testing.T) {
 	})
 }
 
-// Test that validation errors are raised when trying to set fields with LCM disabled
+// Test that validation errors are raised when trying to set fields with LCM disabled.
 func TestAccSettingLcmValidation(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		Lock: settingLcmLock,

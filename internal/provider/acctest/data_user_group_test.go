@@ -11,7 +11,7 @@ func TestAccDataUserGroup_default(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataUserGroupConfig_default,
+				Config: testAccDataUserGroupConfigDefault,
 				Check:  resource.ComposeTestCheckFunc(
 				// testCheckNetworkExists(t, "name"),
 				),
@@ -20,7 +20,7 @@ func TestAccDataUserGroup_default(t *testing.T) {
 	})
 }
 
-const testAccDataUserGroupConfig_default = `
+const testAccDataUserGroupConfigDefault = `
 data "unifi_user_group" "default" {
 }
 `

@@ -9,15 +9,18 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
-var firewallRuleProtocolRegexp = regexp.MustCompile("^$|all|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|tcp_udp|ah|ax.25|dccp|ddp|egp|eigrp|encap|esp|etherip|fc|ggp|gre|hip|hmp|icmp|idpr-cmtp|idrp|igmp|igp|ip|ipcomp|ipencap|ipip|ipv6|ipv6-frag|ipv6-icmp|ipv6-nonxt|ipv6-opts|ipv6-route|isis|iso-tp4|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|pup|rdp|rohc|rspf|rsvp|sctp|shim6|skip|st|tcp|udp|udplite|vmtp|vrrp|wesp|xns-idp|xtp")
-var firewallRuleProtocolV6Regexp = regexp.MustCompile("^$|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|ah|all|dccp|eigrp|esp|gre|icmpv6|ipcomp|ipv6|ipv6-frag|ipv6-icmp|ipv6-nonxt|ipv6-opts|ipv6-route|isis|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|rsvp|sctp|shim6|tcp|tcp_udp|udp|vrrp")
-var firewallRuleICMPv6TypenameRegexp = regexp.MustCompile("^$|address-unreachable|bad-header|beyond-scope|communication-prohibited|destination-unreachable|echo-reply|echo-request|failed-policy|neighbor-advertisement|neighbor-solicitation|no-route|packet-too-big|parameter-problem|port-unreachable|redirect|reject-route|router-advertisement|router-solicitation|time-exceeded|ttl-zero-during-reassembly|ttl-zero-during-transit|unknown-header-type|unknown-option")
+var (
+	firewallRuleProtocolRegexp       = regexp.MustCompile("^$|all|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|tcp_udp|ah|ax.25|dccp|ddp|egp|eigrp|encap|esp|etherip|fc|ggp|gre|hip|hmp|icmp|idpr-cmtp|idrp|igmp|igp|ip|ipcomp|ipencap|ipip|ipv6|ipv6-frag|ipv6-icmp|ipv6-nonxt|ipv6-opts|ipv6-route|isis|iso-tp4|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|pup|rdp|rohc|rspf|rsvp|sctp|shim6|skip|st|tcp|udp|udplite|vmtp|vrrp|wesp|xns-idp|xtp")
+	firewallRuleProtocolV6Regexp     = regexp.MustCompile("^$|([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])|ah|all|dccp|eigrp|esp|gre|icmpv6|ipcomp|ipv6|ipv6-frag|ipv6-icmp|ipv6-nonxt|ipv6-opts|ipv6-route|isis|l2tp|manet|mobility-header|mpls-in-ip|ospf|pim|rsvp|sctp|shim6|tcp|tcp_udp|udp|vrrp")
+	firewallRuleICMPv6TypenameRegexp = regexp.MustCompile("^$|address-unreachable|bad-header|beyond-scope|communication-prohibited|destination-unreachable|echo-reply|echo-request|failed-policy|neighbor-advertisement|neighbor-solicitation|no-route|packet-too-big|parameter-problem|port-unreachable|redirect|reject-route|router-advertisement|router-solicitation|time-exceeded|ttl-zero-during-reassembly|ttl-zero-during-transit|unknown-header-type|unknown-option")
+)
 
 func ResourceFirewallRule() *schema.Resource {
 	return &schema.Resource{
@@ -280,14 +283,17 @@ func ResourceFirewallRule() *schema.Resource {
 }
 
 func resourceFirewallRuleCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	req, err := resourceFirewallRuleGetResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -307,92 +313,136 @@ func resourceFirewallRuleCreate(ctx context.Context, d *schema.ResourceData, met
 }
 
 func resourceFirewallRuleGetResourceData(d *schema.ResourceData) (*unifi.FirewallRule, error) {
-	srcFirewallGroupIDs, err := utils.SetToStringSlice(d.Get("src_firewall_group_ids").(*schema.Set))
+	srcGroupSet, _ := d.Get("src_firewall_group_ids").(*schema.Set)
+	srcFirewallGroupIDs, err := utils.SetToStringSlice(srcGroupSet)
 	if err != nil {
 		return nil, err
 	}
 
-	dstFirewallGroupIDs, err := utils.SetToStringSlice(d.Get("dst_firewall_group_ids").(*schema.Set))
+	dstGroupSet, _ := d.Get("dst_firewall_group_ids").(*schema.Set)
+	dstFirewallGroupIDs, err := utils.SetToStringSlice(dstGroupSet)
 	if err != nil {
 		return nil, err
 	}
+
+	enabled, _ := d.Get("enabled").(bool)
+	name, _ := d.Get("name").(string)
+	action, _ := d.Get("action").(string)
+	ruleset, _ := d.Get("ruleset").(string)
+	ruleIndex, _ := d.Get("rule_index").(int)
+	protocol, _ := d.Get("protocol").(string)
+	protocolV6, _ := d.Get("protocol_v6").(string)
+	icmpTypename, _ := d.Get("icmp_typename").(string)
+	icmpV6Typename, _ := d.Get("icmp_v6_typename").(string)
+	logging, _ := d.Get("logging").(bool)
+	ipSec, _ := d.Get("ip_sec").(string)
+	stateEstablished, _ := d.Get("state_established").(bool)
+	stateInvalid, _ := d.Get("state_invalid").(bool)
+	stateNew, _ := d.Get("state_new").(bool)
+	stateRelated, _ := d.Get("state_related").(bool)
+
+	srcNetworkType, _ := d.Get("src_network_type").(string)
+	srcMAC, _ := d.Get("src_mac").(string)
+	srcAddress, _ := d.Get("src_address").(string)
+	srcAddressIPV6, _ := d.Get("src_address_ipv6").(string)
+	srcPort, _ := d.Get("src_port").(string)
+	srcNetworkID, _ := d.Get("src_network_id").(string)
+
+	dstNetworkType, _ := d.Get("dst_network_type").(string)
+	dstAddress, _ := d.Get("dst_address").(string)
+	dstAddressIPV6, _ := d.Get("dst_address_ipv6").(string)
+	dstPort, _ := d.Get("dst_port").(string)
+	dstNetworkID, _ := d.Get("dst_network_id").(string)
 
 	return &unifi.FirewallRule{
-		Enabled:          d.Get("enabled").(bool),
-		Name:             d.Get("name").(string),
-		Action:           d.Get("action").(string),
-		Ruleset:          d.Get("ruleset").(string),
-		RuleIndex:        d.Get("rule_index").(int),
-		Protocol:         d.Get("protocol").(string),
-		ProtocolV6:       d.Get("protocol_v6").(string),
-		ICMPTypename:     d.Get("icmp_typename").(string),
-		ICMPv6Typename:   d.Get("icmp_v6_typename").(string),
-		Logging:          d.Get("logging").(bool),
-		IPSec:            d.Get("ip_sec").(string),
-		StateEstablished: d.Get("state_established").(bool),
-		StateInvalid:     d.Get("state_invalid").(bool),
-		StateNew:         d.Get("state_new").(bool),
-		StateRelated:     d.Get("state_related").(bool),
+		Enabled:          enabled,
+		Name:             name,
+		Action:           action,
+		Ruleset:          ruleset,
+		RuleIndex:        ruleIndex,
+		Protocol:         protocol,
+		ProtocolV6:       protocolV6,
+		ICMPTypename:     icmpTypename,
+		ICMPv6Typename:   icmpV6Typename,
+		Logging:          logging,
+		IPSec:            ipSec,
+		StateEstablished: stateEstablished,
+		StateInvalid:     stateInvalid,
+		StateNew:         stateNew,
+		StateRelated:     stateRelated,
 
-		SrcNetworkType:      d.Get("src_network_type").(string),
-		SrcMACAddress:       d.Get("src_mac").(string),
-		SrcAddress:          d.Get("src_address").(string),
-		SrcAddressIPV6:      d.Get("src_address_ipv6").(string),
-		SrcPort:             d.Get("src_port").(string),
-		SrcNetworkID:        d.Get("src_network_id").(string),
+		SrcNetworkType:      srcNetworkType,
+		SrcMACAddress:       srcMAC,
+		SrcAddress:          srcAddress,
+		SrcAddressIPV6:      srcAddressIPV6,
+		SrcPort:             srcPort,
+		SrcNetworkID:        srcNetworkID,
 		SrcFirewallGroupIDs: srcFirewallGroupIDs,
 
-		DstNetworkType:      d.Get("dst_network_type").(string),
-		DstAddress:          d.Get("dst_address").(string),
-		DstAddressIPV6:      d.Get("dst_address_ipv6").(string),
-		DstPort:             d.Get("dst_port").(string),
-		DstNetworkID:        d.Get("dst_network_id").(string),
+		DstNetworkType:      dstNetworkType,
+		DstAddress:          dstAddress,
+		DstAddressIPV6:      dstAddressIPV6,
+		DstPort:             dstPort,
+		DstNetworkID:        dstNetworkID,
 		DstFirewallGroupIDs: dstFirewallGroupIDs,
 	}, nil
 }
 
 func resourceFirewallRuleSetResourceData(resp *unifi.FirewallRule, d *schema.ResourceData, site string) diag.Diagnostics {
-	d.Set("site", site)
-	d.Set("name", resp.Name)
-	d.Set("enabled", resp.Enabled)
-	d.Set("action", resp.Action)
-	d.Set("ruleset", resp.Ruleset)
-	d.Set("rule_index", resp.RuleIndex)
-	d.Set("protocol", resp.Protocol)
-	d.Set("protocol_v6", resp.ProtocolV6)
-	d.Set("icmp_typename", resp.ICMPTypename)
-	d.Set("icmp_v6_typename", resp.ICMPv6Typename)
-	d.Set("logging", resp.Logging)
-	d.Set("ip_sec", resp.IPSec)
-	d.Set("state_established", resp.StateEstablished)
-	d.Set("state_invalid", resp.StateInvalid)
-	d.Set("state_new", resp.StateNew)
-	d.Set("state_related", resp.StateRelated)
+	setters := []struct {
+		key   string
+		value interface{}
+	}{
+		{"site", site},
+		{"name", resp.Name},
+		{"enabled", resp.Enabled},
+		{"action", resp.Action},
+		{"ruleset", resp.Ruleset},
+		{"rule_index", resp.RuleIndex},
+		{"protocol", resp.Protocol},
+		{"protocol_v6", resp.ProtocolV6},
+		{"icmp_typename", resp.ICMPTypename},
+		{"icmp_v6_typename", resp.ICMPv6Typename},
+		{"logging", resp.Logging},
+		{"ip_sec", resp.IPSec},
+		{"state_established", resp.StateEstablished},
+		{"state_invalid", resp.StateInvalid},
+		{"state_new", resp.StateNew},
+		{"state_related", resp.StateRelated},
 
-	d.Set("src_network_type", resp.SrcNetworkType)
-	d.Set("src_firewall_group_ids", utils.StringSliceToSet(resp.SrcFirewallGroupIDs))
-	d.Set("src_mac", resp.SrcMACAddress)
-	d.Set("src_address", resp.SrcAddress)
-	d.Set("src_address_ipv6", resp.SrcAddressIPV6)
-	d.Set("src_network_id", resp.SrcNetworkID)
-	d.Set("src_port", resp.SrcPort)
+		{"src_network_type", resp.SrcNetworkType},
+		{"src_firewall_group_ids", utils.StringSliceToSet(resp.SrcFirewallGroupIDs)},
+		{"src_mac", resp.SrcMACAddress},
+		{"src_address", resp.SrcAddress},
+		{"src_address_ipv6", resp.SrcAddressIPV6},
+		{"src_network_id", resp.SrcNetworkID},
+		{"src_port", resp.SrcPort},
 
-	d.Set("dst_network_type", resp.DstNetworkType)
-	d.Set("dst_firewall_group_ids", utils.StringSliceToSet(resp.DstFirewallGroupIDs))
-	d.Set("dst_address", resp.DstAddress)
-	d.Set("dst_address_ipv6", resp.DstAddressIPV6)
-	d.Set("dst_network_id", resp.DstNetworkID)
-	d.Set("dst_port", resp.DstPort)
+		{"dst_network_type", resp.DstNetworkType},
+		{"dst_firewall_group_ids", utils.StringSliceToSet(resp.DstFirewallGroupIDs)},
+		{"dst_address", resp.DstAddress},
+		{"dst_address_ipv6", resp.DstAddressIPV6},
+		{"dst_network_id", resp.DstNetworkID},
+		{"dst_port", resp.DstPort},
+	}
+	for _, s := range setters {
+		if err := d.Set(s.key, s.value); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
 	return nil
 }
 
 func resourceFirewallRuleRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -410,7 +460,10 @@ func resourceFirewallRuleRead(ctx context.Context, d *schema.ResourceData, meta 
 }
 
 func resourceFirewallRuleUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	req, err := resourceFirewallRuleGetResourceData(d)
 	if err != nil {
@@ -419,7 +472,7 @@ func resourceFirewallRuleUpdate(ctx context.Context, d *schema.ResourceData, met
 
 	req.ID = d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -444,11 +497,14 @@ func resourceFirewallRuleUpdate(ctx context.Context, d *schema.ResourceData, met
 }
 
 func resourceFirewallRuleDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}

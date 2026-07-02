@@ -13,8 +13,8 @@ func CleanMAC(mac string) string {
 	return strings.TrimSpace(strings.ReplaceAll(strings.ToLower(mac), "-", ":"))
 }
 
-func MacDiffSuppressFunc(k, old, new string, d *schema.ResourceData) bool {
+func MacDiffSuppressFunc(k, old, newValue string, d *schema.ResourceData) bool {
 	old = CleanMAC(old)
-	new = CleanMAC(new)
-	return old == new
+	newValue = CleanMAC(newValue)
+	return old == newValue
 }

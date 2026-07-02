@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -13,6 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -37,7 +38,7 @@ type guestAccessModel struct {
 	RestrictedSubnet types.String `tfsdk:"restricted_subnet"`
 
 	Auth    types.String `tfsdk:"auth"`
-	AuthUrl types.String `tfsdk:"auth_url"`
+	AuthURL types.String `tfsdk:"auth_url"`
 
 	Authorize types.Object `tfsdk:"authorize"`
 
@@ -99,7 +100,7 @@ type portalCustomizationModel struct {
 	Customized             types.Bool   `tfsdk:"customized"`
 	AuthenticationText     types.String `tfsdk:"authentication_text"`
 	BgColor                types.String `tfsdk:"bg_color"`
-	BgImageFileId          types.String `tfsdk:"bg_image_file_id"`
+	BgImageFileID          types.String `tfsdk:"bg_image_file_id"`
 	BgImageTile            types.Bool   `tfsdk:"bg_image_tile"`
 	BgType                 types.String `tfsdk:"bg_type"`
 	BoxColor               types.String `tfsdk:"box_color"`
@@ -112,7 +113,7 @@ type portalCustomizationModel struct {
 	ButtonTextColor        types.String `tfsdk:"button_text_color"`
 	Languages              types.List   `tfsdk:"languages"`
 	LinkColor              types.String `tfsdk:"link_color"`
-	LogoFileId             types.String `tfsdk:"logo_file_id"`
+	LogoFileID             types.String `tfsdk:"logo_file_id"`
 	LogoPosition           types.String `tfsdk:"logo_position"`
 	LogoSize               types.Int32  `tfsdk:"logo_size"`
 	SuccessText            types.String `tfsdk:"success_text"`
@@ -178,7 +179,7 @@ func (m *facebookModel) AttributeTypes() map[string]attr.Type {
 }
 
 type facebookWifiModel struct {
-	BlockHttps types.Bool   `tfsdk:"block_https"`
+	BlockHTTPS types.Bool   `tfsdk:"block_https"`
 	GwID       types.String `tfsdk:"gateway_id"`
 	GwName     types.String `tfsdk:"gateway_name"`
 	GwSecret   types.String `tfsdk:"gateway_secret"`
@@ -239,7 +240,7 @@ func (m *ipPayModel) AttributeTypes() map[string]attr.Type {
 
 type quickpayModel struct {
 	AgreementID types.String `tfsdk:"agreement_id"`
-	ApiKey      types.String `tfsdk:"api_key"`
+	APIKey      types.String `tfsdk:"api_key"`
 	MerchantID  types.String `tfsdk:"merchant_id"`
 	UseSandbox  types.Bool   `tfsdk:"use_sandbox"`
 }
@@ -270,9 +271,9 @@ func (m *radiusModel) AttributeTypes() map[string]attr.Type {
 }
 
 type redirectModel struct {
-	UseHttps types.Bool   `tfsdk:"use_https"`
-	ToHttps  types.Bool   `tfsdk:"to_https"`
-	Url      types.String `tfsdk:"url"`
+	UseHTTPS types.Bool   `tfsdk:"use_https"`
+	ToHTTPS  types.Bool   `tfsdk:"to_https"`
+	URL      types.String `tfsdk:"url"`
 }
 
 func (m *redirectModel) AttributeTypes() map[string]attr.Type {
@@ -314,8 +315,8 @@ func (m *authorizeModel) AttributeTypes() map[string]attr.Type {
 }
 
 type merchantWarriorModel struct {
-	ApiKey        types.String `tfsdk:"api_key"`
-	ApiPassphrase types.String `tfsdk:"api_passphrase"`
+	APIKey        types.String `tfsdk:"api_key"`
+	APIPassphrase types.String `tfsdk:"api_passphrase"`
 	MerchantID    types.String `tfsdk:"merchant_uuid"`
 	UseSandbox    types.Bool   `tfsdk:"use_sandbox"`
 }
@@ -330,7 +331,7 @@ func (m *merchantWarriorModel) AttributeTypes() map[string]attr.Type {
 }
 
 type stripeModel struct {
-	ApiKey types.String `tfsdk:"api_key"`
+	APIKey types.String `tfsdk:"api_key"`
 }
 
 func (m *stripeModel) AttributeTypes() map[string]attr.Type {
@@ -346,7 +347,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		AllowedSubnet:    d.AllowedSubnet.ValueString(),
 		RestrictedSubnet: d.RestrictedSubnet.ValueString(),
 		Auth:             d.Auth.ValueString(),
-		AuthUrl:          d.AuthUrl.ValueString(),
+		AuthUrl:          d.AuthURL.ValueString(),
 		CustomIP:         d.CustomIP.ValueString(),
 		EcEnabled:        d.EcEnabled.ValueBool(),
 		Expire:           int(d.Expire.ValueInt32()),
@@ -377,9 +378,9 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 			return nil, diags
 		}
 		model.RedirectEnabled = true
-		model.RedirectUrl = redirect.Url.ValueString()
-		model.RedirectToHttps = redirect.ToHttps.ValueBool()
-		model.RedirectHttps = redirect.UseHttps.ValueBool()
+		model.RedirectUrl = redirect.URL.ValueString()
+		model.RedirectToHttps = redirect.ToHTTPS.ValueBool()
+		model.RedirectHttps = redirect.UseHTTPS.ValueBool()
 	} else {
 		model.RedirectEnabled = false
 	}
@@ -449,7 +450,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		if diags.HasError() {
 			return nil, diags
 		}
-		model.FacebookWifiBlockHttps = facebookWifi.BlockHttps.ValueBool()
+		model.FacebookWifiBlockHttps = facebookWifi.BlockHTTPS.ValueBool()
 		model.FacebookWifiGwID = facebookWifi.GwID.ValueString()
 		model.FacebookWifiGwName = facebookWifi.GwName.ValueString()
 		model.XFacebookWifiGwSecret = facebookWifi.GwSecret.ValueString()
@@ -457,7 +458,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 
 	if ut.IsDefined(d.RestrictedDNSServers) {
 		var servers []string
-		diags.Append(ut.ListElementsAs(d.RestrictedDNSServers, &servers)...)
+		diags.Append(ut.ListElementsAs(ctx, d.RestrictedDNSServers, &servers)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -476,14 +477,14 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 			return nil, diags
 		}
 		var languages []string
-		diags := ut.ListElementsAs(portalCustomization.Languages, &languages)
+		diags := ut.ListElementsAs(ctx, portalCustomization.Languages, &languages)
 		if diags.HasError() {
 			return nil, diags
 		}
 		model.PortalCustomized = portalCustomization.Customized.ValueBool()
 		model.PortalCustomizedAuthenticationText = portalCustomization.AuthenticationText.ValueString()
 		model.PortalCustomizedBgColor = portalCustomization.BgColor.ValueString()
-		model.PortalCustomizedBgImageFilename = portalCustomization.BgImageFileId.ValueString()
+		model.PortalCustomizedBgImageFilename = portalCustomization.BgImageFileID.ValueString()
 		model.PortalCustomizedBgImageTile = portalCustomization.BgImageTile.ValueBool()
 		model.PortalCustomizedBgType = portalCustomization.BgType.ValueString()
 		model.PortalCustomizedBoxColor = portalCustomization.BoxColor.ValueString()
@@ -496,7 +497,7 @@ func (d *guestAccessModel) AsUnifiModel(ctx context.Context) (interface{}, diag.
 		model.PortalCustomizedButtonTextColor = portalCustomization.ButtonTextColor.ValueString()
 		model.PortalCustomizedLanguages = languages
 		model.PortalCustomizedLinkColor = portalCustomization.LinkColor.ValueString()
-		model.PortalCustomizedLogoFilename = portalCustomization.LogoFileId.ValueString()
+		model.PortalCustomizedLogoFilename = portalCustomization.LogoFileID.ValueString()
 		model.PortalCustomizedLogoPosition = portalCustomization.LogoPosition.ValueString()
 		model.PortalCustomizedLogoSize = int(portalCustomization.LogoSize.ValueInt32())
 		model.PortalCustomizedSuccessText = portalCustomization.SuccessText.ValueString()
@@ -555,8 +556,8 @@ func (d *guestAccessModel) paymentAsUnifiModel(ctx context.Context, model *unifi
 			if ut.IsDefined(merchantWarrior.UseSandbox) {
 				model.MerchantwarriorUseSandbox = merchantWarrior.UseSandbox.ValueBool()
 			}
-			model.XMerchantwarriorApikey = merchantWarrior.ApiKey.ValueString()
-			model.XMerchantwarriorApipassphrase = merchantWarrior.ApiPassphrase.ValueString()
+			model.XMerchantwarriorApikey = merchantWarrior.APIKey.ValueString()
+			model.XMerchantwarriorApipassphrase = merchantWarrior.APIPassphrase.ValueString()
 			model.XMerchantwarriorMerchantuuid = merchantWarrior.MerchantID.ValueString()
 		case "paypal":
 			var paypal *paypalModel
@@ -580,7 +581,7 @@ func (d *guestAccessModel) paymentAsUnifiModel(ctx context.Context, model *unifi
 				model.QuickpayTestmode = quickpay.UseSandbox.ValueBool()
 			}
 			model.XQuickpayAgreementid = quickpay.AgreementID.ValueString()
-			model.XQuickpayApikey = quickpay.ApiKey.ValueString()
+			model.XQuickpayApikey = quickpay.APIKey.ValueString()
 			model.XQuickpayMerchantid = quickpay.MerchantID.ValueString()
 		case "stripe":
 			var stripe *stripeModel
@@ -588,7 +589,7 @@ func (d *guestAccessModel) paymentAsUnifiModel(ctx context.Context, model *unifi
 			if diags.HasError() {
 				return diags
 			}
-			model.XStripeApiKey = stripe.ApiKey.ValueString()
+			model.XStripeApiKey = stripe.APIKey.ValueString()
 		default:
 			diags.AddError("Invalid payment gateway", fmt.Sprintf("Payment gateway %q is not supported", gateway))
 		}
@@ -614,8 +615,8 @@ func (d *guestAccessModel) mergePaymentModel(ctx context.Context, model *unifi.S
 		d.IPpay, diags = types.ObjectValueFrom(ctx, ippay.AttributeTypes(), ippay)
 	case "merchantwarrior":
 		merchantWarrior := &merchantWarriorModel{
-			ApiKey:        types.StringValue(model.XMerchantwarriorApikey),
-			ApiPassphrase: types.StringValue(model.XMerchantwarriorApipassphrase),
+			APIKey:        types.StringValue(model.XMerchantwarriorApikey),
+			APIPassphrase: types.StringValue(model.XMerchantwarriorApipassphrase),
 			MerchantID:    types.StringValue(model.XMerchantwarriorMerchantuuid),
 			UseSandbox:    types.BoolValue(model.MerchantwarriorUseSandbox),
 		}
@@ -631,18 +632,18 @@ func (d *guestAccessModel) mergePaymentModel(ctx context.Context, model *unifi.S
 	case "quickpay":
 		quickpay := &quickpayModel{
 			AgreementID: types.StringValue(model.XQuickpayAgreementid),
-			ApiKey:      types.StringValue(model.XQuickpayApikey),
+			APIKey:      types.StringValue(model.XQuickpayApikey),
 			MerchantID:  types.StringValue(model.XQuickpayMerchantid),
 			UseSandbox:  types.BoolValue(model.QuickpayTestmode),
 		}
 		d.Quickpay, diags = types.ObjectValueFrom(ctx, quickpay.AttributeTypes(), quickpay)
 	case "stripe":
 		stripe := &stripeModel{
-			ApiKey: types.StringValue(model.XStripeApiKey),
+			APIKey: types.StringValue(model.XStripeApiKey),
 		}
 		d.Stripe, diags = types.ObjectValueFrom(ctx, stripe.AttributeTypes(), stripe)
 	default:
-		diags.AddError("Invalid payment gateway", fmt.Sprintf("Payment gateway returned by controller is not supported: %s", model.Gateway))
+		diags.AddError("Invalid payment gateway", "Payment gateway returned by controller is not supported: "+model.Gateway)
 	}
 	return diags
 }
@@ -660,7 +661,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 	d.AllowedSubnet = types.StringValue(model.AllowedSubnet)
 	d.RestrictedSubnet = types.StringValue(model.RestrictedSubnet)
 	d.Auth = types.StringValue(model.Auth)
-	d.AuthUrl = types.StringValue(model.AuthUrl)
+	d.AuthURL = types.StringValue(model.AuthUrl)
 	switch model.Auth {
 	case "custom":
 		d.CustomIP = types.StringValue(model.CustomIP)
@@ -710,9 +711,9 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 	}
 	if model.RedirectEnabled {
 		redirect := &redirectModel{
-			UseHttps: types.BoolValue(model.RedirectHttps),
-			ToHttps:  types.BoolValue(model.RedirectToHttps),
-			Url:      types.StringValue(model.RedirectUrl),
+			UseHTTPS: types.BoolValue(model.RedirectHttps),
+			ToHTTPS:  types.BoolValue(model.RedirectToHttps),
+			URL:      types.StringValue(model.RedirectUrl),
 		}
 		d.Redirect, diags = types.ObjectValueFrom(ctx, redirect.AttributeTypes(), redirect)
 		if diags.HasError() {
@@ -797,7 +798,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 	}
 	if model.Auth == "facebook_wifi" {
 		facebookWifi := &facebookWifiModel{
-			BlockHttps: types.BoolValue(model.FacebookWifiBlockHttps),
+			BlockHTTPS: types.BoolValue(model.FacebookWifiBlockHttps),
 			GwID:       types.StringValue(model.FacebookWifiGwID),
 			GwName:     types.StringValue(model.FacebookWifiGwName),
 			GwSecret:   types.StringValue(model.XFacebookWifiGwSecret),
@@ -823,7 +824,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 		Customized:             types.BoolValue(model.PortalCustomized),
 		AuthenticationText:     types.StringValue(model.PortalCustomizedAuthenticationText),
 		BgColor:                types.StringValue(model.PortalCustomizedBgColor),
-		BgImageFileId:          types.StringValue(model.PortalCustomizedBgImageFilename),
+		BgImageFileID:          types.StringValue(model.PortalCustomizedBgImageFilename),
 		BgImageTile:            types.BoolValue(model.PortalCustomizedBgImageTile),
 		BgType:                 types.StringValue(model.PortalCustomizedBgType),
 		BoxColor:               types.StringValue(model.PortalCustomizedBoxColor),
@@ -836,7 +837,7 @@ func (d *guestAccessModel) Merge(ctx context.Context, unifiModel interface{}) di
 		ButtonTextColor:        types.StringValue(model.PortalCustomizedButtonTextColor),
 		Languages:              languages,
 		LinkColor:              types.StringValue(model.PortalCustomizedLinkColor),
-		LogoFileId:             types.StringValue(model.PortalCustomizedLogoFilename),
+		LogoFileID:             types.StringValue(model.PortalCustomizedLogoFilename),
 		LogoPosition:           types.StringValue(model.PortalCustomizedLogoPosition),
 		LogoSize:               types.Int32Value(int32(model.PortalCustomizedLogoSize)),
 		SuccessText:            types.StringValue(model.PortalCustomizedSuccessText),
@@ -890,7 +891,7 @@ func (g *guestAccessResource) ModifyPlan(_ context.Context, req resource.ModifyP
 }
 
 func requiredTogetherIfStringVal(condition, value string, attrs ...string) validators.RequiredTogetherIfValidator {
-	var expressions []path.Expression
+	expressions := make([]path.Expression, 0, len(attrs))
 	for _, attr := range attrs {
 		expressions = append(expressions, path.MatchRoot(attr))
 	}
@@ -1078,12 +1079,12 @@ func (g *guestAccessResource) Schema(_ context.Context, _ resource.SchemaRequest
 					"client_id": schema.StringAttribute{
 						MarkdownDescription: "Google client ID for authentication.",
 						Required:            true,
-						//Sensitive:           true,
+						// Sensitive:           true,
 					},
 					"client_secret": schema.StringAttribute{
 						MarkdownDescription: "Google client secret for authentication.",
 						Required:            true,
-						//Sensitive:           true,
+						// Sensitive:           true,
 					},
 					"domain": schema.StringAttribute{
 						MarkdownDescription: "Restrict Google authentication to specific domain.",
@@ -1597,7 +1598,8 @@ func NewGuestAccessResource() resource.Resource {
 			return client.GetSettingGuestAccess(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingGuestAccess(ctx, site, body.(*unifi.SettingGuestAccess))
+			b, _ := body.(*unifi.SettingGuestAccess)
+			return client.UpdateSettingGuestAccess(ctx, site, b)
 		},
 	)
 	return r

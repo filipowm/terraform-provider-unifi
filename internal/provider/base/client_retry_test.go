@@ -48,7 +48,7 @@ func TestRetryRoundTripper_RetriesOn5xx(t *testing.T) {
 	defer srv.Close()
 
 	rt := newTestRetryRoundTripper(http.DefaultTransport, 5)
-	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
 	resp, err := rt.RoundTrip(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -82,7 +82,7 @@ func TestRetryRoundTripper_RetriesOnHTMLBody(t *testing.T) {
 	defer srv.Close()
 
 	rt := newTestRetryRoundTripper(http.DefaultTransport, 3)
-	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
 	resp, err := rt.RoundTrip(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -105,7 +105,7 @@ func TestRetryRoundTripper_PreservesHTMLBodyWhenExhausted(t *testing.T) {
 	defer srv.Close()
 
 	rt := newTestRetryRoundTripper(http.DefaultTransport, 2)
-	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
 	resp, err := rt.RoundTrip(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -129,7 +129,7 @@ func TestRetryRoundTripper_DoesNotRetryPOST(t *testing.T) {
 	defer srv.Close()
 
 	rt := newTestRetryRoundTripper(http.DefaultTransport, 5)
-	req, _ := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(`{"a":1}`))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL, strings.NewReader(`{"a":1}`))
 	resp, err := rt.RoundTrip(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -150,7 +150,7 @@ func TestRetryRoundTripper_StopsAfterMaxRetries(t *testing.T) {
 	defer srv.Close()
 
 	rt := newTestRetryRoundTripper(http.DefaultTransport, 2)
-	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
 	resp, err := rt.RoundTrip(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -181,7 +181,7 @@ func TestRetryRoundTripper_RetriesPUTWithBody(t *testing.T) {
 	defer srv.Close()
 
 	rt := newTestRetryRoundTripper(http.DefaultTransport, 3)
-	req, _ := http.NewRequest(http.MethodPut, srv.URL, strings.NewReader(`{"a":1}`))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPut, srv.URL, strings.NewReader(`{"a":1}`))
 	resp, err := rt.RoundTrip(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -209,7 +209,7 @@ func TestNewRetryRoundTripper_PassThroughWhenDisabled(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
 	resp, err := got.RoundTrip(req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

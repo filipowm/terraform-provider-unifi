@@ -7,10 +7,11 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 func ResourceFirewallGroup() *schema.Resource {
@@ -76,14 +77,17 @@ func ResourceFirewallGroup() *schema.Resource {
 }
 
 func resourceFirewallGroupCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	req, err := resourceFirewallGroupGetResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -102,33 +106,48 @@ func resourceFirewallGroupCreate(ctx context.Context, d *schema.ResourceData, me
 }
 
 func resourceFirewallGroupGetResourceData(d *schema.ResourceData) (*unifi.FirewallGroup, error) {
-	members, err := utils.SetToStringSlice(d.Get("members").(*schema.Set))
+	membersSet, _ := d.Get("members").(*schema.Set)
+	members, err := utils.SetToStringSlice(membersSet)
 	if err != nil {
 		return nil, err
 	}
 
+	name, _ := d.Get("name").(string)
+	groupType, _ := d.Get("type").(string)
+
 	return &unifi.FirewallGroup{
-		Name:         d.Get("name").(string),
-		GroupType:    d.Get("type").(string),
+		Name:         name,
+		GroupType:    groupType,
 		GroupMembers: members,
 	}, nil
 }
 
 func resourceFirewallGroupSetResourceData(resp *unifi.FirewallGroup, d *schema.ResourceData, site string) diag.Diagnostics {
-	d.Set("site", site)
-	d.Set("name", resp.Name)
-	d.Set("type", resp.GroupType)
-	d.Set("members", utils.StringSliceToSet(resp.GroupMembers))
+	if err := d.Set("site", site); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("name", resp.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("type", resp.GroupType); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("members", utils.StringSliceToSet(resp.GroupMembers)); err != nil {
+		return diag.FromErr(err)
+	}
 
 	return nil
 }
 
 func resourceFirewallGroupRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -146,7 +165,10 @@ func resourceFirewallGroupRead(ctx context.Context, d *schema.ResourceData, meta
 }
 
 func resourceFirewallGroupUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	req, err := resourceFirewallGroupGetResourceData(d)
 	if err != nil {
@@ -155,7 +177,7 @@ func resourceFirewallGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 
 	req.ID = d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -180,11 +202,14 @@ func resourceFirewallGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 }
 
 func resourceFirewallGroupDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}

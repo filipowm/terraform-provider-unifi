@@ -5,10 +5,11 @@ import (
 	"errors"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 )
 
 func ResourceDynamicDNS() *schema.Resource {
@@ -87,20 +88,26 @@ func ResourceDynamicDNS() *schema.Resource {
 				Sensitive:   true,
 			},
 
-			//TODO: options support?
+			// TODO: options support?
 		},
 	}
 }
 
 func resourceDynamicDNSCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.FromErr(errors.New("meta must be of type *base.Client"))
+	}
 
 	req, err := resourceDynamicDNSGetResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	site := d.Get("site").(string)
+	site, ok := d.Get("site").(string)
+	if !ok {
+		return diag.FromErr(errors.New("`site` must be a string"))
+	}
 	if site == "" {
 		site = c.Site
 	}
@@ -112,43 +119,84 @@ func resourceDynamicDNSCreate(ctx context.Context, d *schema.ResourceData, meta 
 
 	d.SetId(resp.ID)
 
-	return resourceDynamicDNSSetResourceData(resp, d, site)
+	return resourceDynamicDNSSetResourceData(resp, d)
 }
 
 func resourceDynamicDNSGetResourceData(d *schema.ResourceData) (*unifi.DynamicDNS, error) {
+	iface, ok := d.Get("interface").(string)
+	if !ok {
+		return nil, errors.New("interface must be a string")
+	}
+	service, ok := d.Get("service").(string)
+	if !ok {
+		return nil, errors.New("service must be a string")
+	}
+	hostName, ok := d.Get("host_name").(string)
+	if !ok {
+		return nil, errors.New("host_name must be a string")
+	}
+	server, ok := d.Get("server").(string)
+	if !ok {
+		return nil, errors.New("server must be a string")
+	}
+	login, ok := d.Get("login").(string)
+	if !ok {
+		return nil, errors.New("login must be a string")
+	}
+	password, ok := d.Get("password").(string)
+	if !ok {
+		return nil, errors.New("password must be a string")
+	}
+
 	r := &unifi.DynamicDNS{
-		Interface: d.Get("interface").(string),
-		Service:   d.Get("service").(string),
+		Interface: iface,
+		Service:   service,
 
-		HostName: d.Get("host_name").(string),
+		HostName: hostName,
 
-		Server:    d.Get("server").(string),
-		Login:     d.Get("login").(string),
-		XPassword: d.Get("password").(string),
+		Server:    server,
+		Login:     login,
+		XPassword: password,
 	}
 
 	return r, nil
 }
 
-func resourceDynamicDNSSetResourceData(resp *unifi.DynamicDNS, d *schema.ResourceData, site string) diag.Diagnostics {
-	d.Set("interface", resp.Interface)
-	d.Set("service", resp.Service)
-
-	d.Set("host_name", resp.HostName)
-
-	d.Set("server", resp.Server)
-	d.Set("login", resp.Login)
-	d.Set("password", resp.XPassword)
+func resourceDynamicDNSSetResourceData(resp *unifi.DynamicDNS, d *schema.ResourceData) diag.Diagnostics {
+	if err := d.Set("interface", resp.Interface); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("service", resp.Service); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("host_name", resp.HostName); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("server", resp.Server); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("login", resp.Login); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("password", resp.XPassword); err != nil {
+		return diag.FromErr(err)
+	}
 
 	return nil
 }
 
 func resourceDynamicDNSRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.FromErr(errors.New("meta must be of type *base.Client"))
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, ok := d.Get("site").(string)
+	if !ok {
+		return diag.FromErr(errors.New("`site` must be a string"))
+	}
 	if site == "" {
 		site = c.Site
 	}
@@ -162,11 +210,14 @@ func resourceDynamicDNSRead(ctx context.Context, d *schema.ResourceData, meta in
 		return diag.FromErr(err)
 	}
 
-	return resourceDynamicDNSSetResourceData(resp, d, site)
+	return resourceDynamicDNSSetResourceData(resp, d)
 }
 
 func resourceDynamicDNSUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.FromErr(errors.New("meta must be of type *base.Client"))
+	}
 
 	req, err := resourceDynamicDNSGetResourceData(d)
 	if err != nil {
@@ -175,7 +226,10 @@ func resourceDynamicDNSUpdate(ctx context.Context, d *schema.ResourceData, meta 
 
 	req.ID = d.Id()
 
-	site := d.Get("site").(string)
+	site, ok := d.Get("site").(string)
+	if !ok {
+		return diag.FromErr(errors.New("`site` must be a string"))
+	}
 	if site == "" {
 		site = c.Site
 	}
@@ -196,15 +250,21 @@ func resourceDynamicDNSUpdate(ctx context.Context, d *schema.ResourceData, meta 
 		return nil
 	}
 
-	return resourceDynamicDNSSetResourceData(resp, d, site)
+	return resourceDynamicDNSSetResourceData(resp, d)
 }
 
 func resourceDynamicDNSDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.FromErr(errors.New("meta must be of type *base.Client"))
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, ok := d.Get("site").(string)
+	if !ok {
+		return diag.FromErr(errors.New("`site` must be a string"))
+	}
 	if site == "" {
 		site = c.Site
 	}

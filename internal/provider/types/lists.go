@@ -3,12 +3,13 @@ package types
 import (
 	"context"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 )
 
 func DefaultEmptyList(elementType attr.Type) defaults.List {
@@ -19,12 +20,12 @@ func EmptyList(elementType attr.Type) types.List {
 	return types.ListValueMust(elementType, []attr.Value{})
 }
 
-func ListElementsAs(list types.List, target interface{}) diag.Diagnostics {
+func ListElementsAs(ctx context.Context, list types.List, target interface{}) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 	if !IsDefined(list) {
 		return diags
 	}
-	if diagErr := list.ElementsAs(context.Background(), target, false); diagErr != nil {
+	if diagErr := list.ElementsAs(ctx, target, false); diagErr != nil {
 		diags = append(diags, diagErr...)
 	}
 	return diags
@@ -37,7 +38,7 @@ func ListElementsToString(ctx context.Context, list types.List) (string, diag.Di
 	}
 	if list.ElementType(ctx) == types.StringType {
 		var target []string
-		diags.Append(ListElementsAs(list, &target)...)
+		diags.Append(ListElementsAs(ctx, list, &target)...)
 		if diags.HasError() {
 			return "", diags
 		}

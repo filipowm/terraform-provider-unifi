@@ -39,21 +39,19 @@ func TestToPortOverrideAggregateTranslation(t *testing.T) {
 
 func TestFromPortOverrideAggregateTranslation(t *testing.T) {
 	t.Run("MemberListLengthBecomesCount", func(t *testing.T) {
-		m, err := fromPortOverride(unifi.DevicePortOverrides{
+		m := fromPortOverride(unifi.DevicePortOverrides{
 			PortIDX:          5,
 			OpMode:           "aggregate",
 			AggregateMembers: []int{5, 6, 7},
 		})
-		require.NoError(t, err)
 		assert.Equal(t, 3, m["aggregate_num_ports"])
 	})
 
 	t.Run("NilMembersReadBackAsZero", func(t *testing.T) {
-		m, err := fromPortOverride(unifi.DevicePortOverrides{
+		m := fromPortOverride(unifi.DevicePortOverrides{
 			PortIDX: 1,
 			OpMode:  "switch",
 		})
-		require.NoError(t, err)
 		assert.Equal(t, 0, m["aggregate_num_ports"])
 	})
 }
@@ -69,8 +67,7 @@ func TestPortOverrideAggregateRoundTrip(t *testing.T) {
 	}
 	po, err := toPortOverride(in)
 	require.NoError(t, err)
-	out, err := fromPortOverride(po)
-	require.NoError(t, err)
+	out := fromPortOverride(po)
 	assert.Equal(t, in["aggregate_num_ports"], out["aggregate_num_ports"])
 }
 
@@ -141,7 +138,7 @@ func TestToPortOverride_ForwardNoDefault(t *testing.T) {
 }
 
 func TestFromPortOverride_VLANFields(t *testing.T) {
-	m, err := fromPortOverride(unifi.DevicePortOverrides{
+	m := fromPortOverride(unifi.DevicePortOverrides{
 		PortIDX:            10,
 		NATiveNetworkID:    "net-native",
 		TaggedVLANMgmt:     "custom",
@@ -150,7 +147,6 @@ func TestFromPortOverride_VLANFields(t *testing.T) {
 		VoiceNetworkID:     "net-voice",
 		SettingPreference:  "manual",
 	})
-	require.NoError(t, err)
 	assert.Equal(t, "net-native", m["native_networkconf_id"])
 	assert.Equal(t, "custom", m["tagged_vlan_mgmt"])
 	assert.Equal(t, "customize", m["forward"])
@@ -160,7 +156,8 @@ func TestFromPortOverride_VLANFields(t *testing.T) {
 	require.True(t, ok)
 	got := make([]string, 0, excluded.Len())
 	for _, v := range excluded.List() {
-		got = append(got, v.(string))
+		s, _ := v.(string)
+		got = append(got, s)
 	}
 	assert.ElementsMatch(t, []string{"net-a", "net-b"}, got)
 }
@@ -177,21 +174,22 @@ func TestPortOverride_VLANRoundTrip(t *testing.T) {
 	})
 	po, err := toPortOverride(in)
 	require.NoError(t, err)
-	out, err := fromPortOverride(po)
-	require.NoError(t, err)
+	out := fromPortOverride(po)
 	assert.Equal(t, in["native_networkconf_id"], out["native_networkconf_id"])
 	assert.Equal(t, in["tagged_vlan_mgmt"], out["tagged_vlan_mgmt"])
 	assert.Equal(t, in["forward"], out["forward"])
 	assert.Equal(t, in["voice_networkconf_id"], out["voice_networkconf_id"])
 	assert.Equal(t, in["setting_preference"], out["setting_preference"])
-	assert.True(t, in["excluded_network_ids"].(*schema.Set).Equal(out["excluded_network_ids"].(*schema.Set)))
+	inExcluded, _ := in["excluded_network_ids"].(*schema.Set)
+	outExcluded, _ := out["excluded_network_ids"].(*schema.Set)
+	assert.True(t, inExcluded.Equal(outExcluded))
 }
 
 // The StringInSlice validators are the only client-side guard (SDK validation is
 // disabled in base/client.go), so verify they accept valid and reject invalid
 // values for the constrained VLAN attributes.
 func TestPortOverride_VLANValidators(t *testing.T) {
-	elem := ResourceDevice().Schema["port_override"].Elem.(*schema.Resource)
+	elem, _ := ResourceDevice().Schema["port_override"].Elem.(*schema.Resource)
 
 	cases := []struct {
 		attr    string
@@ -247,7 +245,7 @@ func TestPortOverrideSetHash_StableByNumber(t *testing.T) {
 // back the controller's value without a perpetual diff. This pairs with the
 // number-keyed set hash above; together they neutralize the upgrade churn.
 func TestPortOverrideVLANFields_AreOptionalComputed(t *testing.T) {
-	elem := ResourceDevice().Schema["port_override"].Elem.(*schema.Resource)
+	elem, _ := ResourceDevice().Schema["port_override"].Elem.(*schema.Resource)
 	for _, attr := range []string{
 		"native_networkconf_id", "tagged_vlan_mgmt", "forward",
 		"excluded_network_ids", "voice_networkconf_id", "setting_preference",

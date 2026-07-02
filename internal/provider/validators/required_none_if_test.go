@@ -19,7 +19,7 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
-// Common test case structure for string conditions
+// Common test case structure for string conditions.
 type requiredNoneIfTestCase struct {
 	condition       types.String
 	field1          types.String
@@ -28,7 +28,7 @@ type requiredNoneIfTestCase struct {
 	expectErrorText string
 }
 
-// Common test case structure for bool conditions
+// Common test case structure for bool conditions.
 type requiredNoneIfBoolTestCase struct {
 	condition       types.Bool
 	field1          types.String
@@ -37,7 +37,7 @@ type requiredNoneIfBoolTestCase struct {
 	expectErrorText string
 }
 
-// Function to create a schema object with string condition
+// Function to create a schema object with string condition.
 func createRequiredNoneIfSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -60,7 +60,7 @@ func createRequiredNoneIfSchema() schema.Schema {
 	}
 }
 
-// Function to create a schema object with bool condition
+// Function to create a schema object with bool condition.
 func createRequiredNoneIfBoolSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
@@ -77,7 +77,7 @@ func createRequiredNoneIfBoolSchema() schema.Schema {
 	}
 }
 
-// Function to create a config with string condition
+// Function to create a config with string condition.
 func createRequiredNoneIfConfig(schema schema.Schema, testCase requiredNoneIfTestCase) tfsdk.Config {
 	return tfsdk.Config{
 		Schema: schema,
@@ -98,7 +98,7 @@ func createRequiredNoneIfConfig(schema schema.Schema, testCase requiredNoneIfTes
 	}
 }
 
-// Function to create a config with bool condition
+// Function to create a config with bool condition.
 func createRequiredNoneIfBoolConfig(schema schema.Schema, testCase requiredNoneIfBoolTestCase) tfsdk.Config {
 	return tfsdk.Config{
 		Schema: schema,
@@ -119,7 +119,7 @@ func createRequiredNoneIfBoolConfig(schema schema.Schema, testCase requiredNoneI
 	}
 }
 
-// Test RequiredNoneIf with string condition
+// Test RequiredNoneIf with string condition.
 func TestRequiredNoneIf(t *testing.T) {
 	testCases := map[string]requiredNoneIfTestCase{
 		"matching_condition_all_configured": {
@@ -202,7 +202,7 @@ func TestRequiredNoneIf(t *testing.T) {
 	}
 }
 
-// Test RequiredNoneIfSet with string condition
+// Test RequiredNoneIfSet with string condition.
 func TestRequiredNoneIfSet(t *testing.T) {
 	testCases := map[string]requiredNoneIfTestCase{
 		"condition_set_all_configured": {
@@ -272,7 +272,7 @@ func TestRequiredNoneIfSet(t *testing.T) {
 	}
 }
 
-// Test RequiredNoneIf with boolean condition
+// Test RequiredNoneIf with boolean condition.
 func TestRequiredNoneIfWithBoolCondition(t *testing.T) {
 	testCases := map[string]requiredNoneIfBoolTestCase{
 		"matching_true_condition_all_configured": {
@@ -330,7 +330,7 @@ func TestRequiredNoneIfWithBoolCondition(t *testing.T) {
 	}
 }
 
-// Test ValidateDataSource method
+// Test ValidateDataSource method.
 func TestRequiredNoneIfValidateDataSource(t *testing.T) {
 	testCases := map[string]requiredNoneIfTestCase{
 		"matching_condition_all_configured": {
@@ -377,7 +377,7 @@ func TestRequiredNoneIfValidateDataSource(t *testing.T) {
 	}
 }
 
-// Test ValidateProvider method
+// Test ValidateProvider method.
 func TestRequiredNoneIfValidateProvider(t *testing.T) {
 	testCases := map[string]requiredNoneIfTestCase{
 		"matching_condition_all_configured": {
@@ -424,7 +424,7 @@ func TestRequiredNoneIfValidateProvider(t *testing.T) {
 	}
 }
 
-// Test ValidateResource method
+// Test ValidateResource method.
 func TestRequiredNoneIfValidateResource(t *testing.T) {
 	testCases := map[string]requiredNoneIfTestCase{
 		"matching_condition_all_configured": {
@@ -471,7 +471,7 @@ func TestRequiredNoneIfValidateResource(t *testing.T) {
 	}
 }
 
-// Test the Description and MarkdownDescription methods for both variants
+// Test the Description and MarkdownDescription methods for both variants.
 func TestRequiredNoneIfDescription(t *testing.T) {
 	t.Run("RequiredNoneIf description", func(t *testing.T) {
 		validator := validators.RequiredNoneIf(
@@ -507,7 +507,7 @@ func TestRequiredNoneIfDescription(t *testing.T) {
 	})
 }
 
-// Test with missing path
+// Test with missing path.
 func TestRequiredNoneIfWithMissingPath(t *testing.T) {
 	ctx := context.Background()
 	schema := createRequiredNoneIfSchema()

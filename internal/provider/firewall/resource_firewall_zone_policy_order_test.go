@@ -17,7 +17,9 @@ import (
 // the expected shape (Required zone IDs, Optional list-of-string ordering lists).
 func TestFirewallZonePolicyOrderSchema(t *testing.T) {
 	var resp resource.SchemaResponse
-	NewFirewallZonePolicyOrderResource().(*firewallZonePolicyOrderResource).Schema(context.Background(), resource.SchemaRequest{}, &resp)
+	r, ok := NewFirewallZonePolicyOrderResource().(*firewallZonePolicyOrderResource)
+	require.True(t, ok, "expected *firewallZonePolicyOrderResource")
+	r.Schema(context.Background(), resource.SchemaRequest{}, &resp)
 	require.False(t, resp.Diagnostics.HasError(), "schema build returned diagnostics: %v", resp.Diagnostics)
 
 	t.Run("source_zone_id is required string", func(t *testing.T) {
@@ -39,7 +41,6 @@ func TestFirewallZonePolicyOrderSchema(t *testing.T) {
 	})
 
 	for _, name := range []string{"before_predefined_ids", "after_predefined_ids"} {
-		name := name
 		t.Run(name+" is optional list of string", func(t *testing.T) {
 			a, ok := resp.Schema.Attributes[name]
 			require.True(t, ok, "expected a %q attribute", name)
@@ -157,12 +158,12 @@ func TestFirewallZonePolicyOrderMerge(t *testing.T) {
 }
 
 // mustStringList builds a known (non-null) list-of-string value for tests.
-func mustStringList(t *testing.T, vals ...string) types.List {
+func mustStringList(ctx context.Context, t *testing.T, vals ...string) types.List {
 	t.Helper()
 	if vals == nil {
 		vals = []string{}
 	}
-	l, diags := types.ListValueFrom(context.Background(), types.StringType, vals)
+	l, diags := types.ListValueFrom(ctx, types.StringType, vals)
 	require.False(t, diags.HasError(), "building list value: %v", diags)
 	return l
 }
@@ -197,10 +198,10 @@ func TestFirewallZonePolicyOrderApplyOrderSubsetFiltering(t *testing.T) {
 	m := &FirewallZonePolicyOrderModel{
 		SourceZoneID:        types.StringValue("src"),
 		DestinationZoneID:   types.StringValue("dst"),
-		BeforePredefinedIDs: mustStringList(t, "c1"),
-		AfterPredefinedIDs:  mustStringList(t, "c3"),
+		BeforePredefinedIDs: mustStringList(ctx, t, "c1"),
+		AfterPredefinedIDs:  mustStringList(ctx, t, "c3"),
 	}
-	managed := managedIDSet(m)
+	managed := managedIDSet(ctx, m)
 
 	diags := m.applyOrder(ctx, policies, managed)
 	require.False(t, diags.HasError(), "applyOrder returned diagnostics: %v", diags)
@@ -219,9 +220,9 @@ func TestFirewallZonePolicyOrderApplyOrderSubsetFiltering(t *testing.T) {
 		m2 := &FirewallZonePolicyOrderModel{
 			SourceZoneID:       types.StringValue("src"),
 			DestinationZoneID:  types.StringValue("dst"),
-			AfterPredefinedIDs: mustStringList(t, "c4", "c3"),
+			AfterPredefinedIDs: mustStringList(ctx, t, "c4", "c3"),
 		}
-		d := m2.applyOrder(ctx, policies, managedIDSet(m2))
+		d := m2.applyOrder(ctx, policies, managedIDSet(ctx, m2))
 		require.False(t, d.HasError(), "applyOrder returned diagnostics: %v", d)
 		var after2 []string
 		require.False(t, m2.AfterPredefinedIDs.ElementsAs(ctx, &after2, false).HasError())
@@ -235,10 +236,10 @@ func TestFirewallZonePolicyOrderApplyOrderSubsetFiltering(t *testing.T) {
 		m3 := &FirewallZonePolicyOrderModel{
 			SourceZoneID:        types.StringValue("src"),
 			DestinationZoneID:   types.StringValue("dst"),
-			BeforePredefinedIDs: mustStringList(t), // explicit []
-			AfterPredefinedIDs:  mustStringList(t, "c3"),
+			BeforePredefinedIDs: mustStringList(ctx, t), // explicit []
+			AfterPredefinedIDs:  mustStringList(ctx, t, "c3"),
 		}
-		d := m3.applyOrder(ctx, policies, managedIDSet(m3))
+		d := m3.applyOrder(ctx, policies, managedIDSet(ctx, m3))
 		require.False(t, d.HasError(), "applyOrder returned diagnostics: %v", d)
 		assert.False(t, m3.BeforePredefinedIDs.IsNull(), "explicit empty before list must stay non-null (FIX 3)")
 		assert.Empty(t, m3.BeforePredefinedIDs.Elements(), "explicit empty before list must stay empty")

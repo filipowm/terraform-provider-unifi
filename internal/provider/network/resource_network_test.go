@@ -22,8 +22,7 @@ func TestResourceNetworkGetResourceData_dhcpGuarding(t *testing.T) {
 
 	d := schema.TestResourceDataRaw(t, ResourceNetwork().Schema, raw)
 
-	// meta is not dereferenced by resourceNetworkGetResourceData, so nil is safe.
-	req, err := resourceNetworkGetResourceData(d, nil)
+	req, err := resourceNetworkGetResourceData(d)
 	if err != nil {
 		t.Fatalf("resourceNetworkGetResourceData returned error: %s", err)
 	}
@@ -43,7 +42,7 @@ func TestResourceNetworkGetResourceData_dhcpGuardingExplicitFalse(t *testing.T) 
 
 	d := schema.TestResourceDataRaw(t, ResourceNetwork().Schema, raw)
 
-	req, err := resourceNetworkGetResourceData(d, nil)
+	req, err := resourceNetworkGetResourceData(d)
 	if err != nil {
 		t.Fatalf("resourceNetworkGetResourceData returned error: %s", err)
 	}
@@ -62,7 +61,7 @@ func TestResourceNetworkSetResourceData_dhcpGuarding(t *testing.T) {
 	if diags := resourceNetworkSetResourceData(resp, d, "default"); diags.HasError() {
 		t.Fatalf("resourceNetworkSetResourceData returned diagnostics: %v", diags)
 	}
-	if got := d.Get("dhcp_guarding").(bool); !got {
+	if got, _ := d.Get("dhcp_guarding").(bool); !got {
 		t.Fatalf("expected dhcp_guarding to be true in state, got false")
 	}
 }
@@ -80,7 +79,7 @@ func TestResourceNetworkSetResourceData_readsFirewallZoneID(t *testing.T) {
 		t.Fatalf("resourceNetworkSetResourceData returned diagnostics: %v", diags)
 	}
 
-	if got := d.Get("firewall_zone_id").(string); got != "zoneABC" {
+	if got, _ := d.Get("firewall_zone_id").(string); got != "zoneABC" {
 		t.Errorf("firewall_zone_id = %q, want %q", got, "zoneABC")
 	}
 }
@@ -294,7 +293,7 @@ func TestResourceNetworkGetResourceData_defaultGateway(t *testing.T) {
 
 	d := schema.TestResourceDataRaw(t, ResourceNetwork().Schema, raw)
 
-	req, err := resourceNetworkGetResourceData(d, nil)
+	req, err := resourceNetworkGetResourceData(d)
 	if err != nil {
 		t.Fatalf("resourceNetworkGetResourceData returned error: %s", err)
 	}
@@ -316,10 +315,10 @@ func TestResourceNetworkSetResourceData_defaultGateway(t *testing.T) {
 	if diags := resourceNetworkSetResourceData(resp, d, "default"); diags.HasError() {
 		t.Fatalf("resourceNetworkSetResourceData returned diagnostics: %v", diags)
 	}
-	if got := d.Get("dhcpd_gateway_enabled").(bool); !got {
+	if got, _ := d.Get("dhcpd_gateway_enabled").(bool); !got {
 		t.Fatalf("expected dhcpd_gateway_enabled to be true in state, got false")
 	}
-	if got := d.Get("dhcpd_gateway").(string); got != "10.0.0.1" {
+	if got, _ := d.Get("dhcpd_gateway").(string); got != "10.0.0.1" {
 		t.Fatalf("expected dhcpd_gateway to be %q in state, got %q", "10.0.0.1", got)
 	}
 }

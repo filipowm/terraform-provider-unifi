@@ -128,6 +128,7 @@ func ProviderIfSet(conditionPath path.Expression, validators ...provider.ConfigV
 		providerValidators: validators,
 	}
 }
+
 func DatasourceIfSet(conditionPath path.Expression, validators ...datasource.ConfigValidator) IfValidator {
 	return IfValidator{
 		ifValidatorBase: ifValidatorBase{

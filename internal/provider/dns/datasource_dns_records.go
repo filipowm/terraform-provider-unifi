@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 )
 
 var (
@@ -23,7 +24,7 @@ type dnsRecordsDatasource struct {
 	client *base.Client
 }
 
-func NewDnsRecordsDatasource() datasource.DataSource {
+func NewDNSRecordsDatasource() datasource.DataSource {
 	return &dnsRecordsDatasource{}
 }
 

@@ -1,6 +1,9 @@
 package utils
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
 func MarkdownValueList[T any](strMapper func(T) string, values []T) string {
 	switch {
@@ -10,9 +13,11 @@ func MarkdownValueList[T any](strMapper func(T) string, values []T) string {
 		return "`" + strMapper(values[0]) + "`"
 	default:
 		s := ""
-		for i := 0; i < len(values)-1; i++ {
-			s += "`" + strMapper(values[i]) + "`, "
+		var sSb13 strings.Builder
+		for i := range len(values) - 1 {
+			sSb13.WriteString("`" + strMapper(values[i]) + "`, ")
 		}
+		s += sSb13.String()
 		s += " and `" + strMapper(values[len(values)-1]) + "`"
 		return s
 	}

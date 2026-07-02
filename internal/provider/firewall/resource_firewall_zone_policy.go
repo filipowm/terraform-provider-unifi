@@ -8,9 +8,6 @@ import (
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/go-unifi/unifi/features"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -27,6 +24,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 var (
@@ -129,7 +130,7 @@ func (m *FirewallPolicyTargetModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-func NewFirewallPolicyTargetModel(ipGroupId string, ips, networkIDs []string, matchOppositeIps, matchOppositeNetworks, matchOppositePorts bool, port, portGroupId, zoneId string) *FirewallPolicyTargetModel {
+func NewFirewallPolicyTargetModel(ctx context.Context, ipGroupID string, ips, networkIDs []string, matchOppositeIPs, matchOppositeNetworks, matchOppositePorts bool, port, portGroupID, zoneID string) *FirewallPolicyTargetModel {
 	diags := diag.Diagnostics{}
 	// go-unifi v1.9 models `port` as a string, because the controller API
 	// accepts port ranges and comma-separated lists (`8000-8010,9443`). The
@@ -144,27 +145,27 @@ func NewFirewallPolicyTargetModel(ipGroupId string, ips, networkIDs []string, ma
 		}
 	}
 	m := &FirewallPolicyTargetModel{
-		IPGroupID:             ut.StringOrNull(ipGroupId),
+		IPGroupID:             ut.StringOrNull(ipGroupID),
 		IPs:                   types.ListNull(types.StringType),
-		MatchOppositeIPs:      types.BoolValue(matchOppositeIps),
+		MatchOppositeIPs:      types.BoolValue(matchOppositeIPs),
 		MatchOppositeNetworks: types.BoolValue(matchOppositeNetworks),
 		MatchOppositePorts:    types.BoolValue(matchOppositePorts),
 		NetworkIDs:            types.ListNull(types.StringType),
 		Port:                  ut.Int32OrNull(portNum),
-		PortGroupID:           ut.StringOrNull(portGroupId),
-		ZoneID:                types.StringValue(zoneId),
+		PortGroupID:           ut.StringOrNull(portGroupID),
+		ZoneID:                types.StringValue(zoneID),
 	}
 
 	// Handle IPs list
 	if len(ips) > 0 {
-		lIps, d := types.ListValueFrom(context.Background(), types.StringType, ips)
+		lIps, d := types.ListValueFrom(ctx, types.StringType, ips)
 		diags.Append(d...)
 		m.IPs = lIps
 	}
 
 	// Handle Network IDs list
 	if len(networkIDs) > 0 {
-		lNetworkIDs, d := types.ListValueFrom(context.Background(), types.StringType, networkIDs)
+		lNetworkIDs, d := types.ListValueFrom(ctx, types.StringType, networkIDs)
 		diags.Append(d...)
 		m.NetworkIDs = lNetworkIDs
 	}
@@ -172,7 +173,7 @@ func NewFirewallPolicyTargetModel(ipGroupId string, ips, networkIDs []string, ma
 	return m
 }
 
-// FirewallZonePolicySourceModel represents the source configuration for a firewall zone policy
+// FirewallZonePolicySourceModel represents the source configuration for a firewall zone policy.
 type FirewallZonePolicySourceModel struct {
 	FirewallPolicyTargetModel
 	ClientMACs types.List   `tfsdk:"client_macs"`
@@ -194,7 +195,7 @@ func (m *FirewallZonePolicySourceModel) AttributeTypes() map[string]attr.Type {
 	return attrs
 }
 
-// FirewallZonePolicyDestinationModel represents the destination configuration for a firewall zone policy
+// FirewallZonePolicyDestinationModel represents the destination configuration for a firewall zone policy.
 type FirewallZonePolicyDestinationModel struct {
 	FirewallPolicyTargetModel
 	AppCategoryIDs types.List `tfsdk:"app_category_ids"`
@@ -222,7 +223,7 @@ func (m *FirewallZonePolicyDestinationModel) AttributeTypes() map[string]attr.Ty
 	return attrs
 }
 
-// FirewallZonePolicyScheduleModel represents the schedule configuration for a firewall zone policy
+// FirewallZonePolicyScheduleModel represents the schedule configuration for a firewall zone policy.
 type FirewallZonePolicyScheduleModel struct {
 	Date         types.String `tfsdk:"date"`
 	DateEnd      types.String `tfsdk:"date_end"`
@@ -249,7 +250,7 @@ func (m *FirewallZonePolicyScheduleModel) AttributeTypes() map[string]attr.Type 
 	}
 }
 
-// FirewallZonePolicyModel represents the data model for firewall zone policies in the UniFi controller
+// FirewallZonePolicyModel represents the data model for firewall zone policies in the UniFi controller.
 type FirewallZonePolicyModel struct {
 	base.Model
 	Action                 types.String `tfsdk:"action"`
@@ -328,13 +329,13 @@ func (m *FirewallZonePolicyModel) AsUnifiModel(ctx context.Context) (interface{}
 		}
 
 		if len(source.ClientMACs.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(source.ClientMACs, &unifiSource.ClientMACs)...)
+			diags.Append(ut.ListElementsAs(ctx, source.ClientMACs, &unifiSource.ClientMACs)...)
 			unifiSource.MatchingTarget = "CLIENT"
 			unifiSource.MatchingTargetType = "SPECIFIC"
 		}
 
 		if len(source.IPs.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(source.IPs, &unifiSource.IPs)...)
+			diags.Append(ut.ListElementsAs(ctx, source.IPs, &unifiSource.IPs)...)
 			unifiSource.MatchingTarget = "IP"
 			unifiSource.MatchingTargetType = "SPECIFIC"
 		}
@@ -344,12 +345,12 @@ func (m *FirewallZonePolicyModel) AsUnifiModel(ctx context.Context) (interface{}
 			unifiSource.MatchingTargetType = "OBJECT"
 		}
 		if len(source.MACs.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(source.MACs, &unifiSource.MACs)...)
+			diags.Append(ut.ListElementsAs(ctx, source.MACs, &unifiSource.MACs)...)
 			unifiSource.MatchingTarget = "MAC"
 			unifiSource.MatchingTargetType = "SPECIFIC"
 		}
 		if len(source.NetworkIDs.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(source.NetworkIDs, &unifiSource.NetworkIDs)...)
+			diags.Append(ut.ListElementsAs(ctx, source.NetworkIDs, &unifiSource.NetworkIDs)...)
 			unifiSource.MatchingTarget = "NETWORK"
 			unifiSource.MatchingTargetType = "SPECIFIC"
 		}
@@ -381,17 +382,17 @@ func (m *FirewallZonePolicyModel) AsUnifiModel(ctx context.Context) (interface{}
 		}
 
 		if len(destination.AppCategoryIDs.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(destination.AppCategoryIDs, &unifiDestination.AppCategoryIDs)...)
+			diags.Append(ut.ListElementsAs(ctx, destination.AppCategoryIDs, &unifiDestination.AppCategoryIDs)...)
 			unifiDestination.MatchingTarget = "APP_CATEGORY"
 		}
 
 		if len(destination.AppIDs.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(destination.AppIDs, &unifiDestination.AppIDs)...)
+			diags.Append(ut.ListElementsAs(ctx, destination.AppIDs, &unifiDestination.AppIDs)...)
 			unifiDestination.MatchingTarget = "APP"
 		}
 
 		if len(destination.IPs.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(destination.IPs, &unifiDestination.IPs)...)
+			diags.Append(ut.ListElementsAs(ctx, destination.IPs, &unifiDestination.IPs)...)
 			unifiDestination.MatchingTarget = "IP"
 			unifiDestination.MatchingTargetType = "SPECIFIC"
 		}
@@ -401,17 +402,17 @@ func (m *FirewallZonePolicyModel) AsUnifiModel(ctx context.Context) (interface{}
 			unifiDestination.MatchingTargetType = "OBJECT"
 		}
 		if len(destination.NetworkIDs.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(destination.NetworkIDs, &unifiDestination.NetworkIDs)...)
+			diags.Append(ut.ListElementsAs(ctx, destination.NetworkIDs, &unifiDestination.NetworkIDs)...)
 			unifiDestination.MatchingTarget = "NETWORK"
 			unifiDestination.MatchingTargetType = "SPECIFIC"
 		}
 		if len(destination.Regions.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(destination.Regions, &unifiDestination.Regions)...)
+			diags.Append(ut.ListElementsAs(ctx, destination.Regions, &unifiDestination.Regions)...)
 			unifiDestination.MatchingTarget = "REGION"
 			unifiDestination.MatchingTargetType = "SPECIFIC"
 		}
 		if len(destination.WebDomains.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(destination.WebDomains, &unifiDestination.WebDomains)...)
+			diags.Append(ut.ListElementsAs(ctx, destination.WebDomains, &unifiDestination.WebDomains)...)
 			unifiDestination.MatchingTarget = "WEB"
 			unifiDestination.MatchingTargetType = "SPECIFIC"
 		}
@@ -433,7 +434,7 @@ func (m *FirewallZonePolicyModel) AsUnifiModel(ctx context.Context) (interface{}
 			TimeRangeStart: schedule.TimeFrom.ValueString(),
 		}
 		if len(schedule.RepeatOnDays.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(schedule.RepeatOnDays, &unifiSchedule.RepeatOnDays)...)
+			diags.Append(ut.ListElementsAs(ctx, schedule.RepeatOnDays, &unifiSchedule.RepeatOnDays)...)
 		}
 		model.Schedule = *unifiSchedule
 	}
@@ -445,7 +446,7 @@ func (m *FirewallZonePolicyModel) mergeSource(ctx context.Context, model *unifi.
 	diags := diag.Diagnostics{}
 
 	sourceModel := &FirewallZonePolicySourceModel{
-		FirewallPolicyTargetModel: *NewFirewallPolicyTargetModel(model.Source.IPGroupID, model.Source.IPs,
+		FirewallPolicyTargetModel: *NewFirewallPolicyTargetModel(ctx, model.Source.IPGroupID, model.Source.IPs,
 			model.Source.NetworkIDs, model.Source.MatchOppositeIPs,
 			model.Source.MatchOppositeNetworks, model.Source.MatchOppositePorts,
 			model.Source.Port, model.Source.PortGroupID, model.Source.ZoneID),
@@ -486,7 +487,7 @@ func (m *FirewallZonePolicyModel) mergeSource(ctx context.Context, model *unifi.
 func (m *FirewallZonePolicyModel) mergeDestination(ctx context.Context, model *unifi.FirewallZonePolicy) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 	destModel := &FirewallZonePolicyDestinationModel{
-		FirewallPolicyTargetModel: *NewFirewallPolicyTargetModel(model.Destination.IPGroupID, model.Destination.IPs,
+		FirewallPolicyTargetModel: *NewFirewallPolicyTargetModel(ctx, model.Destination.IPGroupID, model.Destination.IPs,
 			model.Destination.NetworkIDs, model.Destination.MatchOppositeIPs,
 			model.Destination.MatchOppositeNetworks, model.Destination.MatchOppositePorts,
 			model.Destination.Port, model.Destination.PortGroupID, model.Destination.ZoneID),
@@ -622,7 +623,7 @@ func (r *firewallZonePolicyResource) ModifyPlan(ctx context.Context, req resourc
 	resp.Diagnostics.Append(r.RequireFeaturesEnabled(ctx, site, features.ZoneBasedFirewall, features.ZoneBasedFirewallMigration)...)
 }
 
-// NewFirewallZonePolicyResource creates a new instance of the firewall zone policy resource
+// NewFirewallZonePolicyResource creates a new instance of the firewall zone policy resource.
 func NewFirewallZonePolicyResource() resource.Resource {
 	return &firewallZonePolicyResource{
 		GenericResource: base.NewGenericResource(
@@ -633,10 +634,18 @@ func NewFirewallZonePolicyResource() resource.Resource {
 					return client.GetFirewallZonePolicy(ctx, site, id)
 				},
 				Create: func(ctx context.Context, client *base.Client, site string, model interface{}) (interface{}, error) {
-					return client.CreateFirewallZonePolicy(ctx, site, model.(*unifi.FirewallZonePolicy))
+					m, ok := model.(*unifi.FirewallZonePolicy)
+					if !ok {
+						return nil, fmt.Errorf("unexpected model type: %T", model)
+					}
+					return client.CreateFirewallZonePolicy(ctx, site, m)
 				},
 				Update: func(ctx context.Context, client *base.Client, site string, model interface{}) (interface{}, error) {
-					return client.UpdateFirewallZonePolicy(ctx, site, model.(*unifi.FirewallZonePolicy))
+					m, ok := model.(*unifi.FirewallZonePolicy)
+					if !ok {
+						return nil, fmt.Errorf("unexpected model type: %T", model)
+					}
+					return client.UpdateFirewallZonePolicy(ctx, site, m)
 				},
 				Delete: func(ctx context.Context, client *base.Client, site, id string) error {
 					return client.DeleteFirewallZonePolicy(ctx, site, id)
@@ -646,7 +655,7 @@ func NewFirewallZonePolicyResource() resource.Resource {
 	}
 }
 
-// Schema defines the schema for the resource
+// Schema defines the schema for the resource.
 func (r *firewallZonePolicyResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The `unifi_firewall_zone_policy` resource manages firewall policies between zones in the UniFi controller. " +

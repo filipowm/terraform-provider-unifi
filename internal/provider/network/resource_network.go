@@ -11,14 +11,15 @@ import (
 	"strings"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"golang.org/x/crypto/curve25519"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 )
 
 var (
@@ -45,13 +46,13 @@ var (
 	// middle branches as unanchored substring matches (e.g. "xstaticy" would pass). The grouped,
 	// fully anchored form rejects anything that is not exactly one of the four accepted values.
 	ipV6InterfaceTypeRegexp   = regexp.MustCompile("^(none|pd|static|single_network)$")
-	validateIpV6InterfaceType = validation.StringMatch(ipV6InterfaceTypeRegexp, "invalid IPv6 interface type")
+	validateIPV6InterfaceType = validation.StringMatch(ipV6InterfaceTypeRegexp, "invalid IPv6 interface type")
 
 	// This is a slightly larger range than the UI, it includes some reserved ones, so could be tightened up.
 	validateVLANID = validation.IntBetween(0, 4096)
 
 	ipV6RAPriorityRegexp   = regexp.MustCompile("high|medium|low")
-	validateIpV6RAPriority = validation.StringMatch(ipV6RAPriorityRegexp, "invalid IPv6 RA priority")
+	validateIPV6RAPriority = validation.StringMatch(ipV6RAPriorityRegexp, "invalid IPv6 RA priority")
 )
 
 func ResourceNetwork() *schema.Resource {
@@ -446,7 +447,7 @@ func ResourceNetwork() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Default:      "none",
-				ValidateFunc: validateIpV6InterfaceType,
+				ValidateFunc: validateIPV6InterfaceType,
 			},
 			"ipv6_static_subnet": {
 				Description: "The static IPv6 subnet in CIDR notation (e.g., '2001:db8::/64') when using static IPv6.\n" +
@@ -576,7 +577,7 @@ func ResourceNetwork() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Computed:     true,
-				ValidateFunc: validateIpV6RAPriority,
+				ValidateFunc: validateIPV6RAPriority,
 			},
 			"ipv6_ra_valid_lifetime": {
 				Description: "The valid lifetime (in seconds) for IPv6 addresses in Router Advertisements.\n" +
@@ -828,7 +829,10 @@ func ResourceNetwork() *schema.Resource {
 }
 
 func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	// Create-only: mint the gateway's WireGuard private key when the user omits it.
 	// The controller requires it in the create payload (it generates none) and never
@@ -836,7 +840,9 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	// builder avoids silently rotating an imported network's key on a later update
 	// (after import the key is empty in state; on update omitempty drops it and the
 	// controller keeps the one it already has).
-	if d.Get("vpn_type").(string) == "wireguard-client" && d.Get("x_wireguard_private_key").(string) == "" {
+	vpnType, _ := d.Get("vpn_type").(string)
+	privateKey, _ := d.Get("x_wireguard_private_key").(string)
+	if vpnType == "wireguard-client" && privateKey == "" {
 		key, err := generateWireguardPrivateKey()
 		if err != nil {
 			return diag.FromErr(fmt.Errorf("unable to generate WireGuard private key: %w", err))
@@ -846,12 +852,12 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 		}
 	}
 
-	req, err := resourceNetworkGetResourceData(d, meta)
+	req, err := resourceNetworkGetResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -866,27 +872,30 @@ func resourceNetworkCreate(ctx context.Context, d *schema.ResourceData, meta int
 	return resourceNetworkSetResourceData(resp, d, site)
 }
 
-func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*unifi.Network, error) {
-	// c := meta.(*provider.Client)
-
-	vlan := d.Get("vlan_id").(int)
-	dhcpDNS, err := utils.ListToStringSlice(d.Get("dhcp_dns").([]interface{}))
+func resourceNetworkGetResourceData(d *schema.ResourceData) (*unifi.Network, error) {
+	vlan, _ := d.Get("vlan_id").(int)
+	dhcpDNSRaw, _ := d.Get("dhcp_dns").([]interface{})
+	dhcpDNS, err := utils.ListToStringSlice(dhcpDNSRaw)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert dhcp_dns to string slice: %w", err)
 	}
-	dhcpGuardServers, err := utils.ListToStringSlice(d.Get("dhcp_guarding_trusted_servers").([]interface{}))
+	dhcpGuardServersRaw, _ := d.Get("dhcp_guarding_trusted_servers").([]interface{})
+	dhcpGuardServers, err := utils.ListToStringSlice(dhcpGuardServersRaw)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert dhcp_guarding_trusted_servers to string slice: %w", err)
 	}
-	dhcpV6DNS, err := utils.ListToStringSlice(d.Get("dhcp_v6_dns").([]interface{}))
+	dhcpV6DNSRaw, _ := d.Get("dhcp_v6_dns").([]interface{})
+	dhcpV6DNS, err := utils.ListToStringSlice(dhcpV6DNSRaw)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert dhcp_v6_dns to string slice: %w", err)
 	}
-	wanDNS, err := utils.ListToStringSlice(d.Get("wan_dns").([]interface{}))
+	wanDNSRaw, _ := d.Get("wan_dns").([]interface{})
+	wanDNS, err := utils.ListToStringSlice(wanDNSRaw)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert wan_dns to string slice: %w", err)
 	}
-	uidVPNCustomRouting, err := utils.ListToStringSlice(d.Get("uid_vpn_custom_routing").([]interface{}))
+	uidVPNCustomRoutingRaw, _ := d.Get("uid_vpn_custom_routing").([]interface{})
+	uidVPNCustomRouting, err := utils.ListToStringSlice(uidVPNCustomRoutingRaw)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert uid_vpn_custom_routing to string slice: %w", err)
 	}
@@ -894,49 +903,28 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 	// values stay consistent (matches the diff suppression on the schema).
 	uidVPNCustomRouting = utils.CidrListZeroBased(uidVPNCustomRouting)
 
-	vpnType := d.Get("vpn_type").(string)
+	vpnType, _ := d.Get("vpn_type").(string)
 
 	// For a LAN the `subnet` is the gateway address, so CidrOneBased applies the +1
 	// host offset. A vpn-client's subnet is the tunnel interface address; CidrZeroBased
 	// canonicalizes it to its network address (host bits drop below /32, which the
 	// CustomizeDiff rejects), so the /32 host address round-trips intact.
-	subnet := d.Get("subnet").(string)
+	subnet, _ := d.Get("subnet").(string)
+	purpose, _ := d.Get("purpose").(string)
 	ipSubnet := utils.CidrOneBased(subnet)
-	if d.Get("purpose").(string) == "vpn-client" {
+	if purpose == "vpn-client" {
 		ipSubnet = utils.CidrZeroBased(subnet)
 	}
 
 	n := &unifi.Network{
-		Name:              d.Get("name").(string),
-		Purpose:           d.Get("purpose").(string),
-		VLAN:              vlan,
-		IPSubnet:          ipSubnet,
-		NetworkGroup:      d.Get("network_group").(string),
-		DHCPDStart:        d.Get("dhcp_start").(string),
-		DHCPDStop:         d.Get("dhcp_stop").(string),
-		DHCPDEnabled:      d.Get("dhcp_enabled").(bool),
-		DHCPDLeaseTime:    d.Get("dhcp_lease").(int),
-		DHCPDBootEnabled:  d.Get("dhcpd_boot_enabled").(bool),
-		DHCPDBootServer:   d.Get("dhcpd_boot_server").(string),
-		DHCPDBootFilename: d.Get("dhcpd_boot_filename").(string),
-		// DHCP default-gateway override (UI "Default Gateway" Auto/Manual). Both
-		// fields lack omitempty so they serialize on every PUT; Optional+Computed
-		// means an omitted attribute re-sends the controller's read-back value
-		// rather than clobbering a UI-set gateway.
-		DHCPDGatewayEnabled: d.Get("dhcpd_gateway_enabled").(bool),
-		DHCPDGateway:        d.Get("dhcpd_gateway").(string),
-		DHCPRelayEnabled:    d.Get("dhcp_relay_enabled").(bool),
-		DHCPguardEnabled:    d.Get("dhcp_guarding").(bool),
+		VLAN:     vlan,
+		IPSubnet: ipSubnet,
+
 		// Trusted DHCP servers for DHCP Guarding. Same hackish positional fan-out as
 		// DHCPDDNS{x}; an empty list maps to "" entries. ¯\_(ツ)_/¯
-		DHCPDIP1:       append(dhcpGuardServers, "")[0],
-		DHCPDIP2:       append(dhcpGuardServers, "", "")[1],
-		DHCPDIP3:       append(dhcpGuardServers, "", "", "")[2],
-		DomainName:     d.Get("domain_name").(string),
-		IGMPSnooping:   d.Get("igmp_snooping").(bool),
-		UpnpLanEnabled: d.Get("upnp_lan_enabled").(bool),
-		MdnsEnabled:    d.Get("multicast_dns").(bool),
-		Enabled:        d.Get("enabled").(bool),
+		DHCPDIP1: append(dhcpGuardServers, "")[0],
+		DHCPDIP2: append(dhcpGuardServers, "", "")[1],
+		DHCPDIP3: append(dhcpGuardServers, "", "", "")[2],
 
 		DHCPDDNSEnabled: len(dhcpDNS) > 0,
 		// this is kinda hacky but ¯\_(ツ)_/¯
@@ -953,62 +941,88 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 		DHCPDV6DNS3: append(dhcpV6DNS, "", "", "")[2],
 		DHCPDV6DNS4: append(dhcpV6DNS, "", "", "", "")[3],
 
-		DHCPDV6DNSAuto:   d.Get("dhcp_v6_dns_auto").(bool),
-		DHCPDV6Enabled:   d.Get("dhcp_v6_enabled").(bool),
-		DHCPDV6LeaseTime: d.Get("dhcp_v6_lease").(int),
-		DHCPDV6Start:     d.Get("dhcp_v6_start").(string),
-		DHCPDV6Stop:      d.Get("dhcp_v6_stop").(string),
-
-		IPV6InterfaceType:       d.Get("ipv6_interface_type").(string),
-		IPV6Subnet:              d.Get("ipv6_static_subnet").(string),
-		IPV6PDInterface:         d.Get("ipv6_pd_interface").(string),
-		IPV6PDPrefixid:          d.Get("ipv6_pd_prefixid").(string),
-		IPV6PDStart:             d.Get("ipv6_pd_start").(string),
-		IPV6PDStop:              d.Get("ipv6_pd_stop").(string),
-		IPV6RaEnabled:           d.Get("ipv6_ra_enable").(bool),
-		IPV6RaPreferredLifetime: d.Get("ipv6_ra_preferred_lifetime").(int),
-		IPV6RaPriority:          d.Get("ipv6_ra_priority").(string),
-		IPV6RaValidLifetime:     d.Get("ipv6_ra_valid_lifetime").(int),
-
-		InternetAccessEnabled:   d.Get("internet_access_enabled").(bool),
-		NetworkIsolationEnabled: d.Get("network_isolation_enabled").(bool),
-
-		WANIP:           d.Get("wan_ip").(string),
-		WANType:         d.Get("wan_type").(string),
-		WANNetmask:      d.Get("wan_netmask").(string),
-		WANGateway:      d.Get("wan_gateway").(string),
-		WANNetworkGroup: d.Get("wan_networkgroup").(string),
-		WANEgressQOS:    d.Get("wan_egress_qos").(int),
-		WANUsername:     d.Get("wan_username").(string),
-		XWANPassword:    d.Get("x_wan_password").(string),
-
-		WANTypeV6:       d.Get("wan_type_v6").(string),
-		WANDHCPv6PDSize: d.Get("wan_dhcp_v6_pd_size").(int),
-		WANIPV6:         d.Get("wan_ipv6").(string),
-		WANGatewayV6:    d.Get("wan_gateway_v6").(string),
-		WANPrefixlen:    d.Get("wan_prefixlen").(int),
-
 		// this is kinda hacky but ¯\_(ツ)_/¯
 		WANDNS1: append(wanDNS, "")[0],
 		WANDNS2: append(wanDNS, "", "")[1],
 		WANDNS3: append(wanDNS, "", "", "")[2],
 		WANDNS4: append(wanDNS, "", "", "", "")[3],
 
-		// WireGuard VPN client (purpose = "vpn-client", vpn_type = "wireguard-client").
-		// wireguard_public_key is computed (the provider derives it on read), so it is not sent here.
-		VPNType:                            vpnType,
-		WireguardInterface:                 d.Get("wireguard_interface").(string),
-		WireguardClientMode:                d.Get("wireguard_client_mode").(string),
-		WireguardClientPeerIP:              d.Get("wireguard_client_peer_ip").(string),
-		WireguardClientPeerPort:            d.Get("wireguard_client_peer_port").(int),
-		WireguardClientPeerPublicKey:       d.Get("wireguard_client_peer_public_key").(string),
-		WireguardClientPresharedKey:        d.Get("wireguard_client_preshared_key").(string),
-		WireguardClientPresharedKeyEnabled: d.Get("wireguard_client_preshared_key_enabled").(bool),
-		XWireguardPrivateKey:               d.Get("x_wireguard_private_key").(string),
-		VPNClientDefaultRoute:              d.Get("vpn_client_default_route").(bool),
-		VPNClientPullDNS:                   d.Get("vpn_client_pull_dns").(bool),
-		UidVPNCustomRouting:                uidVPNCustomRouting,
+		VPNType:             vpnType,
+		UidVPNCustomRouting: uidVPNCustomRouting,
 	}
+
+	n.Name, _ = d.Get("name").(string)
+	n.Purpose, _ = d.Get("purpose").(string)
+	n.NetworkGroup, _ = d.Get("network_group").(string)
+	n.DHCPDStart, _ = d.Get("dhcp_start").(string)
+	n.DHCPDStop, _ = d.Get("dhcp_stop").(string)
+	n.DHCPDEnabled, _ = d.Get("dhcp_enabled").(bool)
+	n.DHCPDLeaseTime, _ = d.Get("dhcp_lease").(int)
+	n.DHCPDBootEnabled, _ = d.Get("dhcpd_boot_enabled").(bool)
+	n.DHCPDBootServer, _ = d.Get("dhcpd_boot_server").(string)
+	n.DHCPDBootFilename, _ = d.Get("dhcpd_boot_filename").(string)
+
+	// DHCP default-gateway override (UI "Default Gateway" Auto/Manual). Both
+	// fields lack omitempty so they serialize on every PUT; Optional+Computed
+	// means an omitted attribute re-sends the controller's read-back value
+	// rather than clobbering a UI-set gateway.
+	n.DHCPDGatewayEnabled, _ = d.Get("dhcpd_gateway_enabled").(bool)
+	n.DHCPDGateway, _ = d.Get("dhcpd_gateway").(string)
+	n.DHCPRelayEnabled, _ = d.Get("dhcp_relay_enabled").(bool)
+	n.DHCPguardEnabled, _ = d.Get("dhcp_guarding").(bool)
+	n.DomainName, _ = d.Get("domain_name").(string)
+	n.IGMPSnooping, _ = d.Get("igmp_snooping").(bool)
+	n.UpnpLanEnabled, _ = d.Get("upnp_lan_enabled").(bool)
+	n.MdnsEnabled, _ = d.Get("multicast_dns").(bool)
+	n.Enabled, _ = d.Get("enabled").(bool)
+
+	n.DHCPDV6DNSAuto, _ = d.Get("dhcp_v6_dns_auto").(bool)
+	n.DHCPDV6Enabled, _ = d.Get("dhcp_v6_enabled").(bool)
+	n.DHCPDV6LeaseTime, _ = d.Get("dhcp_v6_lease").(int)
+	n.DHCPDV6Start, _ = d.Get("dhcp_v6_start").(string)
+	n.DHCPDV6Stop, _ = d.Get("dhcp_v6_stop").(string)
+
+	n.IPV6InterfaceType, _ = d.Get("ipv6_interface_type").(string)
+	n.IPV6Subnet, _ = d.Get("ipv6_static_subnet").(string)
+	n.IPV6PDInterface, _ = d.Get("ipv6_pd_interface").(string)
+	n.IPV6PDPrefixid, _ = d.Get("ipv6_pd_prefixid").(string)
+	n.IPV6PDStart, _ = d.Get("ipv6_pd_start").(string)
+	n.IPV6PDStop, _ = d.Get("ipv6_pd_stop").(string)
+	n.IPV6RaEnabled, _ = d.Get("ipv6_ra_enable").(bool)
+	n.IPV6RaPreferredLifetime, _ = d.Get("ipv6_ra_preferred_lifetime").(int)
+	n.IPV6RaPriority, _ = d.Get("ipv6_ra_priority").(string)
+	n.IPV6RaValidLifetime, _ = d.Get("ipv6_ra_valid_lifetime").(int)
+
+	n.InternetAccessEnabled, _ = d.Get("internet_access_enabled").(bool)
+	n.NetworkIsolationEnabled, _ = d.Get("network_isolation_enabled").(bool)
+
+	n.WANIP, _ = d.Get("wan_ip").(string)
+	n.WANType, _ = d.Get("wan_type").(string)
+	n.WANNetmask, _ = d.Get("wan_netmask").(string)
+	n.WANGateway, _ = d.Get("wan_gateway").(string)
+	n.WANNetworkGroup, _ = d.Get("wan_networkgroup").(string)
+	n.WANEgressQOS, _ = d.Get("wan_egress_qos").(int)
+	n.WANUsername, _ = d.Get("wan_username").(string)
+	n.XWANPassword, _ = d.Get("x_wan_password").(string)
+
+	n.WANTypeV6, _ = d.Get("wan_type_v6").(string)
+	n.WANDHCPv6PDSize, _ = d.Get("wan_dhcp_v6_pd_size").(int)
+	n.WANIPV6, _ = d.Get("wan_ipv6").(string)
+	n.WANGatewayV6, _ = d.Get("wan_gateway_v6").(string)
+	n.WANPrefixlen, _ = d.Get("wan_prefixlen").(int)
+
+	// WireGuard VPN client (purpose = "vpn-client", vpn_type = "wireguard-client").
+	// wireguard_public_key is computed (the provider derives it on read), so it is not sent here.
+	n.WireguardInterface, _ = d.Get("wireguard_interface").(string)
+	n.WireguardClientMode, _ = d.Get("wireguard_client_mode").(string)
+	n.WireguardClientPeerIP, _ = d.Get("wireguard_client_peer_ip").(string)
+	n.WireguardClientPeerPort, _ = d.Get("wireguard_client_peer_port").(int)
+	n.WireguardClientPeerPublicKey, _ = d.Get("wireguard_client_peer_public_key").(string)
+	n.WireguardClientPresharedKey, _ = d.Get("wireguard_client_preshared_key").(string)
+	n.WireguardClientPresharedKeyEnabled, _ = d.Get("wireguard_client_preshared_key_enabled").(bool)
+	n.XWireguardPrivateKey, _ = d.Get("x_wireguard_private_key").(string)
+	n.VPNClientDefaultRoute, _ = d.Get("vpn_client_default_route").(bool)
+	n.VPNClientPullDNS, _ = d.Get("vpn_client_pull_dns").(bool)
 
 	// Zone-Based Firewall (UniFi OS 9.x) zone membership. Only send firewall_zone_id
 	// when the user explicitly configured it. If it is omitted (null/unknown) leave it
@@ -1019,7 +1033,7 @@ func resourceNetworkGetResourceData(d *schema.ResourceData, meta interface{}) (*
 	// zone. utils.IsRawConfigSet inspects d.GetRawConfig() and treats null and empty-string as
 	// "not set" (the StringIsNotEmpty validator already rejects an explicit "").
 	if raw := d.GetRawConfig(); utils.IsRawConfigSet(raw, "firewall_zone_id") {
-		n.FirewallZoneID = d.Get("firewall_zone_id").(string)
+		n.FirewallZoneID, _ = d.Get("firewall_zone_id").(string)
 	}
 
 	return n, nil
@@ -1043,7 +1057,8 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 		"wireguard_client_peer_port", "uid_vpn_custom_routing",
 	}
 
-	if d.Get("purpose").(string) != "vpn-client" {
+	purpose, _ := d.Get("purpose").(string)
+	if purpose != "vpn-client" {
 		for _, k := range vpnFields {
 			if utils.IsRawConfigSet(raw, k) {
 				return fmt.Errorf("%q is only valid when purpose = %q", k, "vpn-client")
@@ -1052,7 +1067,8 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 		return nil
 	}
 
-	if d.Get("vpn_type").(string) != "wireguard-client" {
+	vpnType, _ := d.Get("vpn_type").(string)
+	if vpnType != "wireguard-client" {
 		return fmt.Errorf("%q is required when purpose = %q (only %q is supported)", "vpn_type", "vpn-client", "wireguard-client")
 	}
 	if !utils.IsRawConfigSet(raw, "subnet") {
@@ -1060,7 +1076,7 @@ func customizeNetworkVPNClient(_ context.Context, d *schema.ResourceDiff, _ inte
 	}
 	// The tunnel address must be a /32 host address: CidrZeroBased zeroes the host
 	// bits below /32, silently corrupting a shorter prefix. Skip when unknown.
-	if subnet := d.Get("subnet").(string); subnet != "" {
+	if subnet, _ := d.Get("subnet").(string); subnet != "" {
 		ip, ipNet, err := net.ParseCIDR(subnet)
 		if err != nil || ip.To4() == nil {
 			return fmt.Errorf("%q must be an IPv4 CIDR for a wireguard-client network", "subnet")
@@ -1282,93 +1298,16 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 		dhcpV6DNS = append(dhcpV6DNS, dns)
 	}
 
-	d.Set("site", site)
-	d.Set("name", resp.Name)
-	d.Set("purpose", resp.Purpose)
-	d.Set("vlan_id", vlan)
-	d.Set("subnet", utils.CidrZeroBased(resp.IPSubnet))
-
 	networkGroup := resp.NetworkGroup
 	if resp.Purpose == "wan" && networkGroup == "" {
 		networkGroup = "LAN"
 	}
-	d.Set("network_group", networkGroup)
-
-	// Always read back the firewall zone so drift is detectable and imports round-trip.
-	d.Set("firewall_zone_id", resp.FirewallZoneID)
-
-	d.Set("dhcp_dns", dhcpDNS)
-	d.Set("dhcp_enabled", resp.DHCPDEnabled)
-	d.Set("dhcp_lease", dhcpLease)
-	d.Set("dhcp_relay_enabled", resp.DHCPRelayEnabled)
-	d.Set("dhcp_guarding", resp.DHCPguardEnabled)
-	d.Set("dhcp_guarding_trusted_servers", dhcpGuardServers)
-	d.Set("dhcp_start", resp.DHCPDStart)
-	d.Set("dhcp_stop", resp.DHCPDStop)
-	d.Set("dhcp_v6_dns_auto", resp.DHCPDV6DNSAuto)
-	d.Set("dhcp_v6_dns", dhcpV6DNS)
-	d.Set("dhcp_v6_enabled", resp.DHCPDV6Enabled)
-	d.Set("dhcp_v6_lease", resp.DHCPDV6LeaseTime)
-	d.Set("dhcp_v6_start", resp.DHCPDV6Start)
-	d.Set("dhcp_v6_stop", resp.DHCPDV6Stop)
-	d.Set("dhcpd_boot_enabled", resp.DHCPDBootEnabled)
-	d.Set("dhcpd_boot_filename", resp.DHCPDBootFilename)
-	d.Set("dhcpd_boot_server", resp.DHCPDBootServer)
-	d.Set("dhcpd_gateway_enabled", resp.DHCPDGatewayEnabled)
-	d.Set("dhcpd_gateway", resp.DHCPDGateway)
-	d.Set("domain_name", resp.DomainName)
-	d.Set("enabled", resp.Enabled)
-	d.Set("igmp_snooping", resp.IGMPSnooping)
-	d.Set("upnp_lan_enabled", resp.UpnpLanEnabled)
-	d.Set("internet_access_enabled", resp.InternetAccessEnabled)
-	d.Set("network_isolation_enabled", resp.NetworkIsolationEnabled)
 
 	ipv6InterfaceType := resp.IPV6InterfaceType
 	if resp.Purpose == "wan" && ipv6InterfaceType == "" {
 		ipv6InterfaceType = "none"
 	}
-	d.Set("ipv6_interface_type", ipv6InterfaceType)
-	d.Set("ipv6_pd_interface", resp.IPV6PDInterface)
-	d.Set("ipv6_pd_prefixid", resp.IPV6PDPrefixid)
-	d.Set("ipv6_pd_start", resp.IPV6PDStart)
-	d.Set("ipv6_pd_stop", resp.IPV6PDStop)
-	d.Set("ipv6_ra_enable", resp.IPV6RaEnabled)
-	d.Set("ipv6_ra_preferred_lifetime", resp.IPV6RaPreferredLifetime)
-	d.Set("ipv6_ra_priority", resp.IPV6RaPriority)
-	d.Set("ipv6_ra_valid_lifetime", resp.IPV6RaValidLifetime)
-	d.Set("ipv6_static_subnet", resp.IPV6Subnet)
-	d.Set("multicast_dns", resp.MdnsEnabled)
-	d.Set("wan_dhcp_v6_pd_size", resp.WANDHCPv6PDSize)
-	d.Set("wan_dns", wanDNS)
-	d.Set("wan_egress_qos", resp.WANEgressQOS)
-	d.Set("wan_gateway_v6", resp.WANGatewayV6)
-	d.Set("wan_gateway", wanGateway)
-	d.Set("wan_ip", wanIP)
-	d.Set("wan_ipv6", resp.WANIPV6)
-	d.Set("wan_netmask", wanNetmask)
-	d.Set("wan_networkgroup", resp.WANNetworkGroup)
-	d.Set("wan_prefixlen", resp.WANPrefixlen)
-	d.Set("wan_type_v6", resp.WANTypeV6)
-	d.Set("wan_type", wanType)
-	d.Set("wan_username", resp.WANUsername)
-	d.Set("x_wan_password", resp.XWANPassword)
 
-	d.Set("vpn_type", resp.VPNType)
-	d.Set("wireguard_interface", resp.WireguardInterface)
-	d.Set("wireguard_client_mode", resp.WireguardClientMode)
-	d.Set("wireguard_client_peer_ip", resp.WireguardClientPeerIP)
-	d.Set("wireguard_client_peer_port", resp.WireguardClientPeerPort)
-	d.Set("wireguard_client_peer_public_key", resp.WireguardClientPeerPublicKey)
-	// Write-only secrets: the controller may omit these on read. Only overwrite state when a
-	// non-empty value is returned, otherwise the configured/generated secret would be blanked
-	// and the resource would drift on every refresh.
-	if resp.WireguardClientPresharedKey != "" {
-		d.Set("wireguard_client_preshared_key", resp.WireguardClientPresharedKey)
-	}
-	d.Set("wireguard_client_preshared_key_enabled", resp.WireguardClientPresharedKeyEnabled)
-	if resp.XWireguardPrivateKey != "" {
-		d.Set("x_wireguard_private_key", resp.XWireguardPrivateKey)
-	}
 	// The controller returns a null public key, so derive it from the private key
 	// (the response value, or the one we generated and stored in state).
 	// The controller returns a null public key. wireguardPublicKey errors on an
@@ -1377,26 +1316,118 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 	if wgPublicKey == "" {
 		wgPrivateKey := resp.XWireguardPrivateKey
 		if wgPrivateKey == "" {
-			wgPrivateKey = d.Get("x_wireguard_private_key").(string)
+			wgPrivateKey, _ = d.Get("x_wireguard_private_key").(string)
 		}
 		if derived, err := wireguardPublicKey(wgPrivateKey); err == nil {
 			wgPublicKey = derived
 		}
 	}
-	d.Set("wireguard_public_key", wgPublicKey)
-	d.Set("vpn_client_default_route", resp.VPNClientDefaultRoute)
-	d.Set("vpn_client_pull_dns", resp.VPNClientPullDNS)
-	d.Set("uid_vpn_custom_routing", utils.CidrListZeroBased(resp.UidVPNCustomRouting))
+
+	values := map[string]interface{}{
+		"site":    site,
+		"name":    resp.Name,
+		"purpose": resp.Purpose,
+		"vlan_id": vlan,
+		"subnet":  utils.CidrZeroBased(resp.IPSubnet),
+
+		"network_group": networkGroup,
+
+		// Always read back the firewall zone so drift is detectable and imports round-trip.
+		"firewall_zone_id": resp.FirewallZoneID,
+
+		"dhcp_dns":                      dhcpDNS,
+		"dhcp_enabled":                  resp.DHCPDEnabled,
+		"dhcp_lease":                    dhcpLease,
+		"dhcp_relay_enabled":            resp.DHCPRelayEnabled,
+		"dhcp_guarding":                 resp.DHCPguardEnabled,
+		"dhcp_guarding_trusted_servers": dhcpGuardServers,
+		"dhcp_start":                    resp.DHCPDStart,
+		"dhcp_stop":                     resp.DHCPDStop,
+		"dhcp_v6_dns_auto":              resp.DHCPDV6DNSAuto,
+		"dhcp_v6_dns":                   dhcpV6DNS,
+		"dhcp_v6_enabled":               resp.DHCPDV6Enabled,
+		"dhcp_v6_lease":                 resp.DHCPDV6LeaseTime,
+		"dhcp_v6_start":                 resp.DHCPDV6Start,
+		"dhcp_v6_stop":                  resp.DHCPDV6Stop,
+		"dhcpd_boot_enabled":            resp.DHCPDBootEnabled,
+		"dhcpd_boot_filename":           resp.DHCPDBootFilename,
+		"dhcpd_boot_server":             resp.DHCPDBootServer,
+		"dhcpd_gateway_enabled":         resp.DHCPDGatewayEnabled,
+		"dhcpd_gateway":                 resp.DHCPDGateway,
+		"domain_name":                   resp.DomainName,
+		"enabled":                       resp.Enabled,
+		"igmp_snooping":                 resp.IGMPSnooping,
+		"upnp_lan_enabled":              resp.UpnpLanEnabled,
+		"internet_access_enabled":       resp.InternetAccessEnabled,
+		"network_isolation_enabled":     resp.NetworkIsolationEnabled,
+
+		"ipv6_interface_type":        ipv6InterfaceType,
+		"ipv6_pd_interface":          resp.IPV6PDInterface,
+		"ipv6_pd_prefixid":           resp.IPV6PDPrefixid,
+		"ipv6_pd_start":              resp.IPV6PDStart,
+		"ipv6_pd_stop":               resp.IPV6PDStop,
+		"ipv6_ra_enable":             resp.IPV6RaEnabled,
+		"ipv6_ra_preferred_lifetime": resp.IPV6RaPreferredLifetime,
+		"ipv6_ra_priority":           resp.IPV6RaPriority,
+		"ipv6_ra_valid_lifetime":     resp.IPV6RaValidLifetime,
+		"ipv6_static_subnet":         resp.IPV6Subnet,
+		"multicast_dns":              resp.MdnsEnabled,
+		"wan_dhcp_v6_pd_size":        resp.WANDHCPv6PDSize,
+		"wan_dns":                    wanDNS,
+		"wan_egress_qos":             resp.WANEgressQOS,
+		"wan_gateway_v6":             resp.WANGatewayV6,
+		"wan_gateway":                wanGateway,
+		"wan_ip":                     wanIP,
+		"wan_ipv6":                   resp.WANIPV6,
+		"wan_netmask":                wanNetmask,
+		"wan_networkgroup":           resp.WANNetworkGroup,
+		"wan_prefixlen":              resp.WANPrefixlen,
+		"wan_type_v6":                resp.WANTypeV6,
+		"wan_type":                   wanType,
+		"wan_username":               resp.WANUsername,
+		"x_wan_password":             resp.XWANPassword,
+
+		"vpn_type":                               resp.VPNType,
+		"wireguard_interface":                    resp.WireguardInterface,
+		"wireguard_client_mode":                  resp.WireguardClientMode,
+		"wireguard_client_peer_ip":               resp.WireguardClientPeerIP,
+		"wireguard_client_peer_port":             resp.WireguardClientPeerPort,
+		"wireguard_client_peer_public_key":       resp.WireguardClientPeerPublicKey,
+		"wireguard_client_preshared_key_enabled": resp.WireguardClientPresharedKeyEnabled,
+		"wireguard_public_key":                   wgPublicKey,
+		"vpn_client_default_route":               resp.VPNClientDefaultRoute,
+		"vpn_client_pull_dns":                    resp.VPNClientPullDNS,
+		"uid_vpn_custom_routing":                 utils.CidrListZeroBased(resp.UidVPNCustomRouting),
+	}
+
+	// Write-only secrets: the controller may omit these on read. Only overwrite state when a
+	// non-empty value is returned, otherwise the configured/generated secret would be blanked
+	// and the resource would drift on every refresh.
+	if resp.WireguardClientPresharedKey != "" {
+		values["wireguard_client_preshared_key"] = resp.WireguardClientPresharedKey
+	}
+	if resp.XWireguardPrivateKey != "" {
+		values["x_wireguard_private_key"] = resp.XWireguardPrivateKey
+	}
+
+	for key, value := range values {
+		if err := d.Set(key, value); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
 	return nil
 }
 
 func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -1414,15 +1445,18 @@ func resourceNetworkRead(ctx context.Context, d *schema.ResourceData, meta inter
 }
 
 func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	req, err := resourceNetworkGetResourceData(d, meta)
+	req, err := resourceNetworkGetResourceData(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	req.ID = d.Id()
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -1449,9 +1483,12 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 }
 
 func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -1468,9 +1505,12 @@ func resourceNetworkDelete(ctx context.Context, d *schema.ResourceData, meta int
 }
 
 func importNetwork(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return nil, fmt.Errorf("unexpected meta type: %T", meta)
+	}
 	id := d.Id()
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -1493,7 +1533,9 @@ func importNetwork(ctx context.Context, d *schema.ResourceData, meta interface{}
 		d.SetId(id)
 	}
 	if site != "" {
-		d.Set("site", site)
+		if err := d.Set("site", site); err != nil {
+			return nil, err
+		}
 	}
 
 	return []*schema.ResourceData{d}, nil

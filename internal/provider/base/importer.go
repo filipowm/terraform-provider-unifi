@@ -8,17 +8,19 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-// for Terraform Plugin SDK v2
+// for Terraform Plugin SDK v2.
 func ImportSiteAndID(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
 	if id := d.Id(); strings.Contains(id, ":") {
 		importParts := strings.SplitN(id, ":", 2)
 		d.SetId(importParts[1])
-		d.Set("site", importParts[0])
+		if err := d.Set("site", importParts[0]); err != nil {
+			return nil, err
+		}
 	}
 	return []*schema.ResourceData{d}, nil
 }
 
-// for Terraform Plugin Framework
+// for Terraform Plugin Framework.
 func ImportIDWithSite(req resource.ImportStateRequest, resp *resource.ImportStateResponse) (string, string) {
 	id := req.ID
 	if id == "" {

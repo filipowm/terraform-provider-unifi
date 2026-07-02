@@ -125,7 +125,7 @@ func (v RequiredNoneIfValidator) Validate(ctx context.Context, config tfsdk.Conf
 	return diags
 }
 
-// ValidateString method to implement the validator.String interface
+// ValidateString method to implement the validator.String interface.
 func (v RequiredNoneIfValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
 	resp.Diagnostics.Append(v.Validate(ctx, req.Config)...)
 }

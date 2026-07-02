@@ -5,10 +5,6 @@ import (
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/go-unifi/unifi/features"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -26,9 +22,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
-// DNS Filter model
+// DNS Filter model.
 type DNSFilterModel struct {
 	AllowedSites types.List   `tfsdk:"allowed_sites"`
 	BlockedSites types.List   `tfsdk:"blocked_sites"`
@@ -57,7 +58,7 @@ func (m *DNSFilterModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// Honeypots model
+// Honeypots model.
 type HoneypotModel struct {
 	IPAddress types.String `tfsdk:"ip_address"`
 	NetworkID types.String `tfsdk:"network_id"`
@@ -70,7 +71,7 @@ func (m *HoneypotModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// Tracking model
+// Tracking model.
 type TrackingModel struct {
 	Direction types.String `tfsdk:"direction"`
 	Mode      types.String `tfsdk:"mode"`
@@ -85,7 +86,7 @@ func (m *TrackingModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// Alerts model
+// Alerts model.
 type AlertsModel struct {
 	Category  types.String `tfsdk:"category"`
 	Signature types.String `tfsdk:"signature"`
@@ -106,7 +107,7 @@ func (m *AlertsModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// Whitelist model
+// Whitelist model.
 type WhitelistModel struct {
 	Direction types.String `tfsdk:"direction"`
 	Mode      types.String `tfsdk:"mode"`
@@ -121,7 +122,7 @@ func (m *WhitelistModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// Suppression model
+// Suppression model.
 type SuppressionModel struct {
 	Alerts    types.List `tfsdk:"alerts"`
 	Whitelist types.List `tfsdk:"whitelist"`
@@ -142,7 +143,7 @@ func (m *SuppressionModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-// Main IPS model
+// Main IPS model.
 type ipsModel struct {
 	base.Model
 	AdBlockedNetworks           types.List   `tfsdk:"ad_blocked_networks"`
@@ -187,14 +188,14 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	}
 
 	var enabledCategories []string
-	diags.Append(ut.ListElementsAs(d.EnabledCategories, &enabledCategories)...)
+	diags.Append(ut.ListElementsAs(ctx, d.EnabledCategories, &enabledCategories)...)
 	if diags.HasError() {
 		return nil, diags
 	}
 	model.EnabledCategories = enabledCategories
 
 	var enabledNetworks []string
-	diags.Append(ut.ListElementsAs(d.EnabledNetworks, &enabledNetworks)...)
+	diags.Append(ut.ListElementsAs(ctx, d.EnabledNetworks, &enabledNetworks)...)
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -203,7 +204,7 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	// Handle AdBlockedNetworks - if any networks are configured, set AdBlockingEnabled to true
 	if ut.IsDefined(d.AdBlockedNetworks) {
 		var adBlockedNetworks []string
-		diags.Append(ut.ListElementsAs(d.AdBlockedNetworks, &adBlockedNetworks)...)
+		diags.Append(ut.ListElementsAs(ctx, d.AdBlockedNetworks, &adBlockedNetworks)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -225,7 +226,7 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	// Handle DNSFilters - if any filters are configured, set DNSFiltering to true
 	if ut.IsDefined(d.DNSFilters) {
 		var dnsFiltersObjects []DNSFilterModel
-		diags.Append(ut.ListElementsAs(d.DNSFilters, &dnsFiltersObjects)...)
+		diags.Append(ut.ListElementsAs(ctx, d.DNSFilters, &dnsFiltersObjects)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -250,9 +251,9 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 				// Handle allowed sites
 
 				var allowedSites, blockedSites, blockedTlds []string
-				diags.Append(ut.ListElementsAs(filterObj.AllowedSites, &allowedSites)...)
-				diags.Append(ut.ListElementsAs(filterObj.BlockedSites, &blockedSites)...)
-				diags.Append(ut.ListElementsAs(filterObj.BlockedTld, &blockedTlds)...)
+				diags.Append(ut.ListElementsAs(ctx, filterObj.AllowedSites, &allowedSites)...)
+				diags.Append(ut.ListElementsAs(ctx, filterObj.BlockedSites, &blockedSites)...)
+				diags.Append(ut.ListElementsAs(ctx, filterObj.BlockedTld, &blockedTlds)...)
 				if diags.HasError() {
 					return nil, diags
 				}
@@ -270,7 +271,7 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	// Handle honeypot
 	if ut.IsDefined(d.Honeypots) {
 		var honeypotObjects []HoneypotModel
-		diags.Append(ut.ListElementsAs(d.Honeypots, &honeypotObjects)...)
+		diags.Append(ut.ListElementsAs(ctx, d.Honeypots, &honeypotObjects)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -303,7 +304,7 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 		}
 
 		var alerts []AlertsModel
-		diags.Append(ut.ListElementsAs(suppressionObj.Alerts, &alerts)...)
+		diags.Append(ut.ListElementsAs(ctx, suppressionObj.Alerts, &alerts)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -319,7 +320,7 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 			// Handle tracking
 
 			var trackings []TrackingModel
-			diags.Append(ut.ListElementsAs(alertObj.Tracking, &trackings)...)
+			diags.Append(ut.ListElementsAs(ctx, alertObj.Tracking, &trackings)...)
 			if diags.HasError() {
 				return nil, diags
 			}
@@ -331,13 +332,14 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 				alert.Tracking = append(alert.Tracking, unifi.SettingIpsTracking{
 					Direction: trackingObj.Direction.ValueString(),
 					Mode:      trackingObj.Mode.ValueString(),
-					Value:     trackingObj.Value.ValueString()})
+					Value:     trackingObj.Value.ValueString(),
+				})
 			}
 			model.Suppression.Alerts = append(model.Suppression.Alerts, alert)
 		}
 
 		var whitelists []WhitelistModel
-		diags.Append(ut.ListElementsAs(suppressionObj.Whitelist, &whitelists)...)
+		diags.Append(ut.ListElementsAs(ctx, suppressionObj.Whitelist, &whitelists)...)
 		if diags.HasError() {
 			return nil, diags
 		}
@@ -398,7 +400,7 @@ func (d *ipsModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 		d.EnabledNetworks = ut.EmptyList(types.StringType)
 	}
 
-	//Handle AdBlockedNetworks - extract network IDs from AdBlockingConfigurations
+	// Handle AdBlockedNetworks - extract network IDs from AdBlockingConfigurations
 	adBlockedNetworks := make([]string, 0, len(model.AdBlockingConfigurations))
 	for _, config := range model.AdBlockingConfigurations {
 		adBlockedNetworks = append(adBlockedNetworks, config.NetworkID)
@@ -648,7 +650,7 @@ func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.UseStateForUnknown(),
 				},
-				//Default: utils.DefaultEmptyList(types.StringType),
+				// Default: utils.DefaultEmptyList(types.StringType),
 				Validators: []validator.List{
 					listvalidator.ValueStringsAre(stringvalidator.OneOf("emerging-activex", "emerging-attackresponse", "botcc", "emerging-chat", "ciarmy", "compromised", "emerging-dns", "emerging-dos", "dshield", "emerging-exploit", "emerging-ftp", "emerging-games", "emerging-icmp", "emerging-icmpinfo", "emerging-imap", "emerging-inappropriate", "emerging-info", "emerging-malware", "emerging-misc", "emerging-mobile", "emerging-netbios", "emerging-p2p", "emerging-policy", "emerging-pop3", "emerging-rpc", "emerging-scada", "emerging-scan", "emerging-shellcode", "emerging-smtp", "emerging-snmp", "emerging-sql", "emerging-telnet", "emerging-tftp", "tor", "emerging-useragent", "emerging-voip", "emerging-webapps", "emerging-webclient", "emerging-webserver", "emerging-worm", "exploit-kit", "adware-pup", "botcc-portgrouped", "phishing", "threatview-cs-c2", "3coresec", "chat", "coinminer", "current-events", "drop", "hunting", "icmp-info", "inappropriate", "info", "ja3", "policy", "scada", "dark-web-blocker-list", "malicious-hosts")),
 				},
@@ -852,7 +854,8 @@ func NewIpsResource() resource.Resource {
 			return client.GetSettingIps(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingIps(ctx, site, body.(*unifi.SettingIps))
+			b, _ := body.(*unifi.SettingIps)
+			return client.UpdateSettingIps(ctx, site, b)
 		},
 	)
 	return r

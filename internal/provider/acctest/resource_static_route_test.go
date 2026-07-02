@@ -25,7 +25,7 @@ func TestAccStaticRoute_nextHop(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccStaticRouteConfig_nextHop(name, network, distance, &nextHop),
+				Config: testAccStaticRouteConfigNextHop(name, network, distance, &nextHop),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_static_route.test", "type", "nexthop-route"),
 					resource.TestCheckResourceAttr("unifi_static_route.test", "network", network.String()),
@@ -52,7 +52,7 @@ func TestAccStaticRoute_nextHop_ipv6(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccStaticRouteConfig_nextHop(name, network, distance, &nextHop),
+				Config: testAccStaticRouteConfigNextHop(name, network, distance, &nextHop),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_static_route.test", "type", "nexthop-route"),
 					resource.TestCheckResourceAttr("unifi_static_route.test", "network", network.String()),
@@ -78,7 +78,7 @@ func TestAccStaticRoute_blackhole(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccStaticRouteConfig_blackhole(name, network, distance),
+				Config: testAccStaticRouteConfigBlackhole(name, network, distance),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_static_route.test", "type", "blackhole"),
 					resource.TestCheckResourceAttr("unifi_static_route.test", "network", network.String()),
@@ -103,7 +103,7 @@ func TestAccStaticRoute_blackhole_ipv6(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccStaticRouteConfig_blackhole(name, network, distance),
+				Config: testAccStaticRouteConfigBlackhole(name, network, distance),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_static_route.test", "type", "blackhole"),
 					resource.TestCheckResourceAttr("unifi_static_route.test", "network", network.String()),
@@ -129,7 +129,7 @@ func TestAccStaticRoute_interface(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccStaticRouteConfig_interface(name, network, distance, networkInterface),
+				Config: testAccStaticRouteConfigInterface(name, network, distance, networkInterface),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_static_route.test", "type", "interface-route"),
 					resource.TestCheckResourceAttr("unifi_static_route.test", "network", network.String()),
@@ -156,7 +156,7 @@ func TestAccStaticRoute_interface_ipv6(t *testing.T) {
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccStaticRouteConfig_interface(name, network, distance, networkInterface),
+				Config: testAccStaticRouteConfigInterface(name, network, distance, networkInterface),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("unifi_static_route.test", "type", "interface-route"),
 					resource.TestCheckResourceAttr("unifi_static_route.test", "network", network.String()),
@@ -170,7 +170,7 @@ func TestAccStaticRoute_interface_ipv6(t *testing.T) {
 	})
 }
 
-func testAccStaticRouteConfig_nextHop(name string, network *net.IPNet, distance int, nextHop *net.IP) string {
+func testAccStaticRouteConfigNextHop(name string, network *net.IPNet, distance int, nextHop *net.IP) string {
 	return fmt.Sprintf(`
 resource "unifi_static_route" "test" {
 	type     = "nexthop-route"
@@ -182,7 +182,7 @@ resource "unifi_static_route" "test" {
 `, name, network, distance, nextHop)
 }
 
-func testAccStaticRouteConfig_blackhole(name string, network *net.IPNet, distance int) string {
+func testAccStaticRouteConfigBlackhole(name string, network *net.IPNet, distance int) string {
 	return fmt.Sprintf(`
 resource "unifi_static_route" "test" {
 	type     = "blackhole"
@@ -193,7 +193,7 @@ resource "unifi_static_route" "test" {
 `, name, network, distance)
 }
 
-func testAccStaticRouteConfig_interface(name string, network *net.IPNet, distance int, networkInterface string) string {
+func testAccStaticRouteConfigInterface(name string, network *net.IPNet, distance int, networkInterface string) string {
 	return fmt.Sprintf(`
 resource "unifi_static_route" "test" {
 	type      = "interface-route"

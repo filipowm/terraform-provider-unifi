@@ -25,7 +25,7 @@ type ResourceFunctions struct {
 	ReadAfterWrite bool
 }
 
-// GenericResource provides common functionality for all resources
+// GenericResource provides common functionality for all resources.
 type GenericResource[T ResourceModel] struct {
 	ControllerVersionValidator
 	FeatureValidator
@@ -35,7 +35,7 @@ type GenericResource[T ResourceModel] struct {
 	Handlers     ResourceFunctions
 }
 
-// NewGenericResource creates a new base resource
+// NewGenericResource creates a new base resource.
 func NewGenericResource[T ResourceModel](
 	typeName string,
 	modelFactory func() T,
@@ -48,12 +48,12 @@ func NewGenericResource[T ResourceModel](
 	}
 }
 
-// GetClient returns the UniFi client
+// GetClient returns the UniFi client.
 func (b *GenericResource[T]) GetClient() *Client {
 	return b.client
 }
 
-// SetClient sets the UniFi client
+// SetClient sets the UniFi client.
 func (b *GenericResource[T]) SetClient(client *Client) {
 	b.client = client
 }

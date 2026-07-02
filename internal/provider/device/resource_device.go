@@ -11,11 +11,12 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 func ResourceDevice() *schema.Resource {
@@ -82,8 +83,8 @@ func ResourceDevice() *schema.Resource {
 				// a `false` from the payload), so a `true` -> `false` change would
 				// otherwise read back as `true` and produce a perpetual diff.
 				// Suppress that one transition to match the API's write-once behavior.
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return old == "true" && new == "false"
+				DiffSuppressFunc: func(k, old, newValue string, d *schema.ResourceData) bool {
+					return old == "true" && newValue == "false"
 				},
 			},
 			"port_override": {
@@ -153,8 +154,8 @@ func ResourceDevice() *schema.Resource {
 							Optional:     true,
 							Default:      "switch",
 							ValidateFunc: validation.StringInSlice([]string{"switch", "mirror", "aggregate"}, false),
-							DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-								if old == "" && new == "switch" {
+							DiffSuppressFunc: func(k, old, newValue string, d *schema.ResourceData) bool {
+								if old == "" && newValue == "switch" {
 									return true
 								}
 								return false
@@ -187,8 +188,8 @@ func ResourceDevice() *schema.Resource {
 							Type:         schema.TypeInt,
 							Optional:     true,
 							ValidateFunc: validation.IntBetween(2, 8),
-							DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-								if old == strconv.Itoa(0) && new == "" {
+							DiffSuppressFunc: func(k, old, newValue string, d *schema.ResourceData) bool {
+								if old == strconv.Itoa(0) && newValue == "" {
 									return true
 								}
 								return false
@@ -399,9 +400,12 @@ func ResourceDevice() *schema.Resource {
 }
 
 func resourceDeviceImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return nil, fmt.Errorf("unexpected meta type: %T", meta)
+	}
 	id := d.Id()
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -416,7 +420,6 @@ func resourceDeviceImport(ctx context.Context, d *schema.ResourceData, meta inte
 		// look up id by mac
 		mac := utils.CleanMAC(id)
 		device, err := c.GetDeviceByMAC(ctx, site, mac)
-
 		if err != nil {
 			return nil, err
 		}
@@ -428,21 +431,26 @@ func resourceDeviceImport(ctx context.Context, d *schema.ResourceData, meta inte
 		d.SetId(id)
 	}
 	if site != "" {
-		d.Set("site", site)
+		if err := d.Set("site", site); err != nil {
+			return nil, err
+		}
 	}
 
 	return []*schema.ResourceData{d}, nil
 }
 
 func resourceDeviceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
 
-	mac := d.Get("mac").(string)
+	mac, _ := d.Get("mac").(string)
 	if mac == "" {
 		return diag.Errorf("no MAC address specified, please import the device using terraform import")
 	}
@@ -458,7 +466,8 @@ func resourceDeviceCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	if !device.Adopted {
-		if !d.Get("allow_adoption").(bool) {
+		allowAdoption, _ := d.Get("allow_adoption").(bool)
+		if !allowAdoption {
 			return diag.Errorf("Device must be adopted before it can be managed")
 		}
 
@@ -478,9 +487,12 @@ func resourceDeviceCreate(ctx context.Context, d *schema.ResourceData, meta inte
 }
 
 func resourceDeviceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -499,8 +511,8 @@ func resourceDeviceUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	// controller-side values. (Radio table additionally needs the full merged
 	// array sent because UniFi replaces arrays wholesale on PUT.) When neither
 	// block is declared, nothing extra is sent (prior behavior).
-	radios := d.Get("radio").(*schema.Set)
-	etherLighting := d.Get("ether_lighting").([]interface{})
+	radios, _ := d.Get("radio").(*schema.Set)
+	etherLighting, _ := d.Get("ether_lighting").([]interface{})
 	if radios.Len() > 0 || len(etherLighting) > 0 {
 		current, err := c.GetDevice(ctx, site, d.Id())
 		if err != nil {
@@ -510,7 +522,8 @@ func resourceDeviceUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 			req.RadioTable = mergeRadios(current.RadioTable, radios)
 		}
 		if len(etherLighting) > 0 {
-			req.EtherLighting = mergeEtherLighting(current.EtherLighting, etherLighting[0].(map[string]interface{}))
+			etherLightingMap, _ := etherLighting[0].(map[string]interface{})
+			req.EtherLighting = mergeEtherLighting(current.EtherLighting, etherLightingMap)
 		}
 	}
 
@@ -538,14 +551,17 @@ func resourceDeviceUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 }
 
 func resourceDeviceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	if !d.Get("forget_on_destroy").(bool) {
+	if forgetOnDestroy, _ := d.Get("forget_on_destroy").(bool); !forgetOnDestroy {
 		return nil
 	}
 
-	site := d.Get("site").(string)
-	mac := d.Get("mac").(string)
+	site, _ := d.Get("site").(string)
+	mac, _ := d.Get("mac").(string)
 
 	if site == "" {
 		site = c.Site
@@ -573,11 +589,14 @@ func resourceDeviceDelete(ctx context.Context, d *schema.ResourceData, meta inte
 }
 
 func resourceDeviceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -595,19 +614,23 @@ func resourceDeviceRead(ctx context.Context, d *schema.ResourceData, meta interf
 }
 
 func resourceDeviceSetResourceData(resp *unifi.Device, d *schema.ResourceData, site string) diag.Diagnostics {
-	portOverrides, err := setFromPortOverrides(resp.PortOverrides)
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	portOverrides := setFromPortOverrides(resp.PortOverrides)
 
-	d.Set("site", site)
-	d.Set("mac", resp.MAC)
-	d.Set("name", resp.Name)
-	d.Set("disabled", resp.Disabled)
-	d.Set("switch_vlan_enabled", resp.SwitchVLANEnabled)
-	d.Set("port_override", portOverrides)
-	d.Set("radio", radiosFromDevice(resp, d))
-	d.Set("ether_lighting", etherLightingFromDevice(resp, d))
+	values := map[string]interface{}{
+		"site":                site,
+		"mac":                 resp.MAC,
+		"name":                resp.Name,
+		"disabled":            resp.Disabled,
+		"switch_vlan_enabled": resp.SwitchVLANEnabled,
+		"port_override":       portOverrides,
+		"radio":               radiosFromDevice(resp, d),
+		"ether_lighting":      etherLightingFromDevice(resp, d),
+	}
+	for k, v := range values {
+		if err := d.Set(k, v); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 
 	return nil
 }
@@ -615,7 +638,8 @@ func resourceDeviceSetResourceData(resp *unifi.Device, d *schema.ResourceData, s
 // etherLightingFromDevice returns ether_lighting state only when the user
 // declares the block, so unmanaged devices never produce a diff.
 func etherLightingFromDevice(resp *unifi.Device, d *schema.ResourceData) []map[string]interface{} {
-	if len(d.Get("ether_lighting").([]interface{})) == 0 {
+	etherLighting, _ := d.Get("ether_lighting").([]interface{})
+	if len(etherLighting) == 0 {
 		return nil
 	}
 	return []map[string]interface{}{{
@@ -648,8 +672,9 @@ func mergeEtherLighting(current unifi.DeviceEtherLighting, m map[string]interfac
 // radioSetHash keys the `radio` set by band only, so changes to Computed
 // fields (channel, ht, …) don't churn set membership during plan/apply.
 func radioSetHash(v interface{}) int {
-	m := v.(map[string]interface{})
-	return schema.HashString(m["name"].(string))
+	m, _ := v.(map[string]interface{})
+	name, _ := m["name"].(string)
+	return schema.HashString(name)
 }
 
 // portOverrideSetHash keys the `port_override` set by port `number` only, so the
@@ -661,8 +686,9 @@ func radioSetHash(v interface{}) int {
 // (setToPortOverrides already dedupes by PortIDX), so it is a sound stable key.
 // Mirrors the radioSetHash precedent.
 func portOverrideSetHash(v interface{}) int {
-	m := v.(map[string]interface{})
-	return schema.HashInt(m["number"].(int))
+	m, _ := v.(map[string]interface{})
+	number, _ := m["number"].(int)
+	return schema.HashInt(number)
 }
 
 // radiosFromDevice returns radio state for only the bands the user manages
@@ -670,8 +696,11 @@ func portOverrideSetHash(v interface{}) int {
 // a diff.
 func radiosFromDevice(resp *unifi.Device, d *schema.ResourceData) []map[string]interface{} {
 	managed := map[string]bool{}
-	for _, item := range d.Get("radio").(*schema.Set).List() {
-		managed[item.(map[string]interface{})["name"].(string)] = true
+	radioSet, _ := d.Get("radio").(*schema.Set)
+	for _, item := range radioSet.List() {
+		m, _ := item.(map[string]interface{})
+		name, _ := m["name"].(string)
+		managed[name] = true
 	}
 	radios := make([]map[string]interface{}, 0, len(managed))
 	for _, r := range resp.RadioTable {
@@ -707,8 +736,8 @@ func mergeRadios(current []unifi.DeviceRadioTable, set *schema.Set) []unifi.Devi
 		order = append(order, r.Radio)
 	}
 	for _, item := range set.List() {
-		m := item.(map[string]interface{})
-		band := m["name"].(string)
+		m, _ := item.(map[string]interface{})
+		band, _ := m["name"].(string)
 		r, ok := byBand[band]
 		if !ok {
 			r = unifi.DeviceRadioTable{Radio: band}
@@ -728,7 +757,7 @@ func mergeRadios(current []unifi.DeviceRadioTable, set *schema.Set) []unifi.Devi
 		}
 		if v, _ := m["min_rssi"].(int); v != 0 {
 			r.MinRssi = v
-			r.MinRssiEnabled = m["min_rssi_enabled"].(bool)
+			r.MinRssiEnabled, _ = m["min_rssi_enabled"].(bool)
 		}
 		byBand[band] = r
 	}
@@ -740,17 +769,22 @@ func mergeRadios(current []unifi.DeviceRadioTable, set *schema.Set) []unifi.Devi
 }
 
 func resourceDeviceGetResourceData(d *schema.ResourceData) (*unifi.Device, error) {
-	pos, err := setToPortOverrides(d.Get("port_override").(*schema.Set))
+	portOverrideSet, _ := d.Get("port_override").(*schema.Set)
+	pos, err := setToPortOverrides(portOverrideSet)
 	if err != nil {
 		return nil, fmt.Errorf("unable to process port_override block: %w", err)
 	}
 
-	//TODO: pass Disabled once we figure out how to enable the device afterwards
+	// TODO: pass Disabled once we figure out how to enable the device afterwards
+
+	mac, _ := d.Get("mac").(string)
+	name, _ := d.Get("name").(string)
+	switchVLANEnabled, _ := d.Get("switch_vlan_enabled").(bool)
 
 	return &unifi.Device{
-		MAC:               d.Get("mac").(string),
-		Name:              d.Get("name").(string),
-		SwitchVLANEnabled: d.Get("switch_vlan_enabled").(bool),
+		MAC:               mac,
+		Name:              name,
+		SwitchVLANEnabled: switchVLANEnabled,
 		PortOverrides:     pos,
 	}, nil
 }
@@ -761,7 +795,7 @@ func setToPortOverrides(set *schema.Set) ([]unifi.DevicePortOverrides, error) {
 	for _, item := range set.List() {
 		data, ok := item.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("unexpected data in block")
+			return nil, errors.New("unexpected data in block")
 		}
 		po, err := toPortOverride(data)
 		if err != nil {
@@ -777,25 +811,21 @@ func setToPortOverrides(set *schema.Set) ([]unifi.DevicePortOverrides, error) {
 	return pos, nil
 }
 
-func setFromPortOverrides(pos []unifi.DevicePortOverrides) ([]map[string]interface{}, error) {
+func setFromPortOverrides(pos []unifi.DevicePortOverrides) []map[string]interface{} {
 	list := make([]map[string]interface{}, 0, len(pos))
 	for _, po := range pos {
-		v, err := fromPortOverride(po)
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse port override: %w", err)
-		}
-		list = append(list, v)
+		list = append(list, fromPortOverride(po))
 	}
-	return list, nil
+	return list
 }
 
 func toPortOverride(data map[string]interface{}) (unifi.DevicePortOverrides, error) {
-	idx := data["number"].(int)
-	name := data["name"].(string)
-	profileID := data["port_profile_id"].(string)
-	opMode := data["op_mode"].(string)
-	poeMode := data["poe_mode"].(string)
-	aggregateNumPorts := data["aggregate_num_ports"].(int)
+	idx, _ := data["number"].(int)
+	name, _ := data["name"].(string)
+	profileID, _ := data["port_profile_id"].(string)
+	opMode, _ := data["op_mode"].(string)
+	poeMode, _ := data["poe_mode"].(string)
+	aggregateNumPorts, _ := data["aggregate_num_ports"].(int)
 
 	var excludedNetworkIDs []string
 	if set, ok := data["excluded_network_ids"].(*schema.Set); ok {
@@ -850,7 +880,7 @@ func toPortOverride(data map[string]interface{}) (unifi.DevicePortOverrides, err
 	return po, nil
 }
 
-func fromPortOverride(po unifi.DevicePortOverrides) (map[string]interface{}, error) {
+func fromPortOverride(po unifi.DevicePortOverrides) map[string]interface{} {
 	return map[string]interface{}{
 		"number":          po.PortIDX,
 		"name":            po.Name,
@@ -873,14 +903,17 @@ func fromPortOverride(po unifi.DevicePortOverrides) (map[string]interface{}, err
 		"excluded_network_ids":  utils.StringSliceToSet(po.ExcludedNetworkIDs),
 		"voice_networkconf_id":  po.VoiceNetworkID,
 		"setting_preference":    po.SettingPreference,
-	}, nil
+	}
 }
 
 func waitForDeviceState(ctx context.Context, d *schema.ResourceData, meta interface{}, targetState unifi.DeviceState, pendingStates []unifi.DeviceState, timeout time.Duration) (*unifi.Device, error) {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return nil, fmt.Errorf("unexpected meta type: %T", meta)
+	}
 
-	site := d.Get("site").(string)
-	mac := d.Get("mac").(string)
+	site, _ := d.Get("site").(string)
+	mac, _ := d.Get("mac").(string)
 
 	if site == "" {
 		site = c.Site
@@ -889,7 +922,7 @@ func waitForDeviceState(ctx context.Context, d *schema.ResourceData, meta interf
 	// Always consider unknown to be a pending state.
 	pendingStates = append(pendingStates, unifi.DeviceStateUnknown)
 
-	var pending []string
+	pending := make([]string, 0, len(pendingStates))
 	for _, state := range pendingStates {
 		pending = append(pending, state.String())
 	}

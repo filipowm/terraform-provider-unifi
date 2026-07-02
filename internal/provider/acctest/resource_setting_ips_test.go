@@ -5,13 +5,14 @@ import (
 	"sync"
 	"testing"
 
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 )
 
-// Using dedicated lock for IPS settings to avoid interference with other tests
+// Using dedicated lock for IPS settings to avoid interference with other tests.
 var settingIpsLock = &sync.Mutex{}
 
 func TestAccSettingIps_basic(t *testing.T) {
@@ -20,7 +21,7 @@ func TestAccSettingIps_basic(t *testing.T) {
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_basic(),
+				Config: testAccSettingIpsConfigBasic(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ips_mode", "ips"),
@@ -31,7 +32,7 @@ func TestAccSettingIps_basic(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config: testAccSettingIpsConfig_updated(),
+				Config: testAccSettingIpsConfigUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ips_mode", "ids"),
@@ -51,7 +52,7 @@ func TestAccSettingIps_enabledCategories(t *testing.T) {
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_enabledCategories(),
+				Config: testAccSettingIpsConfigEnabledCategories(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "3"),
@@ -62,7 +63,7 @@ func TestAccSettingIps_enabledCategories(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config: testAccSettingIpsConfig_enabledCategoriesUpdated(),
+				Config: testAccSettingIpsConfigEnabledCategoriesUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "2"),
@@ -82,7 +83,7 @@ func TestAccSettingIps_adBlocking(t *testing.T) {
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_adBlocking(t),
+				Config: testAccSettingIpsConfigAdBlocking(t),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ad_blocked_networks.#", "2"),
@@ -92,7 +93,7 @@ func TestAccSettingIps_adBlocking(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config: testAccSettingIpsConfig_adBlockingUpdated(t),
+				Config: testAccSettingIpsConfigAdBlockingUpdated(t),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ad_blocked_networks.#", "1"),
@@ -110,7 +111,7 @@ func TestAccSettingIps_honeypot(t *testing.T) {
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_honeypot(),
+				Config: testAccSettingIpsConfigHoneypot(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "honeypots.#", "1"),
@@ -120,7 +121,7 @@ func TestAccSettingIps_honeypot(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config: testAccSettingIpsConfig_honeypotUpdated(),
+				Config: testAccSettingIpsConfigHoneypotUpdated(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "honeypots.#", "1"),
@@ -130,7 +131,7 @@ func TestAccSettingIps_honeypot(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config: testAccSettingIpsConfig_honeypotDisabled(),
+				Config: testAccSettingIpsConfigHoneypotDisabled(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "honeypots.#", "0"),
@@ -148,7 +149,7 @@ func TestAccSettingIps_dnsFilters(t *testing.T) {
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_dnsFilters(t),
+				Config: testAccSettingIpsConfigDNSFilters(t),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "dns_filters.#", "1"),
@@ -162,7 +163,7 @@ func TestAccSettingIps_dnsFilters(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config: testAccSettingIpsConfig_dnsFiltersUpdated(t),
+				Config: testAccSettingIpsConfigDNSFiltersUpdated(t),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "dns_filters.#", "2"),
@@ -184,7 +185,7 @@ func TestAccSettingIps_suppression(t *testing.T) {
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_suppression(),
+				Config: testAccSettingIpsConfigSuppression(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.alerts.#", "1"),
@@ -199,7 +200,7 @@ func TestAccSettingIps_suppression(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config: testAccSettingIpsConfig_suppressionUpdated(t),
+				Config: testAccSettingIpsConfigSuppressionUpdated(t),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "suppression.alerts.#", "2"),
@@ -222,7 +223,7 @@ func TestAccSettingIps_comprehensive(t *testing.T) {
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_comprehensive(t),
+				Config: testAccSettingIpsConfigComprehensive(t),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ips_mode", "ids"),
@@ -250,7 +251,7 @@ func TestAccSettingIps_comprehensiveBefore8(t *testing.T) {
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_comprehensiveBefore8(t),
+				Config: testAccSettingIpsConfigComprehensiveBefore8(t),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ips_mode", "ids"),
@@ -275,7 +276,7 @@ func TestAccSettingIps_restrictTorrents(t *testing.T) {
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_restrictTorrents(true),
+				Config: testAccSettingIpsConfigRestrictTorrents(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "restrict_torrents", "true"),
@@ -283,7 +284,7 @@ func TestAccSettingIps_restrictTorrents(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config: testAccSettingIpsConfig_restrictTorrents(false),
+				Config: testAccSettingIpsConfigRestrictTorrents(false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "restrict_torrents", "false"),
@@ -300,7 +301,7 @@ func TestAccSettingIps_memoryOptimized(t *testing.T) {
 		Lock:              settingIpsLock,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccSettingIpsConfig_memoryOptimized(true),
+				Config: testAccSettingIpsConfigMemoryOptimized(true),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "memory_optimized", "true"),
@@ -308,7 +309,7 @@ func TestAccSettingIps_memoryOptimized(t *testing.T) {
 			},
 			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config: testAccSettingIpsConfig_memoryOptimized(false),
+				Config: testAccSettingIpsConfigMemoryOptimized(false),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "id"),
 					resource.TestCheckResourceAttr("unifi_setting_ips.test", "memory_optimized", "false"),
@@ -319,7 +320,7 @@ func TestAccSettingIps_memoryOptimized(t *testing.T) {
 	})
 }
 
-func testAccSettingIpsConfig_basic() string {
+func testAccSettingIpsConfigBasic() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ips"
@@ -328,7 +329,7 @@ resource "unifi_setting_ips" "test" {
 `
 }
 
-func testAccSettingIpsConfig_updated() string {
+func testAccSettingIpsConfigUpdated() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
@@ -337,7 +338,7 @@ resource "unifi_setting_ips" "test" {
 `
 }
 
-func testAccSettingIpsConfig_enabledCategories() string {
+func testAccSettingIpsConfigEnabledCategories() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
@@ -351,7 +352,7 @@ resource "unifi_setting_ips" "test" {
 `
 }
 
-func testAccSettingIpsConfig_enabledCategoriesUpdated() string {
+func testAccSettingIpsConfigEnabledCategoriesUpdated() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
@@ -364,9 +365,10 @@ resource "unifi_setting_ips" "test" {
 `
 }
 
-func testAccSettingIpsConfig_adBlocking(t *testing.T) string {
-	subnet, vlanId := pt.GetTestVLAN(t)
-	subnet2, vlanId2 := pt.GetTestVLAN(t)
+func testAccSettingIpsConfigAdBlocking(t *testing.T) string {
+	t.Helper()
+	subnet, vlanID := pt.GetTestVLAN(t)
+	subnet2, vlanID2 := pt.GetTestVLAN(t)
 	return fmt.Sprintf(`
 resource "unifi_network" "test" {
   name    = "Test"
@@ -390,11 +392,12 @@ resource "unifi_setting_ips" "test" {
     unifi_network.test2.id
   ]
 }
-`, subnet.String(), vlanId, subnet2.String(), vlanId2)
+`, subnet.String(), vlanID, subnet2.String(), vlanID2)
 }
 
-func testAccSettingIpsConfig_adBlockingUpdated(t *testing.T) string {
-	subnet, vlanId := pt.GetTestVLAN(t)
+func testAccSettingIpsConfigAdBlockingUpdated(t *testing.T) string {
+	t.Helper()
+	subnet, vlanID := pt.GetTestVLAN(t)
 	return fmt.Sprintf(`
 resource "unifi_network" "test" {
   name    = "Test"
@@ -410,10 +413,10 @@ resource "unifi_setting_ips" "test" {
     unifi_network.test.id
   ]
 }
-`, subnet.String(), vlanId)
+`, subnet.String(), vlanID)
 }
 
-func testAccSettingIpsConfig_honeypot() string {
+func testAccSettingIpsConfigHoneypot() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
@@ -426,7 +429,7 @@ resource "unifi_setting_ips" "test" {
 `
 }
 
-func testAccSettingIpsConfig_honeypotUpdated() string {
+func testAccSettingIpsConfigHoneypotUpdated() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
@@ -439,7 +442,7 @@ resource "unifi_setting_ips" "test" {
 `
 }
 
-func testAccSettingIpsConfig_honeypotDisabled() string {
+func testAccSettingIpsConfigHoneypotDisabled() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
@@ -449,8 +452,9 @@ resource "unifi_setting_ips" "test" {
 `
 }
 
-func testAccSettingIpsConfig_dnsFilters(t *testing.T) string {
-	subnet, vlanId := pt.GetTestVLAN(t)
+func testAccSettingIpsConfigDNSFilters(t *testing.T) string {
+	t.Helper()
+	subnet, vlanID := pt.GetTestVLAN(t)
 	return fmt.Sprintf(`
 
 resource "unifi_network" "test" {
@@ -481,12 +485,13 @@ resource "unifi_setting_ips" "test" {
     ]
   }]
 }
-`, subnet.String(), vlanId)
+`, subnet.String(), vlanID)
 }
 
-func testAccSettingIpsConfig_dnsFiltersUpdated(t *testing.T) string {
-	subnet, vlanId := pt.GetTestVLAN(t)
-	subnet2, vlanId2 := pt.GetTestVLAN(t)
+func testAccSettingIpsConfigDNSFiltersUpdated(t *testing.T) string {
+	t.Helper()
+	subnet, vlanID := pt.GetTestVLAN(t)
+	subnet2, vlanID2 := pt.GetTestVLAN(t)
 	return fmt.Sprintf(`
 
 resource "unifi_network" "test" {
@@ -529,10 +534,10 @@ resource "unifi_setting_ips" "test" {
     }
   ]
 }
-`, subnet.String(), vlanId, subnet2.String(), vlanId2)
+`, subnet.String(), vlanID, subnet2.String(), vlanID2)
 }
 
-func testAccSettingIpsConfig_suppression() string {
+func testAccSettingIpsConfigSuppression() string {
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
@@ -553,8 +558,9 @@ resource "unifi_setting_ips" "test" {
 `
 }
 
-func testAccSettingIpsConfig_suppressionUpdated(t *testing.T) string {
-	subnet, vlanId := pt.GetTestVLAN(t)
+func testAccSettingIpsConfigSuppressionUpdated(t *testing.T) string {
+	t.Helper()
+	subnet, vlanID := pt.GetTestVLAN(t)
 	return fmt.Sprintf(`
 resource "unifi_network" "test" {
 	  name = "Test"
@@ -598,10 +604,11 @@ resource "unifi_setting_ips" "test" {
     ]
   }
 }
-`, subnet.String(), vlanId)
+`, subnet.String(), vlanID)
 }
 
-func testAccSettingIpsConfig_comprehensive(t *testing.T) string {
+func testAccSettingIpsConfigComprehensive(t *testing.T) string {
+	t.Helper()
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode = "ids"
@@ -636,7 +643,8 @@ resource "unifi_setting_ips" "test" {
 `
 }
 
-func testAccSettingIpsConfig_comprehensiveBefore8(t *testing.T) string {
+func testAccSettingIpsConfigComprehensiveBefore8(t *testing.T) string {
+	t.Helper()
 	return `
 resource "unifi_setting_ips" "test" {
   ips_mode = "ids"
@@ -668,7 +676,7 @@ resource "unifi_setting_ips" "test" {
 `
 }
 
-func testAccSettingIpsConfig_restrictTorrents(enabled bool) string {
+func testAccSettingIpsConfigRestrictTorrents(enabled bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"
@@ -678,7 +686,7 @@ resource "unifi_setting_ips" "test" {
 `, enabled)
 }
 
-func testAccSettingIpsConfig_memoryOptimized(enabled bool) string {
+func testAccSettingIpsConfigMemoryOptimized(enabled bool) string {
 	return fmt.Sprintf(`
 resource "unifi_setting_ips" "test" {
   ips_mode      = "ids"

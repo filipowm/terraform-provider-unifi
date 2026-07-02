@@ -5,42 +5,43 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 )
 
 func AsVersion(versionString string) *version.Version {
 	return version.Must(version.NewVersion(versionString))
 }
 
-// TODO remove this legacy
+// TODO remove this legacy.
 var (
 	ControllerV6                = AsVersion("6.0.0")
 	ControllerV7                = AsVersion("7.0.0")
 	ControllerV8                = AsVersion("8.0.0")
 	ControllerV9                = AsVersion("9.0.0")
-	ControllerVersionApiKeyAuth = AsVersion("9.0.108")
+	ControllerVersionAPIKeyAuth = AsVersion("9.0.108")
 	// https://community.ui.com/releases/UniFi-Network-Application-8-2-93/fce86dc6-897a-4944-9c53-1eec7e37e738
-	ControllerVersionDnsRecords = AsVersion("8.2.93")
+	ControllerVersionDNSRecords = AsVersion("8.2.93")
 
 	// https://community.ui.com/releases/UniFi-Network-Controller-6-1-61/62f1ad38-1ac5-430c-94b0-becbb8f71d7d
 	ControllerVersionWPA3 = AsVersion("6.1.61")
 )
 
-func (c *Client) SupportsApiKeyAuthentication() bool {
-	return c.Version.GreaterThanOrEqual(ControllerVersionApiKeyAuth)
+func (c *Client) SupportsAPIKeyAuthentication() bool {
+	return c.Version.GreaterThanOrEqual(ControllerVersionAPIKeyAuth)
 }
 
 func (c *Client) SupportsWPA3() bool {
 	return c.Version.GreaterThanOrEqual(ControllerVersionWPA3)
 }
 
-func (c *Client) SupportsDnsRecords() bool {
-	return c.Version.GreaterThanOrEqual(ControllerVersionDnsRecords)
+func (c *Client) SupportsDNSRecords() bool {
+	return c.Version.GreaterThanOrEqual(ControllerVersionDNSRecords)
 }
 
 func CheckMinimumControllerVersion(versionString string) error {
@@ -59,12 +60,12 @@ func CheckMinimumControllerVersion(versionString string) error {
 // ControllerVersionValidator is a validator that checks if the UniFi controller version
 // matches the specified constraints.
 type ControllerVersionValidator interface {
-	RequireMinVersion(min string) diag.Diagnostics
-	RequireMaxVersion(max string) diag.Diagnostics
-	RequireVersionBetween(min, max string) diag.Diagnostics
-	RequireMinVersionForPath(min string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics
-	RequireMaxVersionForPath(max string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics
-	RequireVersionBetweenForPath(min, max string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics
+	RequireMinVersion(minVersion string) diag.Diagnostics
+	RequireMaxVersion(maxVersion string) diag.Diagnostics
+	RequireVersionBetween(minVersion, maxVersion string) diag.Diagnostics
+	RequireMinVersionForPath(minVersion string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics
+	RequireMaxVersionForPath(maxVersion string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics
+	RequireVersionBetweenForPath(minVersion, maxVersion string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics
 }
 
 var _ ControllerVersionValidator = &controllerVersionValidator{}
@@ -77,40 +78,40 @@ type controllerVersionValidator struct {
 	client *Client
 }
 
-func (v controllerVersionValidator) RequireMinVersion(min string) diag.Diagnostics {
-	return v.requireVersion(minVersionRequirement(min), nil)
+func (v controllerVersionValidator) RequireMinVersion(minVersion string) diag.Diagnostics {
+	return v.requireVersion(minVersionRequirement(minVersion), nil)
 }
 
-func (v controllerVersionValidator) RequireMaxVersion(max string) diag.Diagnostics {
-	return v.requireVersion(maxVersionRequirement(max), nil)
+func (v controllerVersionValidator) RequireMaxVersion(maxVersion string) diag.Diagnostics {
+	return v.requireVersion(maxVersionRequirement(maxVersion), nil)
 }
 
-func (v controllerVersionValidator) RequireVersionBetween(min, max string) diag.Diagnostics {
-	return v.requireVersion(versionBetweenRequirement(min, max), nil)
+func (v controllerVersionValidator) RequireVersionBetween(minVersion, maxVersion string) diag.Diagnostics {
+	return v.requireVersion(versionBetweenRequirement(minVersion, maxVersion), nil)
 }
 
-func (v controllerVersionValidator) RequireMinVersionForPath(min string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics {
-	return v.requireVersionForPath(minVersionRequirement(min), attrPath, config)
+func (v controllerVersionValidator) RequireMinVersionForPath(minVersion string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics {
+	return v.requireVersionForPath(minVersionRequirement(minVersion), attrPath, config)
 }
 
-func (v controllerVersionValidator) RequireMaxVersionForPath(max string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics {
-	return v.requireVersionForPath(maxVersionRequirement(max), attrPath, config)
+func (v controllerVersionValidator) RequireMaxVersionForPath(maxVersion string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics {
+	return v.requireVersionForPath(maxVersionRequirement(maxVersion), attrPath, config)
 }
 
-func (v controllerVersionValidator) RequireVersionBetweenForPath(min, max string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics {
-	return v.requireVersionForPath(versionBetweenRequirement(min, max), attrPath, config)
+func (v controllerVersionValidator) RequireVersionBetweenForPath(minVersion, maxVersion string, attrPath path.Path, config tfsdk.Config) diag.Diagnostics {
+	return v.requireVersionForPath(versionBetweenRequirement(minVersion, maxVersion), attrPath, config)
 }
 
-func minVersionRequirement(min string) versionRequirement {
-	return versionRequirement{minVersion: AsVersion(min)}
+func minVersionRequirement(minVersion string) versionRequirement {
+	return versionRequirement{minVersion: AsVersion(minVersion)}
 }
 
-func maxVersionRequirement(max string) versionRequirement {
-	return versionRequirement{maxVersion: AsVersion(max)}
+func maxVersionRequirement(maxVersion string) versionRequirement {
+	return versionRequirement{maxVersion: AsVersion(maxVersion)}
 }
 
-func versionBetweenRequirement(min, max string) versionRequirement {
-	return versionRequirement{minVersion: AsVersion(min), maxVersion: AsVersion(max)}
+func versionBetweenRequirement(minVersion, maxVersion string) versionRequirement {
+	return versionRequirement{minVersion: AsVersion(minVersion), maxVersion: AsVersion(maxVersion)}
 }
 
 type versionRequirement struct {
@@ -146,7 +147,7 @@ func (v controllerVersionValidator) requireVersionForPath(req versionRequirement
 	return diags
 }
 
-// requireVersion checks if the controller version meets the constraints
+// requireVersion checks if the controller version meets the constraints.
 func (v controllerVersionValidator) requireVersion(req versionRequirement, attrPath *path.Path) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 	if v.client == nil || v.client.Version == nil {

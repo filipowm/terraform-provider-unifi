@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 // TestMacRegex pins the set of MAC address strings MacRegex accepts and rejects.
@@ -59,7 +60,6 @@ func TestMacRegex(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			if got := validators.MacRegex.MatchString(test.input); got != test.expectOK {
@@ -91,7 +91,6 @@ func TestMacValidator(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			req := validator.StringRequest{ConfigValue: test.val}

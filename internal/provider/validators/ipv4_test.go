@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 func TestIPv4Validator(t *testing.T) {
@@ -52,7 +53,6 @@ func TestIPv4Validator(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			req := validator.StringRequest{

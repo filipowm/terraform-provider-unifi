@@ -28,7 +28,7 @@ type Resource interface {
 	SetFeatureValidator(validator FeatureValidator)
 }
 
-// ResourceModel defines the interface that all setting models must implement
+// ResourceModel defines the interface that all setting models must implement.
 type ResourceModel interface {
 	Identifiable
 	SiteAware
@@ -36,7 +36,7 @@ type ResourceModel interface {
 	AsUnifiModel(context.Context) (interface{}, diag.Diagnostics)
 }
 
-// ResourceModel defines the interface that all setting models must implement
+// ResourceModel defines the interface that all setting models must implement.
 type DatasourceModel interface {
 	SiteAware
 	Merge(context.Context, interface{}) diag.Diagnostics

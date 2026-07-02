@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 func TestCountryCodeValidation(t *testing.T) {

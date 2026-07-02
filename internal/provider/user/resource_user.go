@@ -7,14 +7,15 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 // TODO add validation: api.err.LocalDnsRecordRequiresFixedIp
-// TODO require v7.3+ for local dns record
+// TODO require v7.3+ for local dns record.
 func ResourceUser() *schema.Resource {
 	return &schema.Resource{
 		Description: "The `unifi_user` resource manages network clients in the UniFi controller, which are identified by their unique MAC addresses.\n\n" +
@@ -148,16 +149,16 @@ func ResourceUser() *schema.Resource {
 }
 
 func resourceUserCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
-
-	req, err := resourceUserGetResourceData(d)
-	if err != nil {
-		return diag.FromErr(err)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
 	}
 
-	allowExisting := d.Get("allow_existing").(bool)
+	req := resourceUserGetResourceData(d)
 
-	site := d.Get("site").(string)
+	allowExisting, _ := d.Get("allow_existing").(bool)
+
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -169,7 +170,7 @@ func resourceUserCreate(ctx context.Context, d *schema.ResourceData, meta interf
 		}
 
 		// mac in use, just absorb it
-		mac := d.Get("mac").(string)
+		mac, _ := d.Get("mac").(string)
 		existing, err := c.GetUserByMAC(ctx, site, mac)
 		if err != nil {
 			return diag.FromErr(err)
@@ -196,18 +197,19 @@ func resourceUserCreate(ctx context.Context, d *schema.ResourceData, meta interf
 
 	d.SetId(resp.ID)
 
-	if d.Get("blocked").(bool) {
-		err := c.BlockUserByMAC(ctx, site, d.Get("mac").(string))
+	if blocked, _ := d.Get("blocked").(bool); blocked {
+		mac, _ := d.Get("mac").(string)
+		err := c.BlockUserByMAC(ctx, site, mac)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	if d.HasChange("dev_id_override") {
-		mac := d.Get("mac").(string)
-		device := d.Get("dev_id_override").(int)
+		mac, _ := d.Get("mac").(string)
+		device, _ := d.Get("dev_id_override").(int)
 
-		err := c.OverrideUserFingerprint(context.TODO(), site, mac, device)
+		err := c.OverrideUserFingerprint(ctx, site, mac, device)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -218,24 +220,31 @@ func resourceUserCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	return resourceUserSetResourceData(resp, d, site)
 }
 
-func resourceUserGetResourceData(d *schema.ResourceData) (*unifi.User, error) {
-	fixedIP := d.Get("fixed_ip").(string)
-	localDnsRecord := d.Get("local_dns_record").(string)
+func resourceUserGetResourceData(d *schema.ResourceData) *unifi.User {
+	fixedIP, _ := d.Get("fixed_ip").(string)
+	localDNSRecord, _ := d.Get("local_dns_record").(string)
+	mac, _ := d.Get("mac").(string)
+	name, _ := d.Get("name").(string)
+	userGroupID, _ := d.Get("user_group_id").(string)
+	note, _ := d.Get("note").(string)
+	networkID, _ := d.Get("network_id").(string)
+	blocked, _ := d.Get("blocked").(bool)
+	devIDOverride, _ := d.Get("dev_id_override").(int)
 
 	return &unifi.User{
-		MAC:                   d.Get("mac").(string),
-		Name:                  d.Get("name").(string),
-		UserGroupID:           d.Get("user_group_id").(string),
-		Note:                  d.Get("note").(string),
+		MAC:                   mac,
+		Name:                  name,
+		UserGroupID:           userGroupID,
+		Note:                  note,
 		FixedIP:               fixedIP,
 		UseFixedIP:            fixedIP != "",
-		LocalDNSRecord:        localDnsRecord,
-		LocalDNSRecordEnabled: localDnsRecord != "",
-		NetworkID:             d.Get("network_id").(string),
+		LocalDNSRecord:        localDNSRecord,
+		LocalDNSRecordEnabled: localDNSRecord != "",
+		NetworkID:             networkID,
 		// not sure if this matters/works
-		Blocked:       d.Get("blocked").(bool),
-		DevIdOverride: d.Get("dev_id_override").(int),
-	}, nil
+		Blocked:       blocked,
+		DevIdOverride: devIDOverride,
+	}
 }
 
 func resourceUserSetResourceData(resp *unifi.User, d *schema.ResourceData, site string) diag.Diagnostics {
@@ -244,33 +253,60 @@ func resourceUserSetResourceData(resp *unifi.User, d *schema.ResourceData, site 
 		fixedIP = resp.FixedIP
 	}
 
-	localDnsRecord := ""
+	localDNSRecord := ""
 	if resp.LocalDNSRecordEnabled {
-		localDnsRecord = resp.LocalDNSRecord
+		localDNSRecord = resp.LocalDNSRecord
 	}
 
-	d.Set("site", site)
-	d.Set("mac", resp.MAC)
-	d.Set("name", resp.Name)
-	d.Set("user_group_id", resp.UserGroupID)
-	d.Set("note", resp.Note)
-	d.Set("fixed_ip", fixedIP)
-	d.Set("local_dns_record", localDnsRecord)
-	d.Set("network_id", resp.NetworkID)
-	d.Set("blocked", resp.Blocked)
-	d.Set("dev_id_override", resp.DevIdOverride)
-	d.Set("hostname", resp.Hostname)
-	d.Set("ip", resp.IP)
+	if err := d.Set("site", site); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("mac", resp.MAC); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("name", resp.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("user_group_id", resp.UserGroupID); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("note", resp.Note); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("fixed_ip", fixedIP); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("local_dns_record", localDNSRecord); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("network_id", resp.NetworkID); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("blocked", resp.Blocked); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("dev_id_override", resp.DevIdOverride); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("hostname", resp.Hostname); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("ip", resp.IP); err != nil {
+		return diag.FromErr(err)
+	}
 
 	return nil
 }
 
 func resourceUserRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
@@ -302,16 +338,19 @@ func resourceUserRead(ctx context.Context, d *schema.ResourceData, meta interfac
 }
 
 func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}
 
 	if d.HasChange("blocked") {
-		mac := d.Get("mac").(string)
-		if d.Get("blocked").(bool) {
+		mac, _ := d.Get("mac").(string)
+		if blocked, _ := d.Get("blocked").(bool); blocked {
 			err := c.BlockUserByMAC(ctx, site, mac)
 			if err != nil {
 				return diag.FromErr(err)
@@ -325,10 +364,10 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	if d.HasChange("dev_id_override") {
-		mac := d.Get("mac").(string)
-		device := d.Get("dev_id_override").(int)
+		mac, _ := d.Get("mac").(string)
+		device, _ := d.Get("dev_id_override").(int)
 
-		err := c.OverrideUserFingerprint(context.TODO(), site, mac, device)
+		err := c.OverrideUserFingerprint(ctx, site, mac, device)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -338,10 +377,7 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 		}
 	}
 
-	req, err := resourceUserGetResourceData(d)
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	req := resourceUserGetResourceData(d)
 
 	req.ID = d.Id()
 	req.SiteID = site
@@ -365,15 +401,18 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 }
 
 func resourceUserDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type: %T", meta)
+	}
 
 	id := d.Id()
 
-	if d.Get("skip_forget_on_destroy").(bool) {
+	if skip, _ := d.Get("skip_forget_on_destroy").(bool); skip {
 		return nil
 	}
 
-	site := d.Get("site").(string)
+	site, _ := d.Get("site").(string)
 	if site == "" {
 		site = c.Site
 	}

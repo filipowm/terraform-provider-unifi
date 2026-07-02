@@ -3,16 +3,18 @@ package settings
 import (
 	"context"
 
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
+
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 type localeModel struct {
@@ -83,7 +85,8 @@ func NewLocaleResource() resource.Resource {
 			return client.GetSettingLocale(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingLocale(ctx, site, body.(*unifi.SettingLocale))
+			b, _ := body.(*unifi.SettingLocale)
+			return client.UpdateSettingLocale(ctx, site, b)
 		},
 	)
 	return r

@@ -6,9 +6,10 @@ import (
 	"fmt"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 func ResourceSite() *schema.Resource {
@@ -56,17 +57,19 @@ func ResourceSite() *schema.Resource {
 }
 
 func resourceSiteImport(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return nil, fmt.Errorf("unexpected meta type %T", meta)
+	}
 
 	id := d.Id()
 	_, err := c.GetSite(ctx, id)
-	if err != nil {
-		if !errors.Is(err, unifi.ErrNotFound) {
-			return nil, err
-		}
-	} else {
+	if err == nil {
 		// id is a valid site
 		return []*schema.ResourceData{d}, nil
+	}
+	if !errors.Is(err, unifi.ErrNotFound) {
+		return nil, err
 	}
 
 	// lookup site by name
@@ -86,9 +89,12 @@ func resourceSiteImport(ctx context.Context, d *schema.ResourceData, meta interf
 }
 
 func resourceSiteCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type %T", meta)
+	}
 
-	description := d.Get("description").(string)
+	description, _ := d.Get("description").(string)
 
 	resp, err := c.CreateSite(ctx, description)
 	if err != nil {
@@ -102,13 +108,20 @@ func resourceSiteCreate(ctx context.Context, d *schema.ResourceData, meta interf
 }
 
 func resourceSiteSetResourceData(resp *unifi.Site, d *schema.ResourceData) diag.Diagnostics {
-	d.Set("name", resp.Name)
-	d.Set("description", resp.Description)
+	if err := d.Set("name", resp.Name); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := d.Set("description", resp.Description); err != nil {
+		return diag.FromErr(err)
+	}
 	return nil
 }
 
 func resourceSiteRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type %T", meta)
+	}
 
 	id := d.Id()
 
@@ -125,12 +138,17 @@ func resourceSiteRead(ctx context.Context, d *schema.ResourceData, meta interfac
 }
 
 func resourceSiteUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type %T", meta)
+	}
 
+	name, _ := d.Get("name").(string)
+	description, _ := d.Get("description").(string)
 	site := &unifi.Site{
 		ID:          d.Id(),
-		Name:        d.Get("name").(string),
-		Description: d.Get("description").(string),
+		Name:        name,
+		Description: description,
 	}
 
 	resp, err := c.UpdateSite(ctx, site.Name, site.Description)
@@ -142,7 +160,10 @@ func resourceSiteUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 }
 
 func resourceSiteDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*base.Client)
+	c, ok := meta.(*base.Client)
+	if !ok {
+		return diag.Errorf("unexpected meta type %T", meta)
+	}
 	id := d.Id()
 	_, err := c.DeleteSite(ctx, id)
 	return diag.FromErr(err)

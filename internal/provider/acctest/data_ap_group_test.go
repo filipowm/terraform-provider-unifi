@@ -16,7 +16,7 @@ func TestAccDataAPGroup_default(t *testing.T) {
 	AcceptanceTest(t, AcceptanceTestCase{
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataAPGroupConfig_default,
+				Config: testAccDataAPGroupConfigDefault,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(testAPGroupDatasourceName, "name", defaultAPGroupName),
 				),
@@ -38,7 +38,7 @@ func TestAccDataAPGroup_byName(t *testing.T) {
 	})
 }
 
-const testAccDataAPGroupConfig_default = `
+const testAccDataAPGroupConfigDefault = `
 data "unifi_ap_group" "test" {
 }
 `

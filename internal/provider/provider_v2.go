@@ -3,14 +3,6 @@ package provider
 import (
 	"context"
 
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/apgroup"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/dns"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/firewall"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/portal"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/settings"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -21,6 +13,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/apgroup"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/dns"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/firewall"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/portal"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/settings"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
 
 func NewV2(version string) func() provider.Provider {
@@ -31,9 +32,7 @@ func NewV2(version string) func() provider.Provider {
 	}
 }
 
-var (
-	_ provider.Provider = &unifiProvider{}
-)
+var _ provider.Provider = &unifiProvider{}
 
 type unifiProvider struct {
 	version string
@@ -132,7 +131,7 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	username := utils.GetAnyStringEnv("UNIFI_USERNAME")
 	password := utils.GetAnyStringEnv("UNIFI_PASSWORD")
 	apiKey := utils.GetAnyStringEnv("UNIFI_API_KEY")
-	apiUrl := utils.GetAnyStringEnv("UNIFI_API")
+	apiURL := utils.GetAnyStringEnv("UNIFI_API")
 	site := utils.GetAnyStringEnv("UNIFI_SITE")
 	insecure := utils.GetAnyBoolEnv("UNIFI_INSECURE")
 	maxRetries := utils.GetAnyIntEnv("UNIFI_MAX_RETRIES")
@@ -147,7 +146,7 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 		apiKey = cfg.APIKey.ValueString()
 	}
 	if !cfg.APIUrl.IsNull() {
-		apiUrl = cfg.APIUrl.ValueString()
+		apiURL = cfg.APIUrl.ValueString()
 	}
 	if !cfg.Site.IsNull() {
 		site = cfg.Site.ValueString()
@@ -163,7 +162,7 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	} else if apiKey == "" && (username == "" || password == "") {
 		resp.Diagnostics.AddAttributeError(path.Root("api_key"), "Missing UniFi API credentials", "Either `username`/`password` or `api_key` must be set")
 	}
-	if apiUrl == "" {
+	if apiURL == "" {
 		resp.Diagnostics.AddAttributeError(path.Root("api_url"), "Missing UniFi API URL", "The `api_url` attribute must be set")
 	}
 	if resp.Diagnostics.HasError() {
@@ -175,8 +174,8 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	c, err := base.NewClient(&base.ClientConfig{
 		Username:   username,
 		Password:   password,
-		ApiKey:     apiKey,
-		Url:        apiUrl,
+		APIKey:     apiKey,
+		URL:        apiURL,
 		Site:       site,
 		Insecure:   insecure,
 		MaxRetries: maxRetries,
@@ -192,7 +191,7 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		apgroup.NewAPGroupResource,
-		dns.NewDnsRecordResource,
+		dns.NewDNSRecordResource,
 		firewall.NewFirewallZoneResource,
 		firewall.NewFirewallZonePolicyResource,
 		firewall.NewFirewallZonePolicyOrderResource,
@@ -222,8 +221,8 @@ func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource 
 func (p *unifiProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		apgroup.NewAPGroupDatasource,
-		dns.NewDnsRecordsDatasource,
-		dns.NewDnsRecordDatasource,
+		dns.NewDNSRecordsDatasource,
+		dns.NewDNSRecordDatasource,
 		firewall.NewFirewallZoneDatasource,
 	}
 }

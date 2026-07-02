@@ -6,11 +6,12 @@ import (
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 )
 
 type networkOptimizationModel struct {
@@ -79,7 +80,8 @@ func NewNetworkOptimizationResource() resource.Resource {
 			return client.GetSettingNetworkOptimization(ctx, site)
 		},
 		func(ctx context.Context, client *base.Client, site string, body interface{}) (interface{}, error) {
-			return client.UpdateSettingNetworkOptimization(ctx, site, body.(*unifi.SettingNetworkOptimization))
+			b, _ := body.(*unifi.SettingNetworkOptimization)
+			return client.UpdateSettingNetworkOptimization(ctx, site, b)
 		},
 	)
 	return r
