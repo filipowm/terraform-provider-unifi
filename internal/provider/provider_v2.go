@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/apgroup"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/dns"

@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
-	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"net"
 	"regexp"
 	"strings"
 	"testing"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 
 	"github.com/apparentlymart/go-cidr/cidr"
 	"github.com/filipowm/go-unifi/unifi"

@@ -2,9 +2,10 @@ package acctest
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"strings"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"

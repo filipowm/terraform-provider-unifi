@@ -3,6 +3,8 @@ package main // import "github.com/filipowm/terraform-provider-unifi"
 import (
 	"context"
 	"flag"
+	"log"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
@@ -11,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
 	"github.com/hashicorp/terraform-plugin-mux/tf6muxserver"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"log"
 )
 
 var (

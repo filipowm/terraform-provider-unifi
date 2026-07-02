@@ -444,12 +444,12 @@ func getRadiusProfileIDByName(ctx context.Context, client unifi.Client, profileN
 			continue
 		}
 		if idMatchingName != "" {
-			return "", fmt.Errorf("Found multiple RADIUS profiles with name '%s'", profileName)
+			return "", fmt.Errorf("found multiple RADIUS profiles with name '%s'", profileName)
 		}
 		idMatchingName = profile.ID
 	}
 	if idMatchingName == "" {
-		return "", fmt.Errorf("Found no RADIUS profile with name '%s', found: %s", profileName, strings.Join(allNames, ", "))
+		return "", fmt.Errorf("found no RADIUS profile with name '%s', found: %s", profileName, strings.Join(allNames, ", "))
 	}
 	return idMatchingName, nil
 }

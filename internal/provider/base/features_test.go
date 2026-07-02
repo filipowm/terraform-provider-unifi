@@ -3,9 +3,10 @@ package base
 import (
 	"context"
 	"errors"
-	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"sync"
 	"testing"
+
+	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/hashicorp/terraform-plugin-framework/attr"

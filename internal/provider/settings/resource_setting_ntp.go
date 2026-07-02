@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"

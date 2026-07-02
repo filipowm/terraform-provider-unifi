@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"fmt"
+
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
@@ -49,7 +50,7 @@ type autoSpeedtestResource struct {
 
 func checkAutoSpeedtestUnsupportedError(err error) error {
 	if utils.IsServerErrorContains(err, "api.err.SpeedTestNotSupported") {
-		return fmt.Errorf("Auto Speedtest is not supported on this controller")
+		return fmt.Errorf("auto speedtest is not supported on this controller")
 	}
 	return err
 }

@@ -56,7 +56,7 @@ func allocateDevice(t *testing.T) (*unifi.Device, func()) {
 				}
 
 				// Only switches with these chipsets support both port mirroring ang aggregation.
-				if !(isBroadcomSwitch(device) || isMicrosemiSwitch(device) || isNephosSwitch(device)) {
+				if !isBroadcomSwitch(device) && !isMicrosemiSwitch(device) && !isNephosSwitch(device) {
 					continue
 				}
 

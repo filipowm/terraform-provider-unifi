@@ -2,9 +2,10 @@ package base
 
 import (
 	"context"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"strings"
 )
 
 // for Terraform Plugin SDK v2

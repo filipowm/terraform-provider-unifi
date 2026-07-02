@@ -2,9 +2,10 @@ package utils
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"slices"
 	"strings"
+
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )

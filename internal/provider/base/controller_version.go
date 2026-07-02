@@ -3,13 +3,14 @@ package base
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"strings"
 )
 
 func AsVersion(versionString string) *version.Version {
@@ -48,7 +49,7 @@ func CheckMinimumControllerVersion(versionString string) error {
 		return err
 	}
 	if v.LessThan(ControllerV6) {
-		return fmt.Errorf("Controller version %q or greater is required to use the provider, found %q.", ControllerV6, v)
+		return fmt.Errorf("controller version %q or greater is required to use the provider, found %q", ControllerV6, v)
 	}
 	return nil
 }
@@ -156,20 +157,20 @@ func (v controllerVersionValidator) requireVersion(req versionRequirement, attrP
 	controllerVersion := v.client.Version
 	errorBuilder := strings.Builder{}
 	if attrPath != nil {
-		errorBuilder.WriteString(fmt.Sprintf("%s is not supported. ", attrPath.String()))
+		fmt.Fprintf(&errorBuilder, "%s is not supported. ", attrPath.String())
 	}
-	errorBuilder.WriteString(fmt.Sprintf("Controller version %s", controllerVersion))
+	fmt.Fprintf(&errorBuilder, "Controller version %s", controllerVersion)
 	failed := false
 
 	if req.isBetweenRequirement() && (controllerVersion.LessThan(req.minVersion) || controllerVersion.GreaterThan(req.maxVersion)) {
 		failed = true
-		errorBuilder.WriteString(fmt.Sprintf(" is not between required %s and %s", req.minVersion, req.maxVersion))
+		fmt.Fprintf(&errorBuilder, " is not between required %s and %s", req.minVersion, req.maxVersion)
 	} else if req.isMinRequirement() && controllerVersion.LessThan(req.minVersion) {
 		failed = true
-		errorBuilder.WriteString(fmt.Sprintf(" is less than minimum required version %s", req.minVersion))
+		fmt.Fprintf(&errorBuilder, " is less than minimum required version %s", req.minVersion)
 	} else if req.isMaxRequirement() && controllerVersion.GreaterThan(req.maxVersion) {
 		failed = true
-		errorBuilder.WriteString(fmt.Sprintf(" is greater than maximum required version %s", req.maxVersion))
+		fmt.Fprintf(&errorBuilder, " is greater than maximum required version %s", req.maxVersion)
 	}
 	if failed {
 		diags.AddError(controllerVersionErrorMessage, errorBuilder.String())

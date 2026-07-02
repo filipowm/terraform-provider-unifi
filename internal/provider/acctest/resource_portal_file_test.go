@@ -3,10 +3,11 @@ package acctest
 import (
 	"context"
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
-	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"path/filepath"
 	"testing"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"

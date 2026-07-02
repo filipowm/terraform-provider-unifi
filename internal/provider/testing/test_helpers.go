@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+	"testing"
+
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
-	"os"
-	"strings"
-	"testing"
 )
 
 const TfAccLocal = "TF_ACC_LOCAL"
@@ -128,7 +129,7 @@ func CheckDestroy(resourceType string, read func(ctx context.Context, site, id s
 			}
 			err := read(context.Background(), site, rs.Primary.ID)
 			if err == nil {
-				return fmt.Errorf("Resource with id %q still exists.", rs.Primary.ID)
+				return fmt.Errorf("resource with id %q still exists", rs.Primary.ID)
 			}
 			if utils.IsServerErrorStatusCode(err, 404) || errors.Is(err, unifi.ErrNotFound) {
 				continue

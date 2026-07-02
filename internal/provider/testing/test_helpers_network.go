@@ -1,12 +1,13 @@
 package testing
 
 import (
-	"github.com/apparentlymart/go-cidr/cidr"
-	mapset "github.com/deckarep/golang-set/v2"
 	"math"
 	"net"
 	"sync"
 	"testing"
+
+	"github.com/apparentlymart/go-cidr/cidr"
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
 const (

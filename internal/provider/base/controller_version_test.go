@@ -1,9 +1,10 @@
 package base_test
 
 import (
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/stretchr/testify/assert"

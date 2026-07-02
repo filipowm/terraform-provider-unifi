@@ -5,6 +5,14 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/filipowm/go-unifi/unifi"
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
@@ -13,13 +21,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"io"
-	"log"
-	"net"
-	"net/http"
-	"strings"
-	"sync"
-	"time"
 )
 
 type ClientConfig struct {
@@ -107,9 +108,9 @@ type RetryableUnifiClient struct {
 func (c *RetryableUnifiClient) relogin(err error) error {
 	c.loginMutex.Lock()
 	defer c.loginMutex.Unlock()
-	loginErr := c.Client.Login()
+	loginErr := c.Login()
 	if loginErr != nil {
-		return fmt.Errorf("Tried relogging in after %w, but failed: %w.", err, loginErr)
+		return fmt.Errorf("tried relogging in after %w, but failed: %w", err, loginErr)
 	} else {
 		return nil
 	}

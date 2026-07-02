@@ -2,6 +2,7 @@ package testing
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 )
 

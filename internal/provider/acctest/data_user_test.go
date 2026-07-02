@@ -3,10 +3,11 @@ package acctest
 import (
 	"context"
 	"fmt"
-	"github.com/apparentlymart/go-cidr/cidr"
-	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"net"
 	"testing"
+
+	"github.com/apparentlymart/go-cidr/cidr"
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 
 	"github.com/filipowm/go-unifi/unifi"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"

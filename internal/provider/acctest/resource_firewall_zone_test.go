@@ -3,14 +3,15 @@ package acctest
 import (
 	"context"
 	"fmt"
+	"strings"
+	"sync"
+	"testing"
+
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
-	"strings"
-	"sync"
-	"testing"
 )
 
 const testFirewallZoneResourceName = "unifi_firewall_zone.test"

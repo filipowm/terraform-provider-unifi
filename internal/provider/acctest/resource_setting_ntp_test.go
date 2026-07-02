@@ -2,11 +2,12 @@ package acctest
 
 import (
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
-	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"regexp"
 	"sync"
 	"testing"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )

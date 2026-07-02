@@ -2,6 +2,7 @@ package firewall
 
 import (
 	"context"
+
 	"github.com/filipowm/go-unifi/unifi/features"
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework/diag"

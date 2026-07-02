@@ -2,10 +2,11 @@ package acctest
 
 import (
 	"fmt"
-	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"net"
 	"strconv"
 	"testing"
+
+	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"

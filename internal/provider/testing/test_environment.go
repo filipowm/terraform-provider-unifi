@@ -6,9 +6,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,8 +13,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+
 	"github.com/filipowm/go-unifi/unifi"
-	"github.com/testcontainers/testcontainers-go"
+	tclog "github.com/testcontainers/testcontainers-go/log"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 )
 
@@ -165,8 +166,6 @@ func (te *TestEnvironment) startDockerController(ctx context.Context) error {
 	}
 
 	// Dump the container logs on exit.
-	//
-	// TODO: Use https://pkg.go.dev/github.com/testcontainers/testcontainers-go#LogConsumer instead.
 	te.Shutdown = func() {
 		shutdown()
 
@@ -182,7 +181,7 @@ func (te *TestEnvironment) startDockerController(ctx context.Context) error {
 
 		buffer := new(bytes.Buffer)
 		buffer.ReadFrom(stream)
-		testcontainers.Logger.Printf("%s", buffer)
+		tclog.Printf("%s", buffer)
 	}
 	endpoint, err := container.PortEndpoint(ctx, "8443/tcp", "https")
 	if err != nil {

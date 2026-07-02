@@ -2,12 +2,13 @@ package acctest
 
 import (
 	"fmt"
+	"sync"
+	"testing"
+
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
-	"sync"
-	"testing"
 )
 
 // Using dedicated lock for IPS settings to avoid interference with other tests

@@ -3,6 +3,11 @@ package acctest
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
+	"sync"
+	"testing"
+
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
@@ -14,10 +19,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-mux/tf6muxserver"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"os"
-	"strings"
-	"sync"
-	"testing"
 )
 
 type providersMap map[string]func() (tfprotov6.ProviderServer, error)
