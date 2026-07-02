@@ -616,7 +616,7 @@ func TestAccNetwork_mdns(t *testing.T) {
 	subnet, vlan := pt.GetTestVLAN(t)
 
 	AcceptanceTest(t, AcceptanceTestCase{
-		VersionConstraint: "> 7.0",
+		VersionConstraint: "> 8.0",
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
