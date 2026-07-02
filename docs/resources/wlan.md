@@ -96,10 +96,13 @@ resource "unifi_wlan" "wifi" {
 - `schedule` (Block List) Time-based access control configuration for the wireless network. Allows automatic enabling/disabling of the network on specified schedules. (see [below for nested schema](#nestedblock--schedule))
 - `site` (String) The name of the UniFi site where the wireless network should be created. If not specified, the default site will be used.
 - `uapsd` (Boolean) Enable Unscheduled Automatic Power Save Delivery to improve battery life for mobile devices. Defaults to `false`.
-- `wlan_band` (String) Radio band selection. Valid values:
-  * `both` - Both 2.4GHz and 5GHz (default)
+- `wlan_band` (String) Radio band selection (legacy single-band field). Valid values:
+  * `both` - Both 2.4GHz and 5GHz
   * `2g` - 2.4GHz only
-  * `5g` - 5GHz only Defaults to `both`.
+  * `5g` - 5GHz only
+
+Cannot express a 6GHz selection — use `wlan_bands` for that. When neither this nor `wlan_bands` is set, the controller's default (all supported bands) applies.
+- `wlan_bands` (Set of String) Radio bands to broadcast this SSID on (modern multi-band field, supersedes `wlan_band` and supports 6GHz). Valid values for each element: `2g`, `5g`, `6g`. Note that 6GHz requires WPA3 (or WPA3 transition mode) and a 6GHz-capable access point. When set, the legacy `wlan_band` field is derived from it and `setting_preference` is forced to `manual`, matching UniFi UI behavior.
 - `wpa3_support` (Boolean) Enable WPA3 security protocol. Requires security to be set to `wpapsk` and PMF mode to be enabled. WPA3 provides enhanced security features over WPA2.
 - `wpa3_transition` (Boolean) Enable WPA3 transition mode, which allows both WPA2 and WPA3 clients to connect. This provides backward compatibility while gradually transitioning to WPA3. Requires security to be set to `wpapsk` and `wpa3_support` to be true.
 

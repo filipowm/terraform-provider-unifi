@@ -64,7 +64,7 @@ Only change this if you need specific tunneling behavior. Defaults to `6`.
   * `9` - Point-to-Point Protocol (L2TP)
 
 Only change this if you need specific tunneling behavior. Defaults to `13`.
-- `vlan` (Number) The 802.1Q VLAN ID to assign to clients authenticating with this account, used for RADIUS dynamic VLAN assignment. It is delivered together with the tunnel attributes (`tunnel_type`/`tunnel_medium_type`). Omitting this attribute (or setting it to `0`) means no VLAN is assigned; if a VLAN was set out-of-band (e.g. in the controller UI), omitting it here removes it on the next apply.
+- `vlan` (Number) The 802.1Q VLAN ID to assign to clients authenticating with this account, used for RADIUS dynamic VLAN assignment. It is delivered together with the tunnel attributes (`tunnel_type`/`tunnel_medium_type`). Omitting this attribute means no VLAN is assigned; if a VLAN was set out-of-band (e.g. in the controller UI), omitting it here removes it on the next apply.
 
 ### Read-Only
 

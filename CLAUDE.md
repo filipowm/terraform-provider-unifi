@@ -51,7 +51,7 @@ golangci-lint run --fix    # lint (matches CI; no make target exists)
 make testacc               # TF_ACC=1 go test ./... — spins up a Dockerized controller, ~20m
 # Run a single acceptance test:
 make testacc TEST=./internal/provider/acctest TESTARGS='-run TestAccDNSRecord_basic'
-go generate ./tools/       # regenerate docs/ from schema + examples/ + templates/
+go generate ./tools/tools.go     # regenerate docs/ from schema + examples/ + templates/
 ```
 
 Acceptance tests require Docker (a UniFi controller is started automatically). Without `TF_ACC=1`

@@ -125,7 +125,9 @@ Optional:
 - `ip_group_id` (String) ID of the source IP group.
 - `ips` (List of String) List of source IPs.
 - `match_opposite_ips` (Boolean) Whether to match opposite IPs.
+- `match_opposite_networks` (Boolean) Whether to match opposite networks.
 - `match_opposite_ports` (Boolean) Whether to match opposite ports.
+- `network_ids` (List of String) List of network IDs.
 - `port` (Number) Source port.
 - `port_group_id` (String) ID of the source port group.
 - `regions` (List of String) List of regions.
