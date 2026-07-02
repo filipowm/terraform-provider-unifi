@@ -37,6 +37,48 @@ signs:
       - "${signature}"
       - "--detach-sign"
       - "${artifact}"
+
 changelog:
-  disable: true
-  use: github-native
+  use: "git"
+  abbrev: -1
+  sort: "asc"
+  filters:
+    # Exclude commits that are internal/maintenance noise — consumers don't need these.
+    # Keep: feat, fix, perf, security (and breaking variants marked with !)
+    exclude:
+      - "^chore"
+      - "^ci"
+      - "^docs"
+      - "^refactor"
+      - "^style"
+      - "^test"
+      - "^build"
+      - "^revert"
+      - "^fix\\(docs\\)"
+      - "^fix\\(review\\)"
+      - "^fix\\(skill\\)"
+      - "^fix\\(tests\\)"
+      - "Merge pull request"
+      - "Merge branch"
+      - "^WIP"
+  groups:
+    # Breaking changes surface first — matched by the conventional-commit "!" marker.
+    - title: "🚨 Breaking Changes"
+      regexp: '^.+!:.+'
+      order: 0
+    - title: "🔒 Security"
+      regexp: '^security(\(.+\))?:'
+      order: 1
+    - title: "✨ New Features"
+      regexp: '^feat(\(.+\))?:'
+      order: 2
+    - title: "🔧 Bug Fixes"
+      regexp: '^fix(\(.+\))?:'
+      order: 3
+    - title: "⚡ Performance"
+      regexp: '^perf(\(.+\))?:'
+      order: 4
+    # Catch-all: anything not excluded above and not matched by a group above.
+    # In practice this should be empty given the filter list, but acts as a safety net.
+    - title: "Other"
+      order: 99

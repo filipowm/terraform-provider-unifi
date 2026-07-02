@@ -33,3 +33,101 @@ jobs:
         env:
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  changelog:
+    needs: "goreleaser"
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: "read"
+    concurrency:
+      group: "changelog-main"
+      cancel-in-progress: false
+    steps:
+      # The push to protected main authenticates via a write deploy key
+      # (DeployKey is a bypass actor on the branch ruleset; the GitHub Actions
+      # app cannot bypass rulesets on user-owned repos).
+      - uses: "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0"  # v7.0.0
+        with:
+          ref: "main"
+          fetch-depth: 0
+          ssh-key: "${{ secrets.CHANGELOG_DEPLOY_KEY }}"
+      - name: "Prepend release notes to CHANGELOG.md"
+        env:
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          TAG: "${{ github.ref_name }}"
+        run: |
+          set -euo pipefail
+
+          if [ "$(gh release view "$TAG" --json isPrerelease --jq '.isPrerelease')" = "true" ]; then
+            echo "Skipping prerelease $TAG"
+            exit 0
+          fi
+
+          if grep -qF "## [${TAG}](" CHANGELOG.md; then
+            echo "CHANGELOG.md already contains ${TAG}; nothing to do"
+            exit 0
+          fi
+
+          date="$(gh release view "$TAG" --json publishedAt --jq '.publishedAt' | cut -c1-10)"
+          gh release view "$TAG" --json body --jq '.body' | tr -d '\r' > /tmp/release-body.md
+
+          # Normalize the goreleaser body into the CHANGELOG.md entry shape:
+          # drop the "## Changelog" header and trailing spaces, collapse the
+          # empty-SHA double space after "*", and put blank lines around "###".
+          awk '
+            /^## Changelog[[:space:]]*$/ { next }
+            {
+              line = $0
+              gsub(/[[:space:]]+$/, "", line)
+              sub(/^\*  /, "* ", line)
+              if (line == "") next
+              if (line ~ /^### /) {
+                if (printed) print ""
+                print line
+                print ""
+              } else {
+                print line
+              }
+              printed = 1
+            }
+          ' /tmp/release-body.md > /tmp/notes.md
+
+          {
+            echo "## [${TAG}](https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}) (${date})"
+            echo ""
+            if [ -s /tmp/notes.md ]; then
+              cat /tmp/notes.md
+            else
+              echo "_No consumer-facing changes._"
+            fi
+          } > /tmp/entry.md
+
+          first="$(grep -n '^## \[' CHANGELOG.md | head -1 | cut -d: -f1)"
+          if [ -n "$first" ]; then
+            {
+              head -n "$((first - 1))" CHANGELOG.md
+              cat /tmp/entry.md
+              echo ""
+              tail -n "+${first}" CHANGELOG.md
+            } > /tmp/changelog-new.md
+          else
+            cat CHANGELOG.md /tmp/entry.md > /tmp/changelog-new.md
+          fi
+          mv /tmp/changelog-new.md CHANGELOG.md
+      - name: "Commit and push to main"
+        env:
+          TAG: "${{ github.ref_name }}"
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "No changelog changes to commit"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs(changelog): add ${TAG} release notes"
+          # main may have moved while this job ran; one rebase retry is enough
+          git push origin main || { git pull --rebase origin main && git push origin main; }
