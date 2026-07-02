@@ -51,7 +51,7 @@ func TestAccSettingAutoSpeedtest_unsupported(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccSettingAutoSpeedtestConfig(true, "0 0 * * *"),
-				ExpectError: regexp.MustCompile("Auto Speedtest is not supported on this controller"),
+				ExpectError: regexp.MustCompile("auto speedtest is not supported on this controller"),
 			},
 		},
 	})
