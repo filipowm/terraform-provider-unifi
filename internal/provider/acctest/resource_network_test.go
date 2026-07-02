@@ -1232,6 +1232,7 @@ func TestAccNetwork_wireguardVPNClient(t *testing.T) {
 	name := acctest.RandomWithPrefix("tfacc")
 
 	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: "> 7.5",
 		// TODO: CheckDestroy: ,
 		Steps: []resource.TestStep{
 			{
