@@ -41,7 +41,9 @@ internal/provider/
 └── testing/           # Dockerized controller env (testcontainers) + test helpers (imported as `pt`)
 ```
 
-Coding conventions: `.claude/rules/resource-conventions.md`. Tests: `.claude/rules/acceptance-testing.md`.
+Coding conventions: `.claude/rules/resource-conventions.md`. Validation & version/feature gating:
+`.claude/rules/resource-validation.md`. Shared code (reuse, don't duplicate):
+`.claude/rules/shared-code.md`. Tests: `.claude/rules/acceptance-testing.md`.
 
 ## Commands
 
