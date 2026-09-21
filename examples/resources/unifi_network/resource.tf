@@ -64,3 +64,30 @@ resource "unifi_network" "tailscale_lan" {
   dhcpd_gateway_enabled = true
   dhcpd_gateway         = "10.0.30.10"
 }
+
+# A WireGuard VPN Server for remote users -- "Settings > VPN > Server" in the
+# controller UI. `subnet` is the server's own tunnel address; `remote_vpn_subnets`
+# is the pool handed out to connecting clients.
+resource "unifi_network" "wireguard_server" {
+  name     = "WireGuard Server"
+  purpose  = "remote-user-vpn"
+  vpn_type = "wireguard-server"
+
+  subnet             = "192.168.3.1/24"
+  remote_vpn_subnets = ["192.168.3.0/24"]
+
+  uid_vpn_masquerade_enabled = true
+  uid_vpn_default_dns_suffix = "internal.example.com"
+}
+
+# The same server, letting the controller allocate the client pool. With
+# `remote_vpn_dynamic_subnets_enabled` set, `remote_vpn_subnets` is not required
+# (and is ignored if given).
+resource "unifi_network" "wireguard_server_dynamic" {
+  name     = "WireGuard Server (auto pool)"
+  purpose  = "remote-user-vpn"
+  vpn_type = "wireguard-server"
+
+  subnet                             = "192.168.5.1/24"
+  remote_vpn_dynamic_subnets_enabled = true
+}

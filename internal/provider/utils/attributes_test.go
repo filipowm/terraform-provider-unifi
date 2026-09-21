@@ -48,3 +48,47 @@ func TestRawConfigSet(t *testing.T) {
 		})
 	}
 }
+
+// TestIsRawConfigSet_bool guards a panic: every type that is not String or Number
+// fell through to LengthInt(), which is only defined for collections, so a bool
+// attribute crashed the provider during plan rather than returning an answer.
+//
+// `false` counts as set. Unlike "" or 0 it is not ambiguous with absence -- the
+// raw config spells absence as null -- so a caller asking "did the user write
+// this attribute?" gets the accurate answer.
+func TestIsRawConfigSet_bool(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  cty.Value
+		want bool
+	}{
+		{
+			name: "explicit true",
+			raw:  cty.ObjectVal(map[string]cty.Value{"uid_vpn_sync_public_ip": cty.True}),
+			want: true,
+		},
+		{
+			name: "explicit false",
+			raw:  cty.ObjectVal(map[string]cty.Value{"uid_vpn_sync_public_ip": cty.False}),
+			want: true,
+		},
+		{
+			name: "null (absent)",
+			raw:  cty.ObjectVal(map[string]cty.Value{"uid_vpn_sync_public_ip": cty.NullVal(cty.Bool)}),
+			want: false,
+		},
+		{
+			name: "unknown (interpolated)",
+			raw:  cty.ObjectVal(map[string]cty.Value{"uid_vpn_sync_public_ip": cty.UnknownVal(cty.Bool)}),
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsRawConfigSet(tt.raw, "uid_vpn_sync_public_ip"); got != tt.want {
+				t.Errorf("utils.IsRawConfigSet(%s) = %v, want %v", tt.name, got, tt.want)
+			}
+		})
+	}
+}
