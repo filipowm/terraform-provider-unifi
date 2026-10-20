@@ -25,16 +25,27 @@ type fakeNetworkClient struct {
 
 	getCalled bool
 	getID     string
+
+	// updateReq is the request body handed to UpdateNetwork.
+	updateReq *unifi.Network
 }
 
-func (f *fakeNetworkClient) UpdateNetwork(_ context.Context, _ string, _ *unifi.Network) (*unifi.Network, error) {
+// UpdateNetwork records the request body in updateReq and returns the canned updateResp/updateErr.
+func (f *fakeNetworkClient) UpdateNetwork(_ context.Context, _ string, n *unifi.Network) (*unifi.Network, error) {
+	f.updateReq = n
 	return f.updateResp, f.updateErr
 }
 
+// GetNetwork returns a copy, like the real client returns a freshly decoded object, so a caller
+// that mutates its result (Update overlays onto it) cannot alter later reads.
 func (f *fakeNetworkClient) GetNetwork(_ context.Context, _ string, id string) (*unifi.Network, error) {
 	f.getCalled = true
 	f.getID = id
-	return f.getResp, f.getErr
+	if f.getResp == nil {
+		return nil, f.getErr
+	}
+	cp := *f.getResp
+	return &cp, f.getErr
 }
 
 // TestResourceNetworkUpdate_ReReadOnNotFound covers the issue #98 regression: go-unifi v1.9.3
@@ -86,6 +97,52 @@ func TestResourceNetworkUpdate_ReReadOnNotFound(t *testing.T) {
 		assert.True(t, fake.getCalled, "Update must re-read via GetNetwork on ErrNotFound")
 		assert.Equal(t, "", d.Id(), "genuinely deleted network must clear the ID so it is recreated")
 	})
+}
+
+// TestResourceNetworkUpdate_PreservesUnmodeledFields is the issue #201 regression guard: Update must
+// read the live network and overlay only the schema-managed fields, so settings the schema does not
+// model are not reset to their zero value by the controller's full-replacement PUT.
+func TestResourceNetworkUpdate_PreservesUnmodeledFields(t *testing.T) {
+	live := &unifi.Network{
+		ID:      "net1",
+		Name:    "lan",
+		Purpose: "corporate",
+		Enabled: true,
+
+		// Unmodeled by the schema.
+		DHCPDV6AllowSlaac:         true,
+		IPV6PDAutoPrefixidEnabled: true,
+		DHCPDNtpEnabled:           true,
+		DHCPDNtp1:                 "192.0.2.123",
+		IsNAT:                     true,
+		LteLanEnabled:             true,
+		AutoScaleEnabled:          true,
+		DHCPDConflictChecking:     true,
+	}
+	fake := &fakeNetworkClient{updateResp: live, getResp: live}
+	client := &base.Client{Client: fake, Site: "default"}
+
+	d := ResourceNetwork().TestResourceData()
+	d.SetId("net1")
+	require.NoError(t, d.Set("site", "default"))
+	require.NoError(t, d.Set("name", "lan-renamed"))
+	require.NoError(t, d.Set("purpose", "corporate"))
+	require.NoError(t, d.Set("enabled", true))
+
+	diags := resourceNetworkUpdate(context.Background(), d, client)
+	require.False(t, diags.HasError(), "unexpected diagnostics: %v", diags)
+
+	req := fake.updateReq
+	require.NotNil(t, req, "Update must call UpdateNetwork")
+	assert.Equal(t, "lan-renamed", req.Name, "managed field must carry the configured value")
+	assert.True(t, req.DHCPDV6AllowSlaac, "dhcpdv6_allow_slaac must be preserved")
+	assert.True(t, req.IPV6PDAutoPrefixidEnabled, "ipv6_pd_auto_prefixid_enabled must be preserved")
+	assert.True(t, req.DHCPDNtpEnabled, "dhcpd_ntp_enabled must be preserved")
+	assert.Equal(t, "192.0.2.123", req.DHCPDNtp1, "dhcpd_ntp_1 must be preserved")
+	assert.True(t, req.IsNAT, "is_nat must be preserved")
+	assert.True(t, req.LteLanEnabled, "lte_lan_enabled must be preserved")
+	assert.True(t, req.AutoScaleEnabled, "auto_scale_enabled must be preserved")
+	assert.True(t, req.DHCPDConflictChecking, "dhcpd_conflict_checking must be preserved")
 }
 
 // TestResourceNetwork_ipv6FieldsOptionalComputed is the offline guard for issue #96.
