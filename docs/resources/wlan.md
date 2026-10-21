@@ -93,7 +93,7 @@ resource "unifi_wlan" "wifi" {
   * `disabled` - PMF is disabled (not compatible with WPA3) Defaults to `disabled`.
 - `proxy_arp` (Boolean) Enable ARP proxy on this WLAN. When enabled, the UniFi controller will respond to ARP requests on behalf of clients, reducing broadcast traffic and potentially improving network performance. This is particularly useful in high-density wireless environments. Defaults to `false`.
 - `radius_profile_id` (String) ID of the RADIUS profile to use for WPA Enterprise authentication (when security is 'wpaeap'). Reference existing profiles using the `unifi_radius_profile` data source.
-- `schedule` (Block List) Time-based access control configuration for the wireless network. Allows automatic enabling/disabling of the network on specified schedules. (see [below for nested schema](#nestedblock--schedule))
+- `schedule` (Block List) Times when the wireless network is turned off. Each block turns the SSID off for `duration` minutes from its start time, and it broadcasts as normal outside the blocks. (see [below for nested schema](#nestedblock--schedule))
 - `site` (String) The name of the UniFi site where the wireless network should be created. If not specified, the default site will be used.
 - `uapsd` (Boolean) Enable Unscheduled Automatic Power Save Delivery to improve battery life for mobile devices. Defaults to `false`.
 - `wlan_band` (String) Radio band selection (legacy single-band field). Valid values:
@@ -116,12 +116,12 @@ Cannot express a 6GHz selection — use `wlan_bands` for that. When neither this
 Required:
 
 - `day_of_week` (String) Day of week. Valid values: `sun`, `mon`, `tue`, `wed`, `thu`, `fri`, `sat`.
-- `duration` (Number) Duration in minutes that the network should remain active.
+- `duration` (Number) Duration in minutes that the network stays off.
 - `start_hour` (Number) Start hour in 24-hour format (0-23).
 
 Optional:
 
-- `name` (String) Friendly name for this schedule block (e.g., 'Business Hours', 'Weekend Access').
+- `name` (String) Friendly name for this schedule block (e.g., 'Overnight', 'Closed Sundays').
 - `start_minute` (Number) Start minute (0-59). Defaults to `0`.
 
 ## Import

@@ -143,7 +143,7 @@ func ResourceWLAN() *schema.Resource {
 				Optional:    true,
 			},
 			"schedule": {
-				Description: "Time-based access control configuration for the wireless network. Allows automatic enabling/disabling of the network on specified schedules.",
+				Description: "Times when the wireless network is turned off. Each block turns the SSID off for `duration` minutes from its start time, and it broadcasts as normal outside the blocks.",
 				Type:        schema.TypeList,
 				Optional:    true,
 				Elem: &schema.Resource{
@@ -168,13 +168,13 @@ func ResourceWLAN() *schema.Resource {
 							ValidateFunc: validation.IntBetween(0, 59),
 						},
 						"duration": {
-							Description:  "Duration in minutes that the network should remain active.",
+							Description:  "Duration in minutes that the network stays off.",
 							Type:         schema.TypeInt,
 							Required:     true,
 							ValidateFunc: validation.IntAtLeast(1),
 						},
 						"name": {
-							Description: "Friendly name for this schedule block (e.g., 'Business Hours', 'Weekend Access').",
+							Description: "Friendly name for this schedule block (e.g., 'Overnight', 'Closed Sundays').",
 							Type:        schema.TypeString,
 							Optional:    true,
 						},
