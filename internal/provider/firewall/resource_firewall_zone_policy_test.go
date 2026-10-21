@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filipowm/go-unifi/unifi"
+
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/stretchr/testify/assert"
@@ -50,5 +52,27 @@ func TestNewFirewallPolicyTargetModelPortParsing(t *testing.T) {
 		// schema attribute is an Int32 — unrepresentable values read as null.
 		m := NewFirewallPolicyTargetModel(t.Context(), "", nil, nil, false, false, false, "8000-8010", "", "zone1")
 		assert.True(t, m.Port.IsNull())
+	})
+}
+
+func TestFirewallZonePolicyMergeConnectionStates(t *testing.T) {
+	t.Run("CustomKeepsStates", func(t *testing.T) {
+		m := &FirewallZonePolicyModel{}
+		diags := m.Merge(t.Context(), &unifi.FirewallZonePolicy{
+			ConnectionStateType: "CUSTOM",
+			ConnectionStates:    []string{"NEW", "INVALID"},
+		})
+		require.False(t, diags.HasError(), "merge returned diagnostics: %v", diags)
+
+		var states []string
+		require.False(t, m.ConnectionStates.ElementsAs(t.Context(), &states, false).HasError())
+		assert.Equal(t, []string{"NEW", "INVALID"}, states)
+	})
+
+	t.Run("AllIsNull", func(t *testing.T) {
+		m := &FirewallZonePolicyModel{}
+		diags := m.Merge(t.Context(), &unifi.FirewallZonePolicy{ConnectionStateType: "ALL"})
+		require.False(t, diags.HasError(), "merge returned diagnostics: %v", diags)
+		assert.True(t, m.ConnectionStates.IsNull())
 	})
 }

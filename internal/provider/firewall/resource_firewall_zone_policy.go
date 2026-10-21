@@ -593,7 +593,7 @@ func (m *FirewallZonePolicyModel) Merge(ctx context.Context, other interface{}) 
 	diags.Append(m.mergeSchedule(ctx, model)...)
 
 	// Set ConnectionStates
-	if model.ConnectionStateType == "custom" {
+	if model.ConnectionStateType == "CUSTOM" {
 		connectionStates, d := types.ListValueFrom(ctx, types.StringType, model.ConnectionStates)
 		diags.Append(d...)
 		m.ConnectionStates = connectionStates
