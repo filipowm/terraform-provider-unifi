@@ -20,6 +20,23 @@ var (
 	wlanValidMinimumDataRate5g = []int{6000, 9000, 12000, 18000, 24000, 36000, 48000, 54000}
 )
 
+func validateMinimumDataRates(minRate2g, minRate5g int) error {
+	if (minRate2g == 0) != (minRate5g == 0) {
+		// this is really only true I think in >= 7.2, but easier to just apply this in general
+		return errors.New("you must set minimum data rates on both 2g and 5g if setting either")
+	}
+	return nil
+}
+
+func resourceWLANCustomizeDiff(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
+	if !d.NewValueKnown("minimum_data_rate_2g_kbps") || !d.NewValueKnown("minimum_data_rate_5g_kbps") {
+		return nil
+	}
+	minRate2g, _ := d.Get("minimum_data_rate_2g_kbps").(int)
+	minRate5g, _ := d.Get("minimum_data_rate_5g_kbps").(int)
+	return validateMinimumDataRates(minRate2g, minRate5g)
+}
+
 func ResourceWLAN() *schema.Resource {
 	return &schema.Resource{
 		Description: "The `unifi_wlan` resource manages wireless networks (SSIDs) on UniFi access points.\n\n" +
@@ -33,6 +50,7 @@ func ResourceWLAN() *schema.Resource {
 		ReadContext:   resourceWLANRead,
 		UpdateContext: resourceWLANUpdate,
 		DeleteContext: resourceWLANDelete,
+		CustomizeDiff: resourceWLANCustomizeDiff,
 		Importer: &schema.ResourceImporter{
 			StateContext: base.ImportSiteAndID,
 		},
@@ -224,14 +242,16 @@ func ResourceWLAN() *schema.Resource {
 				Default:     false,
 			},
 			"minimum_data_rate_2g_kbps": {
-				Description: "Minimum data rate for 2.4GHz devices in Kbps. Use `0` to disable. Valid values: " +
+				Description: "Minimum data rate for 2.4GHz devices in Kbps. Use `0` to disable. Must be set together with " +
+					"`minimum_data_rate_5g_kbps` (both non-zero or both `0`), even on a single-band network. Valid values: " +
 					utils.MarkdownValueListInt(wlanValidMinimumDataRate2g),
 				Type:         schema.TypeInt,
 				Optional:     true,
 				ValidateFunc: validation.IntInSlice(append([]int{0}, wlanValidMinimumDataRate2g...)),
 			},
 			"minimum_data_rate_5g_kbps": {
-				Description: "Minimum data rate for 5GHz devices in Kbps. Use `0` to disable. Valid values: " +
+				Description: "Minimum data rate for 5GHz devices in Kbps. Use `0` to disable. Must be set together with " +
+					"`minimum_data_rate_2g_kbps` (both non-zero or both `0`), even on a single-band network. Valid values: " +
 					utils.MarkdownValueListInt(wlanValidMinimumDataRate5g),
 				Type:         schema.TypeInt,
 				Optional:     true,
@@ -378,12 +398,11 @@ func resourceWLANGetResourceData(d *schema.ResourceData, meta interface{}) (*uni
 	minRate2g, _ := d.Get("minimum_data_rate_2g_kbps").(int)
 	minRate5g, _ := d.Get("minimum_data_rate_5g_kbps").(int)
 
+	if err := validateMinimumDataRates(minRate2g, minRate5g); err != nil {
+		return nil, err
+	}
 	minrateSettingPreference := "auto"
-	if minRate2g != 0 || minRate5g != 0 {
-		if minRate2g == 0 || minRate5g == 0 {
-			// this is really only true I think in >= 7.2, but easier to just apply this in general
-			return nil, errors.New("you must set minimum data rates on both 2g and 5g if setting either")
-		}
+	if minRate2g != 0 {
 		minrateSettingPreference = "manual"
 	}
 

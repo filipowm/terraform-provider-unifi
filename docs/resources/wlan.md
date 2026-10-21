@@ -81,8 +81,8 @@ resource "unifi_wlan" "wifi" {
 - `mac_filter_policy` (String) MAC address filter policy. Valid values are:
   * `allow` - Only allow listed MAC addresses
   * `deny` - Block listed MAC addresses Defaults to `deny`.
-- `minimum_data_rate_2g_kbps` (Number) Minimum data rate for 2.4GHz devices in Kbps. Use `0` to disable. Valid values: `1000`, `2000`, `5500`, `6000`, `9000`, `11000`, `12000`, `18000`, `24000`, `36000`, `48000`,  and `54000`
-- `minimum_data_rate_5g_kbps` (Number) Minimum data rate for 5GHz devices in Kbps. Use `0` to disable. Valid values: `6000`, `9000`, `12000`, `18000`, `24000`, `36000`, `48000`,  and `54000`
+- `minimum_data_rate_2g_kbps` (Number) Minimum data rate for 2.4GHz devices in Kbps. Use `0` to disable. Must be set together with `minimum_data_rate_5g_kbps` (both non-zero or both `0`), even on a single-band network. Valid values: `1000`, `2000`, `5500`, `6000`, `9000`, `11000`, `12000`, `18000`, `24000`, `36000`, `48000`,  and `54000`
+- `minimum_data_rate_5g_kbps` (Number) Minimum data rate for 5GHz devices in Kbps. Use `0` to disable. Must be set together with `minimum_data_rate_2g_kbps` (both non-zero or both `0`), even on a single-band network. Valid values: `6000`, `9000`, `12000`, `18000`, `24000`, `36000`, `48000`,  and `54000`
 - `multicast_enhance` (Boolean) Enable multicast enhancement to convert multicast traffic to unicast for better reliability and performance, especially for applications like video streaming.
 - `network_id` (String) ID of the network (VLAN) for this SSID. Used to assign the WLAN to a specific network segment.
 - `no2ghz_oui` (Boolean) When enabled, devices from specific manufacturers (identified by their OUI - Organizationally Unique Identifier) will be prevented from connecting on 2.4GHz and forced to use 5GHz. This improves overall network performance by ensuring capable devices use the less congested 5GHz band. Common examples include newer smartphones and laptops. Defaults to `true`.
