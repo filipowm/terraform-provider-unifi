@@ -2,8 +2,10 @@ package device
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -104,6 +106,9 @@ func ResourceDevice() *schema.Resource {
 					"entire array on every apply. Any port whose override is set outside Terraform (e.g. via the UniFi UI or another " +
 					"tool) and is NOT declared here will have its override reset to the controller default on the next apply. Declare " +
 					"every port you want overridden.\n\n" +
+					"On a declared port, settings this resource does not model (for example STP edge mode, BPDU guard, forced speed / " +
+					"autonegotiation or port security) are preserved: the provider reads the port's current settings and overlays only " +
+					"the attributes above. A port that uses `port_profile_id` takes its settings from the profile instead.\n\n" +
 					"**Tagged-VLAN model:** there is no positive \"allowed VLANs\" list. With `forward = \"customize\"`, tagged traffic is " +
 					"*all* networks **minus** the ones listed in `excluded_network_ids`, so an empty `excluded_network_ids` means \"trunk " +
 					"everything\", not \"trunk nothing\".",
@@ -527,10 +532,27 @@ func resourceDeviceUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
-	// go-unifi v1.9.2's updateDevice converts a successful-but-empty PUT response into
-	// unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98); re-read to tell
-	// a spurious error from a genuine out-of-band deletion.
-	resp, err := c.UpdateDevice(ctx, site, req)
+	// port_overrides needs patch semantics too, but at the raw-JSON level: UniFi
+	// replaces the array wholesale on PUT, and each entry carries per-port
+	// settings this resource does not model (STP edge / BPDU guard, forced
+	// speed + autoneg=false, port security, LLDP-MED, ...). Many of those are
+	// absent from unifi.DevicePortOverrides, and its `omitempty` bools cannot
+	// express `false`, so round-tripping through the struct would silently reset
+	// them on every port of the device. Read the current entries raw, overlay
+	// only the modeled keys, and PUT the merged array.
+	currentOverrides, err := getRawPortOverrides(ctx, c, site, d.Id())
+	if err != nil {
+		return diag.FromErr(fmt.Errorf("unable to read current port overrides for merge: %w", err))
+	}
+	mergedOverrides, err := mergePortOverrides(currentOverrides, req.PortOverrides)
+	if err != nil {
+		return diag.FromErr(fmt.Errorf("unable to merge port overrides: %w", err))
+	}
+
+	// A successful-but-empty PUT response is treated as unifi.ErrNotFound, as in
+	// go-unifi's updateDevice (see utils.ReReadOnUpdateNotFound / issue #98); re-read
+	// to tell a spurious error from a genuine out-of-band deletion.
+	resp, err := updateDeviceWithRawPortOverrides(ctx, c, site, req, mergedOverrides)
 	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.Device, error) {
 		return c.GetDevice(ctx, site, req.ID)
 	})
@@ -811,6 +833,152 @@ func setToPortOverrides(set *schema.Set) ([]unifi.DevicePortOverrides, error) {
 	return pos, nil
 }
 
+// portOverrideModeledKeys are the `port_overrides` JSON keys this resource
+// manages. mergePortOverrides replaces exactly these on each declared port and
+// leaves every other key the controller stored untouched.
+var portOverrideModeledKeys = []string{
+	"port_idx",
+	"name",
+	"portconf_id",
+	"op_mode",
+	"poe_mode",
+	"aggregate_members",
+	"native_networkconf_id",
+	"tagged_vlan_mgmt",
+	"forward",
+	"excluded_networkconf_ids",
+	"voice_networkconf_id",
+	"setting_preference",
+}
+
+// mergePortOverrides overlays the declared port overrides onto the device's
+// current raw `port_overrides` entries, keyed by port index.
+//
+//   - Modeled keys come from the declaration only: they are cleared from the
+//     current entry first, so a value removed from the config is removed from
+//     the controller too.
+//   - Every other key on the current entry (stp_edge_state,
+//     stp_bpdu_guard_enabled, speed, autoneg, port_security_enabled, ...) is
+//     kept as-is, including `false` values.
+//   - A port that uses a port profile (portconf_id set) starts from an empty
+//     entry instead, matching what the UniFi UI stores: the profile owns those
+//     settings, and stale per-port values must not linger underneath it.
+//   - Ports that are not declared get no entry, as before: the declared set is
+//     the complete set of overrides.
+//
+// The result is ordered by port index so the PUT body is deterministic.
+func mergePortOverrides(current []map[string]any, declared []unifi.DevicePortOverrides) ([]map[string]any, error) {
+	currentByIdx := make(map[int]map[string]any, len(current))
+	for _, entry := range current {
+		idx, ok := portIdxOf(entry)
+		if !ok {
+			continue
+		}
+		currentByIdx[idx] = entry
+	}
+
+	merged := make([]map[string]any, 0, len(declared))
+	for _, po := range declared {
+		overlay, err := structToMap(po)
+		if err != nil {
+			return nil, fmt.Errorf("port %d: %w", po.PortIDX, err)
+		}
+
+		entry := map[string]any{}
+		if po.PortProfileID == "" {
+			for k, v := range currentByIdx[po.PortIDX] {
+				entry[k] = v
+			}
+			for _, k := range portOverrideModeledKeys {
+				delete(entry, k)
+			}
+		}
+		for k, v := range overlay {
+			entry[k] = v
+		}
+		entry["port_idx"] = po.PortIDX
+		merged = append(merged, entry)
+	}
+
+	sort.Slice(merged, func(i, j int) bool {
+		a, _ := portIdxOf(merged[i])
+		b, _ := portIdxOf(merged[j])
+		return a < b
+	})
+	return merged, nil
+}
+
+// portIdxOf reads `port_idx` from a raw override entry. The controller returns
+// it as a JSON number, but go-unifi tolerates strings (emptyStringInt), so
+// accept both.
+func portIdxOf(entry map[string]any) (int, bool) {
+	switch v := entry["port_idx"].(type) {
+	case int:
+		return v, true
+	case float64:
+		return int(v), true
+	case json.Number:
+		i, err := v.Int64()
+		return int(i), err == nil
+	case string:
+		i, err := strconv.Atoi(v)
+		return i, err == nil
+	default:
+		return 0, false
+	}
+}
+
+// structToMap converts v to its JSON object form, honoring `omitempty`.
+func structToMap(v any) (map[string]any, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	m := map[string]any{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// getRawPortOverrides fetches the device's current `port_overrides` as raw
+// JSON objects, so keys unknown to go-unifi are not lost.
+func getRawPortOverrides(ctx context.Context, c *base.Client, site, id string) ([]map[string]any, error) {
+	var respBody struct {
+		Data []struct {
+			PortOverrides []map[string]any `json:"port_overrides"`
+		} `json:"data"`
+	}
+	if err := c.Get(ctx, fmt.Sprintf("s/%s/stat/device/%s", site, id), nil, &respBody); err != nil {
+		return nil, err
+	}
+	if len(respBody.Data) != 1 {
+		return nil, unifi.ErrNotFound
+	}
+	return respBody.Data[0].PortOverrides, nil
+}
+
+// updateDeviceWithRawPortOverrides PUTs req like go-unifi's UpdateDevice, but
+// with `port_overrides` replaced by the given raw entries.
+func updateDeviceWithRawPortOverrides(ctx context.Context, c *base.Client, site string, req *unifi.Device, portOverrides []map[string]any) (*unifi.Device, error) {
+	body, err := structToMap(req)
+	if err != nil {
+		return nil, fmt.Errorf("unable to encode device: %w", err)
+	}
+	body["port_overrides"] = portOverrides
+
+	var respBody struct {
+		Data []unifi.Device `json:"data"`
+	}
+	if err := c.Put(ctx, fmt.Sprintf("s/%s/rest/device/%s", site, req.ID), body, &respBody); err != nil {
+		return nil, err
+	}
+	if len(respBody.Data) != 1 {
+		return nil, unifi.ErrNotFound
+	}
+	return &respBody.Data[0], nil
+}
+
 func setFromPortOverrides(pos []unifi.DevicePortOverrides) []map[string]interface{} {
 	list := make([]map[string]interface{}, 0, len(pos))
 	for _, po := range pos {
@@ -838,8 +1006,9 @@ func toPortOverride(data map[string]interface{}) (unifi.DevicePortOverrides, err
 
 	// Per-port VLAN overrides. All of these are `omitempty` on the controller
 	// side, so an unset (empty) value is dropped from the PUT. The user declares
-	// the whole set of ports, and the device PUT replaces the `port_overrides`
-	// array wholesale (no read-modify-write merge). comma-ok reads tolerate a
+	// the whole set of ports; on update the declared entries are overlaid onto
+	// the device's current raw entries (mergePortOverrides), so settings this
+	// resource does not model survive. comma-ok reads tolerate a
 	// partially-populated data map (e.g. in unit tests).
 	nativeNetworkID, _ := data["native_networkconf_id"].(string)
 	taggedVLANMgmt, _ := data["tagged_vlan_mgmt"].(string)

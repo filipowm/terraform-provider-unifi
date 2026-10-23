@@ -123,6 +123,8 @@ Common use cases include:
 
 **Warning:** the controller stores port overrides as a single array on the device and the provider replaces the entire array on every apply. Any port whose override is set outside Terraform (e.g. via the UniFi UI or another tool) and is NOT declared here will have its override reset to the controller default on the next apply. Declare every port you want overridden.
 
+On a declared port, settings this resource does not model (for example STP edge mode, BPDU guard, forced speed / autonegotiation or port security) are preserved: the provider reads the port's current settings and overlays only the attributes above. A port that uses `port_profile_id` takes its settings from the profile instead.
+
 **Tagged-VLAN model:** there is no positive "allowed VLANs" list. With `forward = "customize"`, tagged traffic is *all* networks **minus** the ones listed in `excluded_network_ids`, so an empty `excluded_network_ids` means "trunk everything", not "trunk nothing". (see [below for nested schema](#nestedblock--port_override))
 - `radio` (Block Set) Per-band radio configuration for access points. Each block configures ONE band (`ng` = 2.4GHz, `na` = 5GHz, `6e` = 6GHz). Only the bands you declare are managed — undeclared bands are left untouched (the provider read-modify-writes the device's full radio table to preserve them, so declaring just one band will not wipe the others). Common uses: disable a band (`tx_power_mode = "disabled"`), pin a channel/width, or set a minimum-RSSI client kick. Applies to access points; has no effect on switches.
 
