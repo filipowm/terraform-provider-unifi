@@ -904,6 +904,8 @@ func resourceNetworkGetResourceData(d *schema.ResourceData) (*unifi.Network, err
 	uidVPNCustomRouting = utils.CidrListZeroBased(uidVPNCustomRouting)
 
 	vpnType, _ := d.Get("vpn_type").(string)
+	wanUsername, _ := d.Get("wan_username").(string)
+	wanPassword, _ := d.Get("x_wan_password").(string)
 
 	// For a LAN the `subnet` is the gateway address, so CidrOneBased applies the +1
 	// host offset. A vpn-client's subnet is the tunnel interface address; CidrZeroBased
@@ -946,6 +948,11 @@ func resourceNetworkGetResourceData(d *schema.ResourceData) (*unifi.Network, err
 		WANDNS2: append(wanDNS, "", "")[1],
 		WANDNS3: append(wanDNS, "", "", "")[2],
 		WANDNS4: append(wanDNS, "", "", "", "")[3],
+
+		WANUsername:             wanUsername,
+		XWANPassword:            wanPassword,
+		WANPppoeUsernameEnabled: wanUsername != "",
+		WANPppoePasswordEnabled: wanPassword != "",
 
 		VPNType:             vpnType,
 		UidVPNCustomRouting: uidVPNCustomRouting,
@@ -1002,8 +1009,6 @@ func resourceNetworkGetResourceData(d *schema.ResourceData) (*unifi.Network, err
 	n.WANGateway, _ = d.Get("wan_gateway").(string)
 	n.WANNetworkGroup, _ = d.Get("wan_networkgroup").(string)
 	n.WANEgressQOS, _ = d.Get("wan_egress_qos").(int)
-	n.WANUsername, _ = d.Get("wan_username").(string)
-	n.XWANPassword, _ = d.Get("x_wan_password").(string)
 
 	n.WANTypeV6, _ = d.Get("wan_type_v6").(string)
 	n.WANDHCPv6PDSize, _ = d.Get("wan_dhcp_v6_pd_size").(int)
@@ -1253,6 +1258,16 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 		vlan = resp.VLAN
 	}
 
+	wanUsername := ""
+	if resp.WANPppoeUsernameEnabled {
+		wanUsername = resp.WANUsername
+	}
+
+	wanPassword := ""
+	if resp.WANPppoePasswordEnabled {
+		wanPassword = resp.XWANPassword
+	}
+
 	dhcpLease := resp.DHCPDLeaseTime
 	if resp.DHCPDEnabled && dhcpLease == 0 {
 		dhcpLease = 86400
@@ -1384,8 +1399,8 @@ func resourceNetworkSetResourceData(resp *unifi.Network, d *schema.ResourceData,
 		"wan_prefixlen":              resp.WANPrefixlen,
 		"wan_type_v6":                resp.WANTypeV6,
 		"wan_type":                   wanType,
-		"wan_username":               resp.WANUsername,
-		"x_wan_password":             resp.XWANPassword,
+		"wan_username":               wanUsername,
+		"x_wan_password":             wanPassword,
 
 		"vpn_type":                               resp.VPNType,
 		"wireguard_interface":                    resp.WireguardInterface,

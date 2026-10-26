@@ -151,3 +151,59 @@ func TestResourceNetworkIpV6InterfaceTypeValidatorWired(t *testing.T) {
 	assert.NotNil(t, attr, "ipv6_interface_type attribute must exist")
 	assert.NotNil(t, attr.ValidateFunc, "ipv6_interface_type must keep a ValidateFunc wired")
 }
+
+// TestResourceNetworkGetResourceData_wanCredentialsEnabled guards that configured PPPoE credentials
+// are sent with their enable flags: the controller doesn't use wan_username/x_wan_password otherwise.
+func TestResourceNetworkGetResourceData_wanCredentialsEnabled(t *testing.T) {
+	for _, c := range []struct {
+		name     string
+		username string
+		password string
+	}{
+		{"both set", "username", "password"},
+		{"username only", "username", ""},
+		{"none set", "", ""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			d := ResourceNetwork().TestResourceData()
+			require.NoError(t, d.Set("purpose", "wan"))
+			require.NoError(t, d.Set("wan_username", c.username))
+			require.NoError(t, d.Set("x_wan_password", c.password))
+
+			n, err := resourceNetworkGetResourceData(d)
+			require.NoError(t, err)
+			assert.Equal(t, c.username != "", n.WANPppoeUsernameEnabled)
+			assert.Equal(t, c.password != "", n.WANPppoePasswordEnabled)
+		})
+	}
+}
+
+// TestResourceNetworkSetResourceData_wanCredentialsEnabled guards that credentials the controller
+// has disabled read back empty, so the drift shows up as a diff against the configured values.
+func TestResourceNetworkSetResourceData_wanCredentialsEnabled(t *testing.T) {
+	for _, c := range []struct {
+		name             string
+		usernameEnabled  bool
+		passwordEnabled  bool
+		expectedUsername string
+		expectedPassword string
+	}{
+		{"both enabled", true, true, "username", "password"},
+		{"username only", true, false, "username", ""},
+		{"none enabled", false, false, "", ""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			d := ResourceNetwork().TestResourceData()
+			diags := resourceNetworkSetResourceData(&unifi.Network{
+				Purpose:                 "wan",
+				WANUsername:             "username",
+				XWANPassword:            "password",
+				WANPppoeUsernameEnabled: c.usernameEnabled,
+				WANPppoePasswordEnabled: c.passwordEnabled,
+			}, d, "default")
+			require.False(t, diags.HasError(), "%v", diags)
+			assert.Equal(t, c.expectedUsername, d.Get("wan_username"))
+			assert.Equal(t, c.expectedPassword, d.Get("x_wan_password"))
+		})
+	}
+}
