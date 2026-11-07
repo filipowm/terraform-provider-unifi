@@ -338,6 +338,16 @@ func resourceUserRead(ctx context.Context, d *schema.ResourceData, meta interfac
 }
 
 func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// allow_existing and skip_forget_on_destroy only steer the provider's own
+	// create and destroy behavior; the controller never stores them. After an
+	// import both are unset in state, so the first plan shows them changing.
+	// Sending that update would PUT a freshly built user record, which drops
+	// every controller field the schema does not model. Nothing on the
+	// controller changes, so keep the new values in state and stop here.
+	if !d.HasChangesExcept("allow_existing", "skip_forget_on_destroy") {
+		return nil
+	}
+
 	c, ok := meta.(*base.Client)
 	if !ok {
 		return diag.Errorf("unexpected meta type: %T", meta)
