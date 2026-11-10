@@ -76,6 +76,55 @@ func TestAccSettingIps_enabledCategories(t *testing.T) {
 	})
 }
 
+func TestAccSettingIps_enabledCategoriesUnsorted(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: ">= 8.0",
+		Lock:              settingIpsLock,
+		Steps: []resource.TestStep{
+			{
+				// The controller returns categories sorted; an unsorted config must not drift.
+				Config: testAccSettingIpsConfigEnabledCategoriesUnsorted(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "3"),
+					resource.TestCheckTypeSetElemAttr("unifi_setting_ips.test", "enabled_categories.*", "emerging-worm"),
+					resource.TestCheckTypeSetElemAttr("unifi_setting_ips.test", "enabled_categories.*", "emerging-dos"),
+					resource.TestCheckTypeSetElemAttr("unifi_setting_ips.test", "enabled_categories.*", "emerging-scan"),
+				),
+			},
+			{
+				Config:   testAccSettingIpsConfigEnabledCategoriesUnsorted(),
+				PlanOnly: true,
+			},
+		},
+	})
+}
+
+func TestAccSettingIps_enabledCategoriesUnconfiguredUpdate(t *testing.T) {
+	AcceptanceTest(t, AcceptanceTestCase{
+		VersionConstraint: ">= 8.0",
+		Lock:              settingIpsLock,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingIpsConfigEnabledCategories(),
+				Check:  resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "3"),
+			},
+			{
+				// Updating an unrelated attribute with enabled_categories unconfigured must not
+				// send state's categories back; the controller's list is read back instead.
+				Config: testAccSettingIpsConfigUpdated(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ips_mode", "ids"),
+					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "enabled_categories.#"),
+				),
+			},
+			{
+				Config:   testAccSettingIpsConfigUpdated(),
+				PlanOnly: true,
+			},
+		},
+	})
+}
+
 func TestAccSettingIps_adBlocking(t *testing.T) {
 	pt.SkipIfEnvLocalMissing(t, "Skipping: ad_blocked_networks requires an adopted gateway/IPS engine not available on the Docker test controller")
 	AcceptanceTest(t, AcceptanceTestCase{
@@ -360,6 +409,20 @@ resource "unifi_setting_ips" "test" {
   enabled_categories = [
     "emerging-scan",
     "emerging-worm",
+  ]
+}
+`
+}
+
+func testAccSettingIpsConfigEnabledCategoriesUnsorted() string {
+	return `
+resource "unifi_setting_ips" "test" {
+  ips_mode         = "ids"
+  enabled_networks = ["LAN"]
+  enabled_categories = [
+    "emerging-worm",
+    "emerging-dos",
+    "emerging-scan",
   ]
 }
 `

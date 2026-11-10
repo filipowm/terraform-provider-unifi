@@ -5,7 +5,7 @@ import (
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/go-unifi/unifi/features"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -149,7 +149,7 @@ type ipsModel struct {
 	AdBlockedNetworks           types.List   `tfsdk:"ad_blocked_networks"`
 	AdvancedFilteringPreference types.String `tfsdk:"advanced_filtering_preference"`
 	DNSFilters                  types.List   `tfsdk:"dns_filters"`
-	EnabledCategories           types.List   `tfsdk:"enabled_categories"`
+	EnabledCategories           types.Set    `tfsdk:"enabled_categories"`
 	EnabledNetworks             types.List   `tfsdk:"enabled_networks"`
 	Honeypots                   types.List   `tfsdk:"honeypots"`
 	Mode                        types.String `tfsdk:"ips_mode"`
@@ -187,10 +187,14 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 		}
 	}
 
+	// Only send categories the user configured. When unset (null/unknown) the
+	// field stays nil (omitempty) so the controller keeps its own list.
 	var enabledCategories []string
-	diags.Append(ut.ListElementsAs(ctx, d.EnabledCategories, &enabledCategories)...)
-	if diags.HasError() {
-		return nil, diags
+	if ut.IsDefined(d.EnabledCategories) {
+		diags.Append(d.EnabledCategories.ElementsAs(ctx, &enabledCategories, false)...)
+		if diags.HasError() {
+			return nil, diags
+		}
 	}
 	model.EnabledCategories = enabledCategories
 
@@ -379,14 +383,14 @@ func (d *ipsModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	d.RestrictTorrents = types.BoolValue(model.RestrictTorrents)
 
 	// Handle enabled categories
-	enabledCategoriesList, diags := types.ListValueFrom(ctx, types.StringType, model.EnabledCategories)
+	enabledCategoriesSet, diags := types.SetValueFrom(ctx, types.StringType, model.EnabledCategories)
 	if diags.HasError() {
 		return diags
 	}
-	if ut.IsDefined(enabledCategoriesList) {
-		d.EnabledCategories = enabledCategoriesList
+	if ut.IsDefined(enabledCategoriesSet) {
+		d.EnabledCategories = enabledCategoriesSet
 	} else {
-		d.EnabledCategories = ut.EmptyList(types.StringType)
+		d.EnabledCategories = types.SetValueMust(types.StringType, []attr.Value{})
 	}
 
 	// Handle enabled networks
@@ -642,17 +646,16 @@ func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					},
 				},
 			},
-			"enabled_categories": schema.ListAttribute{
-				MarkdownDescription: "List of enabled IPS threat categories. Each entry enables detection and prevention for a specific type of threat. The list of valid categories includes common threats like malware, exploits, scanning, and policy violations. See the validator for the complete list of available categories.",
+			"enabled_categories": schema.SetAttribute{
+				MarkdownDescription: "Set of enabled IPS threat categories (order does not matter). If not configured, the controller's current categories are kept and reported. Each entry enables detection and prevention for a specific type of threat. The list of valid categories includes common threats like malware, exploits, scanning, and policy violations. See the validator for the complete list of available categories.",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.UseStateForUnknown(),
-				},
-				// Default: utils.DefaultEmptyList(types.StringType),
-				Validators: []validator.List{
-					listvalidator.ValueStringsAre(stringvalidator.OneOf("emerging-activex", "emerging-attackresponse", "botcc", "emerging-chat", "ciarmy", "compromised", "emerging-dns", "emerging-dos", "dshield", "emerging-exploit", "emerging-ftp", "emerging-games", "emerging-icmp", "emerging-icmpinfo", "emerging-imap", "emerging-inappropriate", "emerging-info", "emerging-malware", "emerging-misc", "emerging-mobile", "emerging-netbios", "emerging-p2p", "emerging-policy", "emerging-pop3", "emerging-rpc", "emerging-scada", "emerging-scan", "emerging-shellcode", "emerging-smtp", "emerging-snmp", "emerging-sql", "emerging-telnet", "emerging-tftp", "tor", "emerging-useragent", "emerging-voip", "emerging-webapps", "emerging-webclient", "emerging-webserver", "emerging-worm", "exploit-kit", "adware-pup", "botcc-portgrouped", "phishing", "threatview-cs-c2", "3coresec", "chat", "coinminer", "current-events", "drop", "hunting", "icmp-info", "inappropriate", "info", "ja3", "policy", "scada", "dark-web-blocker-list", "malicious-hosts")),
+				// No UseStateForUnknown: when unconfigured, an update must not echo the
+				// state's categories back, because the controller normalizes (drops
+				// retired categories) and the value is taken from the read-back instead.
+				Validators: []validator.Set{
+					setvalidator.ValueStringsAre(stringvalidator.OneOf("emerging-activex", "emerging-attackresponse", "botcc", "emerging-chat", "ciarmy", "compromised", "emerging-dns", "emerging-dos", "dshield", "emerging-exploit", "emerging-ftp", "emerging-games", "emerging-icmp", "emerging-icmpinfo", "emerging-imap", "emerging-inappropriate", "emerging-info", "emerging-malware", "emerging-misc", "emerging-mobile", "emerging-netbios", "emerging-p2p", "emerging-policy", "emerging-pop3", "emerging-rpc", "emerging-scada", "emerging-scan", "emerging-shellcode", "emerging-smtp", "emerging-snmp", "emerging-sql", "emerging-telnet", "emerging-tftp", "tor", "emerging-useragent", "emerging-voip", "emerging-webapps", "emerging-webclient", "emerging-webserver", "emerging-worm", "exploit-kit", "adware-pup", "botcc-portgrouped", "phishing", "threatview-cs-c2", "3coresec", "chat", "coinminer", "current-events", "drop", "hunting", "icmp-info", "inappropriate", "info", "ja3", "policy", "scada", "dark-web-blocker-list", "malicious-hosts")),
 				},
 			},
 			"enabled_networks": schema.ListAttribute{
