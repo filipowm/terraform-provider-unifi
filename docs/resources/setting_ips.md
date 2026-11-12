@@ -91,7 +91,7 @@ resource "unifi_setting_ips" "example" {
   * `disabled` - Advanced filtering is disabled
   * `manual` - Advanced filtering is enabled and manually configured
 - `dns_filters` (Attributes List) DNS filters configuration. If any filters are configured, DNS filtering will be automatically enabled. Each filter can be applied to a specific network and provides content filtering capabilities. (see [below for nested schema](#nestedatt--dns_filters))
-- `enabled_categories` (List of String) List of enabled IPS threat categories. Each entry enables detection and prevention for a specific type of threat. The list of valid categories includes common threats like malware, exploits, scanning, and policy violations. See the validator for the complete list of available categories.
+- `enabled_categories` (Set of String) Set of enabled IPS threat categories (order does not matter). If not configured, the controller's current categories are kept and reported. Each entry enables detection and prevention for a specific type of threat. The list of valid categories includes common threats like malware, exploits, scanning, and policy violations. See the validator for the complete list of available categories.
 - `enabled_networks` (List of String) List of network IDs to enable IPS protection for. Each entry should be a valid network ID from your UniFi configuration. IPS will only monitor and protect traffic on these networks.
 - `honeypots` (Attributes List) Honeypots configuration. Honeypots are decoy systems designed to detect, deflect, or study hacking attempts. They appear as legitimate parts of the network but are isolated and monitored. (see [below for nested schema](#nestedatt--honeypots))
 - `ips_mode` (String) The IPS operation mode. Valid values are:

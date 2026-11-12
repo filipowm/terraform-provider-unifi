@@ -2,10 +2,13 @@ package settings
 
 import (
 	"context"
+	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/filipowm/go-unifi/unifi"
 	"github.com/filipowm/go-unifi/unifi/features"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -149,7 +152,7 @@ type ipsModel struct {
 	AdBlockedNetworks           types.List   `tfsdk:"ad_blocked_networks"`
 	AdvancedFilteringPreference types.String `tfsdk:"advanced_filtering_preference"`
 	DNSFilters                  types.List   `tfsdk:"dns_filters"`
-	EnabledCategories           types.List   `tfsdk:"enabled_categories"`
+	EnabledCategories           types.Set    `tfsdk:"enabled_categories"`
 	EnabledNetworks             types.List   `tfsdk:"enabled_networks"`
 	Honeypots                   types.List   `tfsdk:"honeypots"`
 	Mode                        types.String `tfsdk:"ips_mode"`
@@ -158,6 +161,7 @@ type ipsModel struct {
 	Suppression                 types.Object `tfsdk:"suppression"`
 }
 
+// AsUnifiModel converts the Terraform model to the UniFi API model.
 func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 
@@ -187,10 +191,14 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 		}
 	}
 
+	// Only send categories the user configured. When unset (null/unknown) the
+	// field stays nil (omitempty) so the controller keeps its own list.
 	var enabledCategories []string
-	diags.Append(ut.ListElementsAs(ctx, d.EnabledCategories, &enabledCategories)...)
-	if diags.HasError() {
-		return nil, diags
+	if ut.IsDefined(d.EnabledCategories) {
+		diags.Append(d.EnabledCategories.ElementsAs(ctx, &enabledCategories, false)...)
+		if diags.HasError() {
+			return nil, diags
+		}
 	}
 	model.EnabledCategories = enabledCategories
 
@@ -356,6 +364,7 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 	return model, diags
 }
 
+// Merge updates the Terraform model with values from the UniFi API model.
 func (d *ipsModel) Merge(ctx context.Context, other interface{}) diag.Diagnostics {
 	diags := diag.Diagnostics{}
 
@@ -379,14 +388,14 @@ func (d *ipsModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 	d.RestrictTorrents = types.BoolValue(model.RestrictTorrents)
 
 	// Handle enabled categories
-	enabledCategoriesList, diags := types.ListValueFrom(ctx, types.StringType, model.EnabledCategories)
+	enabledCategoriesSet, diags := types.SetValueFrom(ctx, types.StringType, model.EnabledCategories)
 	if diags.HasError() {
 		return diags
 	}
-	if ut.IsDefined(enabledCategoriesList) {
-		d.EnabledCategories = enabledCategoriesList
+	if ut.IsDefined(enabledCategoriesSet) {
+		d.EnabledCategories = enabledCategoriesSet
 	} else {
-		d.EnabledCategories = ut.EmptyList(types.StringType)
+		d.EnabledCategories = types.SetValueMust(types.StringType, []attr.Value{})
 	}
 
 	// Handle enabled networks
@@ -539,6 +548,7 @@ func requiredTogetherIfString(ctx context.Context, config tfsdk.Config, attr, va
 }
 
 func (r *ipsResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	resp.Diagnostics.Append(keepUnconfiguredCategoriesWhenUnchanged(ctx, req.Config, req.State, &resp.Plan)...)
 	resp.Diagnostics.Append(r.RequireMinVersion("7.4")...)
 	resp.Diagnostics.Append(r.RequireMinVersionForPath("7.5", path.Root("advanced_filtering_preference"), req.Config)...)
 	resp.Diagnostics.Append(r.RequireMinVersionForPath("8.0", path.Root("enabled_networks"), req.Config)...)
@@ -555,6 +565,83 @@ func (r *ipsResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanReq
 		diags.Append(requiredTogetherIfString(ctx, req.Config, "ips_mode", "ids", "enabled_networks")...)
 		diags.Append(requiredTogetherIfString(ctx, req.Config, "ips_mode", "ipsInline", "enabled_networks")...)
 	}
+}
+
+func (r *ipsResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	r.GenericResource.Create(ctx, req, resp)
+	if !resp.Diagnostics.HasError() {
+		resp.Diagnostics.Append(checkEnabledCategoriesApplied(ctx, req.Plan, resp.State)...)
+	}
+}
+
+func (r *ipsResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	r.GenericResource.Update(ctx, req, resp)
+	if !resp.Diagnostics.HasError() {
+		resp.Diagnostics.Append(checkEnabledCategoriesApplied(ctx, req.Plan, resp.State)...)
+	}
+}
+
+// keepUnconfiguredCategoriesWhenUnchanged plans the prior enabled_categories when
+// they are unconfigured and nothing else changes, so a no-op plan stays empty.
+// It cannot be UseStateForUnknown: on a real update that would send the prior
+// categories back, and the controller normalizes them (#213). The framework marks
+// them unknown even on a no-op because suppression's nested lists always differ
+// from core's proposed value.
+func keepUnconfiguredCategoriesWhenUnchanged(ctx context.Context, config tfsdk.Config, state tfsdk.State, plan *tfsdk.Plan) diag.Diagnostics {
+	if state.Raw.IsNull() || plan.Raw.IsNull() {
+		return nil
+	}
+	categories := path.Root("enabled_categories")
+	var configured, prior types.Set
+	diags := config.GetAttribute(ctx, categories, &configured)
+	diags.Append(state.GetAttribute(ctx, categories, &prior)...)
+	if diags.HasError() || !configured.IsNull() {
+		return diags
+	}
+	candidate := *plan
+	diags.Append(candidate.SetAttribute(ctx, categories, prior)...)
+	if !diags.HasError() && candidate.Raw.Equal(state.Raw) {
+		*plan = candidate
+	}
+	return diags
+}
+
+// checkEnabledCategoriesApplied reports configured categories missing from the
+// read-back, so a category the controller rejects (retired or unsupported)
+// fails with a clear error instead of Terraform's "inconsistent result after apply".
+func checkEnabledCategoriesApplied(ctx context.Context, plan tfsdk.Plan, state tfsdk.State) diag.Diagnostics {
+	var planned, applied types.Set
+	diags := plan.GetAttribute(ctx, path.Root("enabled_categories"), &planned)
+	diags.Append(state.GetAttribute(ctx, path.Root("enabled_categories"), &applied)...)
+	if diags.HasError() {
+		return diags
+	}
+	if missing := unappliedCategories(planned, applied); len(missing) > 0 {
+		diags.AddAttributeError(
+			path.Root("enabled_categories"),
+			"IPS categories not applied",
+			fmt.Sprintf("The controller did not apply these configured categories: %s. They are likely retired or unsupported on this controller version; remove them from enabled_categories.", strings.Join(missing, ", ")),
+		)
+	}
+	return diags
+}
+
+// unappliedCategories returns the planned categories absent from applied,
+// sorted. An unconfigured (null or unknown) plan has none.
+func unappliedCategories(planned, applied types.Set) []string {
+	if !ut.IsDefined(planned) {
+		return nil
+	}
+	var missing []string
+	for _, p := range planned.Elements() {
+		if !slices.ContainsFunc(applied.Elements(), p.Equal) {
+			if s, ok := p.(types.String); ok {
+				missing = append(missing, s.ValueString())
+			}
+		}
+	}
+	slices.Sort(missing)
+	return missing
 }
 
 func (r *ipsResource) ConfigValidators(_ context.Context) []resource.ConfigValidator {
@@ -642,17 +729,17 @@ func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 					},
 				},
 			},
-			"enabled_categories": schema.ListAttribute{
-				MarkdownDescription: "List of enabled IPS threat categories. Each entry enables detection and prevention for a specific type of threat. The list of valid categories includes common threats like malware, exploits, scanning, and policy violations. See the validator for the complete list of available categories.",
+			"enabled_categories": schema.SetAttribute{
+				MarkdownDescription: "Set of enabled IPS threat categories (order does not matter). If not configured, the controller's current categories are kept and reported. Each entry enables detection and prevention for a specific type of threat. The list of valid categories includes common threats like malware, exploits, scanning, and policy violations. See the validator for the complete list of available categories.",
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.UseStateForUnknown(),
-				},
-				// Default: utils.DefaultEmptyList(types.StringType),
-				Validators: []validator.List{
-					listvalidator.ValueStringsAre(stringvalidator.OneOf("emerging-activex", "emerging-attackresponse", "botcc", "emerging-chat", "ciarmy", "compromised", "emerging-dns", "emerging-dos", "dshield", "emerging-exploit", "emerging-ftp", "emerging-games", "emerging-icmp", "emerging-icmpinfo", "emerging-imap", "emerging-inappropriate", "emerging-info", "emerging-malware", "emerging-misc", "emerging-mobile", "emerging-netbios", "emerging-p2p", "emerging-policy", "emerging-pop3", "emerging-rpc", "emerging-scada", "emerging-scan", "emerging-shellcode", "emerging-smtp", "emerging-snmp", "emerging-sql", "emerging-telnet", "emerging-tftp", "tor", "emerging-useragent", "emerging-voip", "emerging-webapps", "emerging-webclient", "emerging-webserver", "emerging-worm", "exploit-kit", "adware-pup", "botcc-portgrouped", "phishing", "threatview-cs-c2", "3coresec", "chat", "coinminer", "current-events", "drop", "hunting", "icmp-info", "inappropriate", "info", "ja3", "policy", "scada", "dark-web-blocker-list", "malicious-hosts")),
+				// No UseStateForUnknown: when unconfigured, an update must not echo the
+				// state's categories back, because the controller normalizes (drops
+				// retired categories) and the value is taken from the read-back instead.
+				// ModifyPlan keeps the prior value on a no-op plan.
+				Validators: []validator.Set{
+					setvalidator.ValueStringsAre(stringvalidator.OneOf("emerging-activex", "emerging-attackresponse", "botcc", "emerging-chat", "ciarmy", "compromised", "emerging-dns", "emerging-dos", "dshield", "emerging-exploit", "emerging-ftp", "emerging-games", "emerging-icmp", "emerging-icmpinfo", "emerging-imap", "emerging-inappropriate", "emerging-info", "emerging-malware", "emerging-misc", "emerging-mobile", "emerging-netbios", "emerging-p2p", "emerging-policy", "emerging-pop3", "emerging-rpc", "emerging-scada", "emerging-scan", "emerging-shellcode", "emerging-smtp", "emerging-snmp", "emerging-sql", "emerging-telnet", "emerging-tftp", "tor", "emerging-useragent", "emerging-voip", "emerging-webapps", "emerging-webclient", "emerging-webserver", "emerging-worm", "exploit-kit", "adware-pup", "botcc-portgrouped", "phishing", "threatview-cs-c2", "3coresec", "chat", "coinminer", "current-events", "drop", "hunting", "icmp-info", "inappropriate", "info", "ja3", "policy", "scada", "dark-web-blocker-list", "malicious-hosts")),
 				},
 			},
 			"enabled_networks": schema.ListAttribute{
