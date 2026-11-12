@@ -271,6 +271,37 @@ type FirewallZonePolicyModel struct {
 	Source                 types.Object `tfsdk:"source"`
 }
 
+// intsToStringList converts the controller's []int app and app category ids to
+// the list of strings the schema exposes.
+func intsToStringList(ctx context.Context, values []int) (types.List, diag.Diagnostics) {
+	strs := make([]string, 0, len(values))
+	for _, v := range values {
+		strs = append(strs, strconv.Itoa(v))
+	}
+	return types.ListValueFrom(ctx, types.StringType, strs)
+}
+
+// stringListToInts converts a list of numeric strings (app and app category ids,
+// exposed as strings in the schema) to the []int the controller API expects.
+func stringListToInts(ctx context.Context, list types.List, target *[]int) diag.Diagnostics {
+	var values []string
+	diags := ut.ListElementsAs(ctx, list, &values)
+	if diags.HasError() {
+		return diags
+	}
+	out := make([]int, 0, len(values))
+	for _, v := range values {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			diags.AddError("Invalid id", fmt.Sprintf("expected a numeric id, got %q", v))
+			return diags
+		}
+		out = append(out, n)
+	}
+	*target = out
+	return diags
+}
+
 func (m *FirewallZonePolicyModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnostics) {
 	diags := diag.Diagnostics{}
 
@@ -382,12 +413,12 @@ func (m *FirewallZonePolicyModel) AsUnifiModel(ctx context.Context) (interface{}
 		}
 
 		if len(destination.AppCategoryIDs.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(ctx, destination.AppCategoryIDs, &unifiDestination.AppCategoryIDs)...)
+			diags.Append(stringListToInts(ctx, destination.AppCategoryIDs, &unifiDestination.AppCategoryIDs)...)
 			unifiDestination.MatchingTarget = "APP_CATEGORY"
 		}
 
 		if len(destination.AppIDs.Elements()) > 0 {
-			diags.Append(ut.ListElementsAs(ctx, destination.AppIDs, &unifiDestination.AppIDs)...)
+			diags.Append(stringListToInts(ctx, destination.AppIDs, &unifiDestination.AppIDs)...)
 			unifiDestination.MatchingTarget = "APP"
 		}
 
@@ -498,11 +529,11 @@ func (m *FirewallZonePolicyModel) mergeDestination(ctx context.Context, model *u
 	}
 	switch model.Destination.MatchingTarget {
 	case "APP_CATEGORY":
-		appCategories, d := types.ListValueFrom(ctx, types.StringType, model.Destination.AppCategoryIDs)
+		appCategories, d := intsToStringList(ctx, model.Destination.AppCategoryIDs)
 		diags.Append(d...)
 		destModel.AppCategoryIDs = appCategories
 	case "APP":
-		apps, d := types.ListValueFrom(ctx, types.StringType, model.Destination.AppIDs)
+		apps, d := intsToStringList(ctx, model.Destination.AppIDs)
 		diags.Append(d...)
 		destModel.AppIDs = apps
 	case "NETWORK":
