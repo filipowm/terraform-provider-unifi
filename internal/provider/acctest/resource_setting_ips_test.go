@@ -109,16 +109,22 @@ func TestAccSettingIps_enabledCategoriesUnconfiguredUpdate(t *testing.T) {
 				Check:  resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "3"),
 			},
 			{
-				// Updating an unrelated attribute with enabled_categories unconfigured must not
-				// send state's categories back; the controller's list is read back instead.
-				Config: testAccSettingIpsConfigUpdated(),
+				// Changing ips_mode (ids -> ips) with enabled_categories unconfigured must
+				// write without sending state's categories back; the controller's list is
+				// read back instead.
+				Config:           testAccSettingIpsConfigBasic(),
+				ConfigPlanChecks: pt.CheckResourceActions("unifi_setting_ips.test", plancheck.ResourceActionUpdate),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ips_mode", "ids"),
-					resource.TestCheckResourceAttrSet("unifi_setting_ips.test", "enabled_categories.#"),
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "ips_mode", "ips"),
+					// Omitted from the write, so the controller keeps the step-1 categories.
+					resource.TestCheckResourceAttr("unifi_setting_ips.test", "enabled_categories.#", "3"),
+					resource.TestCheckTypeSetElemAttr("unifi_setting_ips.test", "enabled_categories.*", "emerging-dos"),
 				),
 			},
+			// State matches what the controller reports.
+			pt.ImportStepWithSite("unifi_setting_ips.test"),
 			{
-				Config:   testAccSettingIpsConfigUpdated(),
+				Config:   testAccSettingIpsConfigBasic(),
 				PlanOnly: true,
 			},
 		},
